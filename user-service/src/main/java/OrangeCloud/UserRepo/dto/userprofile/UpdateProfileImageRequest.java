@@ -1,14 +1,8 @@
 package OrangeCloud.UserRepo.dto.userprofile;
 
-import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import io.swagger.v3.oas.annotations.media.Schema;
 
-@Getter
-@NoArgsConstructor
-@AllArgsConstructor
-public class UpdateProfileImageRequest {
-    @NotBlank(message = "프로필 이미지 URL은 필수입니다.")
-    private String profileImageUrl;
-}
+@Schema(description = "프로필 이미지 업데이트 요청 DTO (기존 API용)")
+public record UpdateProfileImageRequest(
+    String profileImageUrl
+) {}

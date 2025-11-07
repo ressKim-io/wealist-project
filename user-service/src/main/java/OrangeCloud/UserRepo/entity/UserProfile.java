@@ -9,28 +9,26 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "user_profiles")
+@Table(name = "user_profile")
 @Getter
-@Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-@ToString
-@EqualsAndHashCode(of = "profileId")
 public class UserProfile {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "profile_id", updatable = false, nullable = false, columnDefinition = "UUID")
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "profile_id", columnDefinition = "UUID")
     private UUID profileId;
 
-    @Column(name = "user_id", nullable = false, unique = true, columnDefinition = "UUID")
+    @Column(name = "user_id", columnDefinition = "UUID", nullable = false, unique = true)
     private UUID userId;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", length = 50, nullable = false)
     private String name;
 
     @Column(name = "profile_image_url")
-    private String profileImageUrl;
+    private String profileImageUrl; // null 허용 (기본 이미지 사용 가능)
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -39,6 +37,14 @@ public class UserProfile {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    // =========================================================================
+    // 💡 업데이트 로직 (Service에서 호출)
+    // =========================================================================
+
+    public void updateName(String name) {
+        this.name = name;
+    }
 
     public void updateProfileImageUrl(String profileImageUrl) {
         this.profileImageUrl = profileImageUrl;

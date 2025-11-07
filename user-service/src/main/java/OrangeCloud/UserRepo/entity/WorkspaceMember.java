@@ -12,30 +12,42 @@ import java.util.UUID;
 @Table(name = "workspace_members")
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-@ToString
-@EqualsAndHashCode(of = "workspaceMemberId")
+@ToString(exclude = {"user"}) 
+@EqualsAndHashCode(of = "id") // 필드명 id로 변경
 public class WorkspaceMember {
+    
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "workspace_member_id", updatable = false, nullable = false, columnDefinition = "UUID")
-    private UUID workspaceMemberId;
+    private UUID id; // DTO의 member.getId()에 맞춤
 
     @Column(name = "workspace_id", nullable = false, columnDefinition = "UUID")
     private UUID workspaceId;
 
-    @Column(name = "user_id", nullable = false, columnDefinition = "UUID")
-    private UUID userId;
+    // =========================================================================
+    // 💡 [수정] User 엔티티와의 관계 매핑 (DTO의 getUser() 호출 지원)
+    // =========================================================================
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", insertable = false, updatable = false, nullable = false)
+    private User user; 
 
+    @Column(name = "user_id", nullable = false, columnDefinition = "UUID")
+    private UUID userId; 
+    
+    // =========================================================================
+    
     @Column(name = "role_name", nullable = false)
     @Enumerated(EnumType.STRING)
     private WorkspaceRole role;
 
+    // 💡 [핵심 수정] DTO에서 isDefault()를 호출하기 위해 boolean(원시 타입)으로 변경합니다.
+    //    Lombok은 boolean 타입 필드에 대해 isFieldName() 형태의 Getter를 생성합니다.
     @Column(name = "is_default", nullable = false)
     @Builder.Default
-    private Boolean isDefault = false;
+    private boolean isDefault = false; 
 
     @CreationTimestamp
     @Column(name = "joined_at", updatable = false)
@@ -47,7 +59,7 @@ public class WorkspaceMember {
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default
-    private Boolean isActive = true;
+    private Boolean isActive = true; // Boolean 객체 타입 유지
 
     public enum WorkspaceRole {
         OWNER,

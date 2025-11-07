@@ -13,6 +13,10 @@ import java.util.UUID;
 @Repository
 public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember, UUID> {
 
+    // 💡 [수정] WorkspaceService에서 사용하기 위해 findAllByWorkspaceId 추가 (활성/비활성 모두 조회)
+    // 이 메서드가 WorkspaceService의 getWorkspaceMembers에서 필요합니다.
+    List<WorkspaceMember> findAllByWorkspaceId(UUID workspaceId); 
+
     // 워크스페이스의 모든 활성 멤버 조회
     @Query("SELECT wm FROM WorkspaceMember wm WHERE wm.workspaceId = :workspaceId AND wm.isActive = true")
     List<WorkspaceMember> findActiveByWorkspaceId(@Param("workspaceId") UUID workspaceId);
