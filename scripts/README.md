@@ -146,39 +146,6 @@ docker logs user-service
 psql -U board_service -d wealist_board_db -c "SELECT version();"
 ```
 
-## 🚀 Board Service만 테스트 (Mock Mode)
-
-User Service 없이 Board Service만 독립적으로 테스트하려면:
-
-### 1단계: Mock Mode로 Board Service 실행
-
-```bash
-# .env 파일에 추가 또는 환경변수 설정
-export USE_MOCK_USER_SERVICE=true
-export USE_AUTO_MIGRATE=true
-
-# Board Service만 실행 (PostgreSQL, Redis는 필요)
-cd /home/user/wealist-project
-docker-compose up -d postgres redis board-service
-
-# 또는 로컬에서 직접 실행
-cd board-service
-go run cmd/api/main.go
-```
-
-### 2단계: Board API 테스트 스크립트 실행
-
-```bash
-cd scripts
-./test_board_only.sh
-```
-
-이 모드에서는:
-- ✅ Workspace 검증이 **자동으로 통과**됩니다 (mock)
-- ✅ 임의의 workspace_id 사용 가능
-- ✅ 임의의 JWT 토큰 사용 가능
-- ⚠️ **개발 전용** - 프로덕션에서는 절대 사용 금지
-
 ## 🧪 개발 모드에서 테스트
 
 ```bash

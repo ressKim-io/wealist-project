@@ -72,16 +72,8 @@ func main() {
 	}
 
 	// 5. Initialize User Service client
-	var userClient client.UserClient
-	useMockUserService := os.Getenv("USE_MOCK_USER_SERVICE") == "true"
-
-	if useMockUserService {
-		userClient = client.NewMockUserClient(log)
-		log.Warn("⚠️  Using MOCK User Service - workspace validation DISABLED (development only)")
-	} else {
-		userClient = client.NewUserClient(cfg.UserService.URL)
-		log.Info("User Service client initialized", zap.String("url", cfg.UserService.URL))
-	}
+	userClient := client.NewUserClient(cfg.UserService.URL)
+	log.Info("User Service client initialized", zap.String("url", cfg.UserService.URL))
 
 	// 5.5. Initialize caches
 	userOrderCache := cache.NewUserOrderCache(rdb)
