@@ -135,10 +135,10 @@ services:
   frontend-service:
     build:
       context: ./frontend
-      dockerfile: Dockerfile # 프로덕션용 유지
+      dockerfile: Dockerfile
     container_name: wealist-frontend
     ports:
-      - "3000:80" # nginx serve 포트
+      - "3000:80"
     networks:
       - wealist-net
     depends_on:
@@ -146,10 +146,11 @@ services:
       - user-service
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost/index.html"]
+      test: ["CMD", "curl", "-f", "http://localhost/index.html"]
       interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 10s # 빌드 후 대기
   #-----모니터링 부분------#
   prometheus:
     user: "root"
