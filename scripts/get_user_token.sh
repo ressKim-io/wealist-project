@@ -11,6 +11,7 @@ set -e
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+RED='\033[0;31m'
 NC='\033[0m'
 
 USER_SERVICE_URL="${USER_SERVICE_URL:-http://localhost:8080}"
@@ -29,8 +30,48 @@ print_info() {
     echo -e "${YELLOW}ℹ $1${NC}"
 }
 
+print_error() {
+    echo -e "${RED}✗ $1${NC}"
+}
+
 # =============================================================================
-# Login to User Service
+# Get Test Token (Development Only)
+# =============================================================================
+
+get_test_token() {
+    print_header "Getting Test Token (Development Mode)"
+    print_info "Calling: $USER_SERVICE_URL/api/auth/test"
+
+    response=$(curl -s "$USER_SERVICE_URL/api/auth/test")
+
+    # Check if test endpoint returned token
+    if echo "$response" | jq -e '.accessToken' > /dev/null 2>&1; then
+        JWT_TOKEN=$(echo "$response" | jq -r '.accessToken')
+        USER_ID=$(echo "$response" | jq -r '.userId')
+
+        print_success "Test token received!"
+        echo ""
+        echo "User ID: $USER_ID"
+        echo "Token: ${JWT_TOKEN:0:50}..." # Show first 50 chars only
+        echo ""
+
+        # Export for child processes
+        export JWT_TOKEN
+        export USER_ID
+
+        # Get workspaces
+        get_workspaces
+    else
+        print_error "Failed to get test token!"
+        echo "$response" | jq '.'
+        echo ""
+        print_info "Test endpoint might not be available. Try manual login instead."
+        exit 1
+    fi
+}
+
+# =============================================================================
+# Login to User Service (Manual)
 # =============================================================================
 
 login() {
@@ -55,7 +96,7 @@ login() {
         print_success "Login successful!"
         echo ""
         echo "User ID: $USER_ID"
-        echo "Token: $JWT_TOKEN"
+        echo "Token: ${JWT_TOKEN:0:50}..." # Show first 50 chars only
         echo ""
 
         # Export for child processes
@@ -65,7 +106,7 @@ login() {
         # Get workspaces
         get_workspaces
     else
-        echo "Login failed!"
+        print_error "Login failed!"
         echo "$response" | jq '.'
         exit 1
     fi
@@ -114,24 +155,27 @@ main() {
     echo -e "${GREEN}╚═══════════════════════════════════════════════════╝${NC}"
     echo ""
 
-    # Check if credentials are provided
-    if [ $# -lt 2 ]; then
-        echo "Usage: $0 <email> <password>"
-        echo ""
-        echo "Example:"
-        echo "  $0 user@example.com mypassword"
-        echo ""
-        echo "Or use environment variables:"
-        echo "  export USER_EMAIL=user@example.com"
-        echo "  export USER_PASSWORD=mypassword"
-        echo "  $0"
-        exit 1
+    # If no arguments provided, use test endpoint (development mode)
+    if [ $# -eq 0 ]; then
+        print_info "No credentials provided - using test endpoint"
+        get_test_token
+    else
+        # Manual login with credentials
+        if [ $# -lt 2 ]; then
+            echo "Usage:"
+            echo "  $0                          # Use test token (development only)"
+            echo "  $0 <email> <password>       # Manual login"
+            echo ""
+            echo "Examples:"
+            echo "  $0                                    # Get test token"
+            echo "  $0 user@example.com mypassword       # Login with credentials"
+            exit 1
+        fi
+
+        EMAIL="$1"
+        PASSWORD="$2"
+        login "$EMAIL" "$PASSWORD"
     fi
-
-    EMAIL="${1:-$USER_EMAIL}"
-    PASSWORD="${2:-$USER_PASSWORD}"
-
-    login "$EMAIL" "$PASSWORD"
 
     echo ""
     print_header "Environment Variables Set"
@@ -139,8 +183,8 @@ main() {
     echo "export USER_ID='$USER_ID'"
     echo "export WORKSPACE_ID='$WORKSPACE_ID'"
     echo ""
-    print_info "Copy the export commands above and run them in your shell,"
-    print_info "then run ./test_board_api.sh"
+    print_info "Copy and paste the export commands above to set environment variables,"
+    print_info "then run: ./test_board_api.sh"
 }
 
 main "$@"

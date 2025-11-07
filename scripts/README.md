@@ -24,8 +24,17 @@ sudo yum install jq
 
 ### 1단계: User Service에서 토큰 받아오기
 
+**방법 1: 테스트 토큰 사용 (개발 환경 권장)**
+
 ```bash
-# User Service에 로그인하여 JWT 토큰 받기
+cd scripts
+./get_user_token.sh
+# /api/auth/test 엔드포인트를 사용하여 자동으로 토큰을 받아옵니다
+```
+
+**방법 2: 수동 로그인 (프로덕션 환경)**
+
+```bash
 cd scripts
 ./get_user_token.sh <your-email> <your-password>
 
@@ -147,9 +156,9 @@ docker-compose up -d
 # 서비스 상태 확인
 docker-compose ps
 
-# 테스트 실행
+# 테스트 실행 (테스트 토큰 자동 사용)
 cd scripts
-./get_user_token.sh test@example.com password123
+./get_user_token.sh
 # ... export 명령어 실행 ...
 ./test_board_api.sh
 ```
