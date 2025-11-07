@@ -202,7 +202,7 @@ public class WorkspaceController {
      * 가입 신청 승인/거절
      * PUT /api/workspaces/{workspaceId}/join-requests/{requestId}
      */
-    @PutMapping("/{workspaceId}/join-requests/{requestId}")
+    @PutMapping("/{workspaceId}/joinRequests/{requestId}")
     @Operation(summary = "가입 신청 처리", description = "가입 신청을 승인하거나 거절합니다. (OWNER/ADMIN만 가능)")
     public ResponseEntity<JoinRequestResponse> updateJoinRequest(
             @PathVariable UUID workspaceId,
