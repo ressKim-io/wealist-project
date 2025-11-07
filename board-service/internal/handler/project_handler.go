@@ -38,13 +38,19 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 		return
 	}
 
+	token := c.GetString("token")
+	if token == "" {
+		dto.Error(c, apperrors.ErrMissingToken)
+		return
+	}
+
 	var req dto.CreateProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		dto.Error(c, apperrors.Wrap(err, apperrors.ErrCodeValidation, "입력값 검증 실패", 400))
 		return
 	}
 
-	project, err := h.service.CreateProject(userID, &req)
+	project, err := h.service.CreateProject(userID, token, &req)
 	if err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
 			dto.Error(c, appErr)
@@ -100,6 +106,7 @@ func (h *ProjectHandler) GetProject(c *gin.Context) {
 // @Security     BearerAuth
 func (h *ProjectHandler) GetProjects(c *gin.Context) {
 	userID := c.GetString("user_id")
+	token := c.GetString("token")
 	workspaceID := c.Query("workspace_id")
 
 	if workspaceID == "" {
@@ -107,7 +114,12 @@ func (h *ProjectHandler) GetProjects(c *gin.Context) {
 		return
 	}
 
-	projects, err := h.service.GetProjectsByWorkspaceID(workspaceID, userID)
+	if token == "" {
+		dto.Error(c, apperrors.ErrMissingToken)
+		return
+	}
+
+	projects, err := h.service.GetProjectsByWorkspaceID(workspaceID, userID, token)
 	if err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
 			dto.Error(c, appErr)
@@ -202,6 +214,12 @@ func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 // @Security     BearerAuth
 func (h *ProjectHandler) SearchProjects(c *gin.Context) {
 	userID := c.GetString("user_id")
+	token := c.GetString("token")
+
+	if token == "" {
+		dto.Error(c, apperrors.ErrMissingToken)
+		return
+	}
 
 	var req dto.SearchProjectsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -209,7 +227,7 @@ func (h *ProjectHandler) SearchProjects(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.SearchProjects(userID, &req)
+	result, err := h.service.SearchProjects(userID, token, &req)
 	if err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
 			dto.Error(c, appErr)
@@ -243,13 +261,19 @@ func (h *ProjectHandler) CreateJoinRequest(c *gin.Context) {
 		return
 	}
 
+	token := c.GetString("token")
+	if token == "" {
+		dto.Error(c, apperrors.ErrMissingToken)
+		return
+	}
+
 	var req dto.CreateProjectJoinRequestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		dto.Error(c, apperrors.Wrap(err, apperrors.ErrCodeValidation, "입력값 검증 실패", 400))
 		return
 	}
 
-	joinReq, err := h.service.CreateJoinRequest(userID, &req)
+	joinReq, err := h.service.CreateJoinRequest(userID, token, &req)
 	if err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
 			dto.Error(c, appErr)

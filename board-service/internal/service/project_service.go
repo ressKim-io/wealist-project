@@ -16,15 +16,15 @@ import (
 )
 
 type ProjectService interface {
-	CreateProject(userID string, req *dto.CreateProjectRequest) (*dto.ProjectResponse, error)
+	CreateProject(userID string, token string, req *dto.CreateProjectRequest) (*dto.ProjectResponse, error)
 	GetProject(projectID, userID string) (*dto.ProjectResponse, error)
-	GetProjectsByWorkspaceID(workspaceID, userID string) ([]dto.ProjectResponse, error)
+	GetProjectsByWorkspaceID(workspaceID, userID string, token string) ([]dto.ProjectResponse, error)
 	UpdateProject(projectID, userID string, req *dto.UpdateProjectRequest) (*dto.ProjectResponse, error)
 	DeleteProject(projectID, userID string) error
-	SearchProjects(userID string, req *dto.SearchProjectsRequest) (*dto.PaginatedProjectsResponse, error)
+	SearchProjects(userID string, token string, req *dto.SearchProjectsRequest) (*dto.PaginatedProjectsResponse, error)
 
 	// Join Request
-	CreateJoinRequest(userID string, req *dto.CreateProjectJoinRequestRequest) (*dto.ProjectJoinRequestResponse, error)
+	CreateJoinRequest(userID string, token string, req *dto.CreateProjectJoinRequestRequest) (*dto.ProjectJoinRequestResponse, error)
 	GetJoinRequests(projectID, userID string, status string) ([]dto.ProjectJoinRequestResponse, error)
 	UpdateJoinRequest(requestID, userID string, req *dto.UpdateProjectJoinRequestRequest) (*dto.ProjectJoinRequestResponse, error)
 
@@ -36,7 +36,6 @@ type ProjectService interface {
 
 type projectService struct {
 	repo               repository.ProjectRepository
-	workspaceRepo      repository.WorkspaceRepository
 	roleRepo           repository.RoleRepository
 	userOrderRepo      repository.UserOrderRepository
 	customFieldService CustomFieldService
@@ -47,7 +46,6 @@ type projectService struct {
 
 func NewProjectService(
 	repo repository.ProjectRepository,
-	workspaceRepo repository.WorkspaceRepository,
 	roleRepo repository.RoleRepository,
 	userOrderRepo repository.UserOrderRepository,
 	customFieldService CustomFieldService,
@@ -57,7 +55,6 @@ func NewProjectService(
 ) ProjectService {
 	return &projectService{
 		repo:               repo,
-		workspaceRepo:      workspaceRepo,
 		roleRepo:           roleRepo,
 		userOrderRepo:      userOrderRepo,
 		customFieldService: customFieldService,
@@ -68,7 +65,7 @@ func NewProjectService(
 }
 
 // CreateProject creates a new project
-func (s *projectService) CreateProject(userID string, req *dto.CreateProjectRequest) (*dto.ProjectResponse, error) {
+func (s *projectService) CreateProject(userID string, token string, req *dto.CreateProjectRequest) (*dto.ProjectResponse, error) {
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
@@ -79,13 +76,25 @@ func (s *projectService) CreateProject(userID string, req *dto.CreateProjectRequ
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 워크스페이스 ID", 400)
 	}
 
-	// Check if user is workspace member
-	_, err = s.workspaceRepo.FindMemberByUserAndWorkspace(userUUID, workspaceUUID)
+	// Check if workspace exists via User Service
+	ctx := context.Background()
+	workspaceExists, err := s.userClient.CheckWorkspaceExists(ctx, req.WorkspaceID, token)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "워크스페이스 멤버가 아닙니다", 403)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
+		s.logger.Error("Failed to check workspace existence", zap.Error(err), zap.String("workspace_id", req.WorkspaceID))
+		return nil, apperrors.Wrap(err, apperrors.ErrCodeWorkspaceValidationFailed, "워크스페이스 확인 실패", 500)
+	}
+	if !workspaceExists {
+		return nil, apperrors.New(apperrors.ErrCodeWorkspaceNotFound, "워크스페이스를 찾을 수 없습니다", 404)
+	}
+
+	// Check if user is workspace member via User Service
+	isMember, err := s.userClient.ValidateWorkspaceMembership(ctx, req.WorkspaceID, userID, token)
+	if err != nil {
+		s.logger.Error("Failed to validate workspace membership", zap.Error(err), zap.String("workspace_id", req.WorkspaceID), zap.String("user_id", userID))
+		return nil, apperrors.Wrap(err, apperrors.ErrCodeWorkspaceValidationFailed, "워크스페이스 멤버십 확인 실패", 500)
+	}
+	if !isMember {
+		return nil, apperrors.New(apperrors.ErrCodeWorkspaceAccessDenied, "워크스페이스 멤버가 아닙니다", 403)
 	}
 
 	// Get OWNER role
@@ -180,7 +189,7 @@ func (s *projectService) GetProject(projectID, userID string) (*dto.ProjectRespo
 }
 
 // GetProjectsByWorkspaceID retrieves all projects in a workspace
-func (s *projectService) GetProjectsByWorkspaceID(workspaceID, userID string) ([]dto.ProjectResponse, error) {
+func (s *projectService) GetProjectsByWorkspaceID(workspaceID, userID string, token string) ([]dto.ProjectResponse, error) {
 	workspaceUUID, err := uuid.Parse(workspaceID)
 	if err != nil {
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 워크스페이스 ID", 400)
@@ -191,13 +200,15 @@ func (s *projectService) GetProjectsByWorkspaceID(workspaceID, userID string) ([
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
 	}
 
-	// Check if user is workspace member
-	_, err = s.workspaceRepo.FindMemberByUserAndWorkspace(userUUID, workspaceUUID)
+	// Check if user is workspace member via User Service
+	ctx := context.Background()
+	isMember, err := s.userClient.ValidateWorkspaceMembership(ctx, workspaceID, userID, token)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "워크스페이스 멤버가 아닙니다", 403)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
+		s.logger.Error("Failed to validate workspace membership", zap.Error(err), zap.String("workspace_id", workspaceID), zap.String("user_id", userID))
+		return nil, apperrors.Wrap(err, apperrors.ErrCodeWorkspaceValidationFailed, "워크스페이스 멤버십 확인 실패", 500)
+	}
+	if !isMember {
+		return nil, apperrors.New(apperrors.ErrCodeWorkspaceAccessDenied, "워크스페이스 멤버가 아닙니다", 403)
 	}
 
 	projects, err := s.repo.FindByWorkspaceID(workspaceUUID)
@@ -283,7 +294,7 @@ func (s *projectService) DeleteProject(projectID, userID string) error {
 }
 
 // SearchProjects searches projects in a workspace
-func (s *projectService) SearchProjects(userID string, req *dto.SearchProjectsRequest) (*dto.PaginatedProjectsResponse, error) {
+func (s *projectService) SearchProjects(userID string, token string, req *dto.SearchProjectsRequest) (*dto.PaginatedProjectsResponse, error) {
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
@@ -294,13 +305,15 @@ func (s *projectService) SearchProjects(userID string, req *dto.SearchProjectsRe
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 워크스페이스 ID", 400)
 	}
 
-	// Check if user is workspace member
-	_, err = s.workspaceRepo.FindMemberByUserAndWorkspace(userUUID, workspaceUUID)
+	// Check if user is workspace member via User Service
+	ctx := context.Background()
+	isMember, err := s.userClient.ValidateWorkspaceMembership(ctx, req.WorkspaceID, userID, token)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "워크스페이스 멤버가 아닙니다", 403)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
+		s.logger.Error("Failed to validate workspace membership", zap.Error(err), zap.String("workspace_id", req.WorkspaceID), zap.String("user_id", userID))
+		return nil, apperrors.Wrap(err, apperrors.ErrCodeWorkspaceValidationFailed, "워크스페이스 멤버십 확인 실패", 500)
+	}
+	if !isMember {
+		return nil, apperrors.New(apperrors.ErrCodeWorkspaceAccessDenied, "워크스페이스 멤버가 아닙니다", 403)
 	}
 
 	// Default values
@@ -336,7 +349,7 @@ func (s *projectService) SearchProjects(userID string, req *dto.SearchProjectsRe
 }
 
 // CreateJoinRequest creates a join request
-func (s *projectService) CreateJoinRequest(userID string, req *dto.CreateProjectJoinRequestRequest) (*dto.ProjectJoinRequestResponse, error) {
+func (s *projectService) CreateJoinRequest(userID string, token string, req *dto.CreateProjectJoinRequestRequest) (*dto.ProjectJoinRequestResponse, error) {
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
@@ -356,13 +369,15 @@ func (s *projectService) CreateJoinRequest(userID string, req *dto.CreateProject
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "프로젝트 조회 실패", 500)
 	}
 
-	// Check if user is workspace member
-	_, err = s.workspaceRepo.FindMemberByUserAndWorkspace(userUUID, project.WorkspaceID)
+	// Check if user is workspace member via User Service
+	ctx := context.Background()
+	isMember, err := s.userClient.ValidateWorkspaceMembership(ctx, project.WorkspaceID.String(), userID, token)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "워크스페이스 멤버가 아닙니다", 403)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
+		s.logger.Error("Failed to validate workspace membership", zap.Error(err), zap.String("workspace_id", project.WorkspaceID.String()), zap.String("user_id", userID))
+		return nil, apperrors.Wrap(err, apperrors.ErrCodeWorkspaceValidationFailed, "워크스페이스 멤버십 확인 실패", 500)
+	}
+	if !isMember {
+		return nil, apperrors.New(apperrors.ErrCodeWorkspaceAccessDenied, "워크스페이스 멤버가 아닙니다", 403)
 	}
 
 	// Check if already a member
