@@ -29,26 +29,28 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             HttpServletResponse response,
             Authentication authentication
     ) throws IOException {
-
         CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
 
-        log.info("OAuth2 로그인 성공: {}", oAuth2User.getEmail());
+        log.info("OAuth2 login successful: email={}, userId={}", oAuth2User.getEmail(), oAuth2User.getUserId());
 
         // JWT 토큰 생성
         String accessToken = jwtTokenProvider.generateToken(oAuth2User.getUserId());
         String refreshToken = jwtTokenProvider.generateRefreshToken(oAuth2User.getUserId());
 
-        // 프론트엔드로 리다이렉트 (환경변수에서 읽은 URL 사용)
+        log.debug("Tokens generated: accessToken length={}, refreshToken length={}", 
+                accessToken.length(), refreshToken.length());
+
+        // 프론트엔드로 리다이렉트 (쿼리 파라미터로 토큰 전달)
         String targetUrl = UriComponentsBuilder.fromUriString(redirectUrl)
                 .queryParam("accessToken", accessToken)
                 .queryParam("refreshToken", refreshToken)
+                .queryParam("userId", oAuth2User.getUserId().toString())
+                .queryParam("email", oAuth2User.getEmail())
+                .queryParam("name", oAuth2User.getName())
                 .build()
                 .toUriString();
 
-        log.info("리다이렉트 URL: {}", targetUrl);
-        log.info("refreshToken: {}", accessToken);
-        log.info("accessToken: {}", refreshToken);
-
+        log.info("Redirecting to: {}", targetUrl);
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }

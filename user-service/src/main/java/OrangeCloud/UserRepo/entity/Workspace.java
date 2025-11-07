@@ -6,7 +6,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -18,7 +17,7 @@ import java.util.UUID;
 @Builder
 @ToString
 @EqualsAndHashCode(of = "groupId")
-public class Group {
+public class Workspace {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "group_id", updatable = false, nullable = false, columnDefinition = "UUID")
@@ -28,7 +27,7 @@ public class Group {
     private String name;
 
     @Column(name = "company_name")
-    private String companyName;
+    private String companyName; // 실제로는 description 역할
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -47,14 +46,14 @@ public class Group {
     private LocalDateTime deletedAt;
 
     // 수동으로 groupId 설정할 수 있는 생성자 추가
-    public Group(UUID groupId, String name, String companyName) {
+    public Workspace(UUID groupId, String name, String companyName) {
         this.groupId = groupId;
         this.name = name;
         this.companyName = companyName;
         this.isActive = true;
     }
 
-    public Group(String name, String companyName) {
+    public Workspace(String name, String companyName) {
         this.name = name;
         this.companyName = companyName;
         this.isActive = true;
