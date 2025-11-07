@@ -207,9 +207,8 @@ func (c *userClient) SearchUsers(ctx context.Context, query string) ([]UserInfo,
 }
 
 // CheckWorkspaceExists checks if a workspace exists in User Service
-// Note: User Service endpoint is /api/workspace (singular) not /api/workspaces
 func (c *userClient) CheckWorkspaceExists(ctx context.Context, workspaceID string, token string) (bool, error) {
-	url := fmt.Sprintf("%s/api/workspace/%s", c.baseURL, workspaceID)
+	url := fmt.Sprintf("%s/api/workspaces/%s", c.baseURL, workspaceID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -240,9 +239,11 @@ func (c *userClient) CheckWorkspaceExists(ctx context.Context, workspaceID strin
 }
 
 // ValidateWorkspaceMembership validates if a user is a member of a workspace
-// Note: User Service endpoint is /api/workspace (singular) not /api/workspaces
+// User Service doesn't have a direct membership check endpoint, so we verify by attempting to get workspace info
+// If the user is a member, the request succeeds; otherwise, it returns 403
 func (c *userClient) ValidateWorkspaceMembership(ctx context.Context, workspaceID string, userID string, token string) (bool, error) {
-	url := fmt.Sprintf("%s/api/workspace/%s/members/%s", c.baseURL, workspaceID, userID)
+	// Simply try to get the workspace - if user is a member, it will succeed
+	url := fmt.Sprintf("%s/api/workspaces/%s", c.baseURL, workspaceID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -273,9 +274,8 @@ func (c *userClient) ValidateWorkspaceMembership(ctx context.Context, workspaceI
 }
 
 // GetWorkspace retrieves workspace information from User Service
-// Note: User Service endpoint is /api/workspace (singular) not /api/workspaces
 func (c *userClient) GetWorkspace(ctx context.Context, workspaceID string, token string) (*WorkspaceInfo, error) {
-	url := fmt.Sprintf("%s/api/workspace/%s", c.baseURL, workspaceID)
+	url := fmt.Sprintf("%s/api/workspaces/%s", c.baseURL, workspaceID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
