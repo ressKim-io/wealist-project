@@ -62,7 +62,7 @@ prometheus/data/
 prometheus/volume/ 
 
 
-
+node_modules
 
 # 모놀리식 프론트엔드 
 frontend/dist/
@@ -74,3 +74,4 @@ frontend/docker-compose.yml
 frontend/Dockerfile.local
 docker-compose.base.yml
 docker-compose.local.yml
+node_modules/.pnpm/node_modules/scheduler

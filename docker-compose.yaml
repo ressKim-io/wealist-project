@@ -139,16 +139,18 @@ services:
     container_name: wealist-frontend
     ports:
       - "3000:80"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     networks:
       - wealist-net
     depends_on:
       - board-service
       - user-service
     restart: unless-stopped
-
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/index.html"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s # 빌드 후 대기
   #-----모니터링 부분------#
   prometheus:
     user: "root"

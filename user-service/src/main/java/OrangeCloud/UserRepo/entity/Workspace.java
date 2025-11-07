@@ -9,29 +9,25 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "users")
+@Table(name = "groups")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @ToString
-@EqualsAndHashCode(of = "userId")
-public class User {
+@EqualsAndHashCode(of = "groupId")
+public class Workspace {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "user_id", updatable = false, nullable = false, columnDefinition = "UUID")
-    private UUID userId;
+    @Column(name = "group_id", updatable = false, nullable = false, columnDefinition = "UUID")
+    private UUID groupId;
 
-    @Column(nullable = false, unique = true)
-    private String email;
+    @Column(nullable = false)
+    private String name;
 
-    @Column(name = "provider")
-    @Builder.Default
-    private String provider = "google";
-
-    @Column(name = "google_id", unique = true)
-    private String googleId;
+    @Column(name = "company_name")
+    private String companyName; // 실제로는 description 역할
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -41,6 +37,7 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    // 소프트 삭제를 위한 필드들
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
@@ -48,12 +45,26 @@ public class User {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    // 수동으로 groupId 설정할 수 있는 생성자 추가
+    public Workspace(UUID groupId, String name, String companyName) {
+        this.groupId = groupId;
+        this.name = name;
+        this.companyName = companyName;
+        this.isActive = true;
+    }
+
+    public Workspace(String name, String companyName) {
+        this.name = name;
+        this.companyName = companyName;
+        this.isActive = true;
+    }
+
     public void softDelete() {
         this.isActive = false;
         this.deletedAt = LocalDateTime.now();
     }
 
-    public void restore() {
+    public void reactivate() {
         this.isActive = true;
         this.deletedAt = null;
     }

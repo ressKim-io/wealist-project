@@ -1,52 +1,52 @@
 package OrangeCloud.UserRepo.oauth;
 
 import OrangeCloud.UserRepo.entity.User;
-import OrangeCloud.UserRepo.repository.UserRepository;
+import OrangeCloud.UserRepo.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
-import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-@Slf4j
+import java.util.Collections;
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
-    private final UserRepository userRepository;
+    private final UserService userService;
 
     @Override
-    @Transactional
-    public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+    public OAuth2User loadUser(OAuth2UserRequest userRequest) {
+        log.info("Loading user from OAuth2: {}", userRequest.getClientRegistration().getRegistrationId());
+
+        // 기본 OAuth2User 로드
         OAuth2User oAuth2User = super.loadUser(userRequest);
+        Map<String, Object> attributes = oAuth2User.getAttributes();
 
-        log.info("Google OAuth2 로그인 시도: {}", oAuth2User.getAttributes());
+        // Google에서 반환한 정보 추출
+        String email = (String) attributes.get("email");
+        String googleId = (String) attributes.get("sub"); // Google의 unique ID
+        String name = (String) attributes.get("name");
 
-        // Google에서 제공하는 사용자 정보 추출
-        String registrationId = userRequest.getClientRegistration().getRegistrationId();
-        String email = oAuth2User.getAttribute("email");
-        String name = oAuth2User.getAttribute("name");
+        log.debug("Google OAuth2 info: email={}, googleId={}, name={}", email, googleId, name);
 
-        // DB에 사용자 저장 또는 업데이트
-        User user = saveOrUpdate(email, name, registrationId);
+        // UserService를 통해 사용자 생성 또는 조회 (UserProfile도 함께 생성됨)
+        User user = userService.findOrCreateUserByGoogle(email, googleId, name);
+        log.info("User processed: userId={}, email={}", user.getUserId(), email);
 
-        return new CustomOAuth2User(user, oAuth2User.getAttributes());
-    }
-
-    private User saveOrUpdate(String email, String name, String provider) {
-        // 활성화된 사용자만 조회 및 업데이트
-        User user = userRepository.findByEmailAndIsActiveTrue(email)
-                .map(entity -> entity.updateOAuth2Info(name))
-                .orElse(User.builder()
-                        .name(name)
-                        .email(email)
-                        .provider(provider)
-                        .role("ROLE_USER")
-                        .build());
-
-        return userRepository.save(user);
+        // CustomOAuth2User 반환
+        return new CustomOAuth2User(
+                user.getUserId(),
+                user.getEmail(),
+                name,
+                user.getGoogleId(),
+                attributes,
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+        );
     }
 }

@@ -69,7 +69,7 @@ COMPANY_NAME="test-company-$(date +%s%N)"
 print_section "Group APIs (Prerequisite)"
 
 # 2.1 그룹 생성
-CREATE_GROUP_RESPONSE=$(curl -s -X POST "$BASE_URL/api/groups" \
+CREATE_GROUP_RESPONSE=$(curl -s -X POST "$BASE_URL/api/workspace" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -d "{
@@ -259,7 +259,7 @@ print_success "사용자 정보 삭제 요청 완료"
 
 # 6.3 그룹 삭제
 echo -e "\n6.3 그룹 삭제"
-curl -s -X DELETE "$BASE_URL/api/groups/$GROUP_ID" \
+curl -s -X DELETE "$BASE_URL/api/workspace/$GROUP_ID" \
   -H "Authorization: Bearer $ACCESS_TOKEN"
 print_success "그룹 삭제 요청 완료"
 

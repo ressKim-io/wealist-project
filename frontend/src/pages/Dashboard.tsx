@@ -1,24 +1,36 @@
+import { useNavigate, useParams } from 'react-router-dom';
 import React, { useEffect, useState, useRef } from 'react';
-import { ChevronDown, Plus, Home, Bell, MessageSquare, Briefcase, File } from 'lucide-react';
+import {
+  ChevronDown,
+  Plus,
+  Home,
+  Bell,
+  MessageSquare,
+  Briefcase,
+  File,
+  Settings,
+} from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import UserProfileModal from '../components/modals/UserProfileModal';
 import { UserProfile } from '../types';
-import { Kanban, KanbanWithCustomFields } from '../types/kanban';
-import KanbanDetailModal from '../components/modals/KanbanDetailModal';
-import { getProjects, getBoards, ProjectResponse, BoardResponse } from '../api/boardService';
+import { Board, BoardWithCustomFields } from '../types/board';
+import BoardDetailModal from '../components/modals/BoardDetailModal';
+import { getProjects, getBoards, ProjectResponse, BoardResponse } from '../api/board/boardService';
 
 interface Column {
   id: string;
   title: string;
-  kanbans: KanbanWithCustomFields[];
+  boards: BoardWithCustomFields[];
 }
 
+// App.tsx에서 onLogout을 받도록 수정됨
 interface MainDashboardProps {
   onLogout: () => void;
-  currentGroupId: string;
-  accessToken: string;
 }
 
+// =============================================================================
+// AvatarStack (정상)
+// =============================================================================
 const AvatarStack: React.FC = () => {
   const mockHeaderAvatars = ['김', '박', '이', '최'];
   return (
@@ -50,6 +62,9 @@ interface AssigneeAvatarStackProps {
   assignees: string | string[];
 }
 
+// =============================================================================
+// AssigneeAvatarStack (정상)
+// =============================================================================
 const AssigneeAvatarStack: React.FC<AssigneeAvatarStackProps> = ({ assignees }) => {
   const assigneeList = Array.isArray(assignees)
     ? assignees
@@ -98,10 +113,27 @@ const AssigneeAvatarStack: React.FC<AssigneeAvatarStackProps> = ({ assignees }) 
   );
 };
 
-const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId, accessToken }) => {
-  const { theme } = useTheme();
-  const currentRole = useRef<'ORGANIZER' | 'OPERATOR' | 'VIEWER'>('OPERATOR');
+// =============================================================================
+// MainDashboard
+// =============================================================================
+const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
+  const navigate = useNavigate();
 
+  // 1. URL에서 :workspaceId 값을 가져옵니다.
+  const { workspaceId } = useParams<{ workspaceId: string }>();
+  // 2. localStorage에서 토큰을 가져옵니다.
+  const accessToken = localStorage.getItem('access_token') || '';
+
+  // 3. prop 대신 URL 파라미터를 사용합니다.
+  const currentWorkspaceId = workspaceId || '';
+
+  // 4. 워크스페이스 로고 클릭 핸들러
+  const handleBackToSelect = () => {
+    navigate('/workspaces');
+  };
+  const { theme } = useTheme();
+  const currentRole = useRef<'OWNER' | 'ORGANIZER' | 'MEMBER'>('ORGANIZER');
+  const canAccessSettings = currentRole.current === 'OWNER' || currentRole.current === 'ORGANIZER';
   // 상태 관리
   const [projects, setProjects] = useState<ProjectResponse[]>([]);
   const [columns, setColumns] = useState<Column[]>([]);
@@ -117,7 +149,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
   const [showProjectSelector, setShowProjectSelector] = useState<boolean>(false);
   const [showUserProfile, setShowUserProfile] = useState<boolean>(false);
-  const [selectedKanban, setSelectedKanban] = useState<KanbanWithCustomFields | null>(null);
+  const [selectedBoard, setSelectedBoard] = useState<BoardWithCustomFields | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -125,15 +157,15 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
   const userMenuRef = useRef<HTMLDivElement>(null);
   const projectSelectorRef = useRef<HTMLDivElement>(null);
 
-  // 1. 초기 로드: 프로젝트 목록 조회
+  // 1. 초기 로드: 프로젝트 목록 조회 (currentWorkspaceId 사용)
   useEffect(() => {
     const fetchProjects = async () => {
       setIsLoading(true);
       setError(null);
-
+      console.log(currentWorkspaceId);
       try {
-        console.log(`[Dashboard] 프로젝트 로드 시작 (Group/Workspace: ${currentGroupId})`);
-        const fetchedProjects = await getProjects(currentGroupId, accessToken);
+        console.log(`[Dashboard] 프로젝트 로드 시작 (Workspace: ${currentWorkspaceId})`);
+        const fetchedProjects = await getProjects(currentWorkspaceId, accessToken);
         console.log('✅ Projects loaded:', fetchedProjects);
 
         setProjects(fetchedProjects);
@@ -155,12 +187,12 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
       }
     };
 
-    if (currentGroupId && accessToken) {
+    if (currentWorkspaceId && accessToken) {
       fetchProjects();
     }
-  }, [currentGroupId, accessToken]);
+  }, [currentWorkspaceId, accessToken]);
 
-  // 2. 프로젝트 선택 시 보드 로드
+  // 2. 프로젝트 선택 시 보드 로드 (용어 변경)
   useEffect(() => {
     const fetchBoards = async () => {
       if (!selectedProject) {
@@ -170,7 +202,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
 
       setIsLoading(true);
       setError(null);
-
+      console.log(selectedProject);
       try {
         console.log(`[Dashboard] 보드 로드 시작 (Project: ${selectedProject.name})`);
         const boardsResponse = await getBoards(selectedProject.id, accessToken);
@@ -191,7 +223,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
         const mockColumns: Column[] = Array.from(stageMap).map(([stageName, boards]) => ({
           id: stageName,
           title: stageName,
-          kanbans: boards.map((b) => ({
+          boards: boards.map((b) => ({
             id: b.id,
             title: b.title,
             assignee_id: b.assignee?.userId || '',
@@ -218,12 +250,12 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
     fetchBoards();
   }, [selectedProject, accessToken]);
 
-  // 드래그 앤 드롭
-  const [draggedKanban, setDraggedKanban] = useState<KanbanWithCustomFields | null>(null);
+  // 2. 드래그 앤 드롭 (용어 변경)
+  const [draggedBoard, setDraggedBoard] = useState<BoardWithCustomFields | null>(null);
   const [draggedFromColumn, setDraggedFromColumn] = useState<string | null>(null);
 
-  const handleDragStart = (task: Kanban, columnId: string): void => {
-    setDraggedKanban(task as KanbanWithCustomFields);
+  const handleDragStart = (board: Board, columnId: string): void => {
+    setDraggedBoard(board as BoardWithCustomFields);
     setDraggedFromColumn(columnId);
   };
 
@@ -232,33 +264,33 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
   };
 
   const handleDrop = (targetColumnId: string): void => {
-    if (!draggedKanban || !draggedFromColumn || draggedFromColumn === targetColumnId) return;
+    if (!draggedBoard || !draggedFromColumn || draggedFromColumn === targetColumnId) return;
 
-    const updatedTask: KanbanWithCustomFields = {
-      ...draggedKanban,
+    const updatedBoard: BoardWithCustomFields = {
+      ...draggedBoard,
       status: targetColumnId,
     };
 
     const newColumns = columns.map((col) => {
       if (col.id === draggedFromColumn) {
-        return { ...col, kanbans: col.kanbans.filter((t) => t.id !== draggedKanban.id) };
+        return { ...col, boards: col.boards.filter((t) => t.id !== draggedBoard.id) };
       }
       if (col.id === targetColumnId) {
-        return { ...col, kanbans: [...col.kanbans, updatedTask] };
+        return { ...col, boards: [...col.boards, updatedBoard] };
       }
       return col;
     });
 
     setColumns(newColumns);
-    setDraggedKanban(null);
+    setDraggedBoard(null);
     setDraggedFromColumn(null);
 
-    console.log(`[Mock] Kanban ${draggedKanban.id} 상태를 ${targetColumnId}(으)로 변경`);
+    console.log(`[Mock] Board ${draggedBoard.id} 상태를 ${targetColumnId}(으)로 변경`);
   };
 
   const columnColors = ['bg-blue-500', 'bg-yellow-500', 'bg-purple-500'];
 
-  // 외부 클릭 감지
+  // 외부 클릭 감지 (동일)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
@@ -279,12 +311,10 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
   }, [showProjectSelector]);
 
   const sidebarWidth = 'w-16 sm:w-20';
-  const canManageMembers =
-    currentRole.current === 'ORGANIZER' || currentRole.current === 'OPERATOR';
 
   return (
     <div className={`min-h-screen flex ${theme.colors.background} relative`}>
-      {/* 백그라운드 패턴 */}
+      {/* 백그라운드 패턴 (동일) */}
       <div
         className="fixed inset-0 opacity-5"
         style={{
@@ -299,16 +329,20 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
         className={`${sidebarWidth} fixed top-0 left-0 h-full flex flex-col justify-between ${theme.colors.primary} text-white shadow-xl z-50 flex-shrink-0`}
       >
         <div className="flex flex-col flex-grow items-center">
+          {/* 3. 워크스페이스 로고 클릭 기능 추가 (스타일 복구) */}
           <div className={`py-3 flex justify-center w-full relative`}>
-            <div
+            <button
+              onClick={handleBackToSelect}
+              title="워크스페이스 목록으로"
+              // ✅ UI 깨짐 문제 해결: className 복구
               className={`w-12 h-12 rounded-lg mx-auto flex items-center justify-center text-xl font-bold transition 
-                    bg-white text-blue-800 ring-2 ring-white/50`}
-              title={currentGroupId}
+                    bg-white text-blue-800 ring-2 ring-white/50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300`}
             >
-              {currentGroupId.slice(0, 1).toUpperCase()}
-            </div>
+              {currentWorkspaceId.slice(0, 1).toUpperCase()}
+            </button>
           </div>
 
+          {/* 사이드바 메뉴 (동일) */}
           <div className="flex flex-col gap-2 mt-4 flex-grow px-2 w-full pt-4">
             <button
               className={`w-12 h-12 rounded-lg mx-auto flex items-center justify-center transition bg-blue-600 text-white ring-2 ring-white/50`}
@@ -337,6 +371,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
           </div>
         </div>
 
+        {/* 하단 유저 메뉴 (동일) */}
         <div className={`py-3 px-2 border-t border-gray-700`}>
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
@@ -352,12 +387,12 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
         </div>
       </aside>
 
-      {/* 메인 콘텐츠 */}
+      {/* 메인 콘텐츠 (동일) */}
       <div
         className="flex-grow flex flex-col relative z-10"
         style={{ marginLeft: sidebarWidth, minHeight: '100vh' }}
       >
-        {/* 헤더 */}
+        {/* 헤더 (동일) */}
         <header
           className={`fixed top-0 left-0 h-16 flex items-center justify-between pl-20 pr-6 sm:pl-28 sm:pr-4 py-2 sm:py-3 ${theme.colors.card} shadow-md z-20 w-full`}
           style={{
@@ -417,11 +452,20 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
               </div>
             )}
           </div>
-
+          {canAccessSettings && (
+            <button
+              // onClick={() => setIsSettingsModalOpen(true)}
+              className={`flex items-center gap-1 p-2 rounded-lg transition ${theme.colors.secondary} ${theme.colors.text} hover:bg-gray-100 font-semibold text-sm`}
+              title="조직 설정 및 멤버 관리"
+            >
+              <Settings className="w-4 h-4" />
+              설정
+            </button>
+          )}
           {selectedProject && (
             <button
               className={`flex items-center gap-2 p-1 rounded-lg transition ${
-                canManageMembers ? 'hover:bg-blue-100' : 'hover:bg-gray-100'
+                canAccessSettings ? 'hover:bg-blue-100' : 'hover:bg-gray-100'
               }`}
               title="조직원"
             >
@@ -430,7 +474,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
           )}
         </header>
 
-        {/* 칸반 보드 */}
+        {/* 보드 영역 (동일) */}
         <div className="flex-grow flex flex-col p-3 sm:p-6 overflow-auto mt-16 ml-20">
           {error && (
             <div className="mb-4 p-4 bg-red-50 border border-red-300 rounded-lg text-red-700">
@@ -470,27 +514,27 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
                         <span
                           className={`bg-black text-white px-1 sm:px-2 py-1 ${theme.effects.cardBorderWidth} ${theme.colors.border} text-[8px] sm:text-xs`}
                         >
-                          {column.kanbans.length}
+                          {column.boards.length}
                         </span>
                       </h3>
                     </div>
 
                     <div className="space-y-2 sm:space-y-3">
-                      {column.kanbans.map((kanban) => (
-                        <div key={kanban.id} className="relative">
+                      {column.boards.map((board) => (
+                        <div key={board.id} className="relative">
                           <div
                             draggable
-                            onDragStart={() => handleDragStart(kanban, column.id)}
-                            onClick={() => setSelectedKanban(kanban)}
+                            onDragStart={() => handleDragStart(board, column.id)}
+                            onClick={() => setSelectedBoard(board)}
                             className={`relative ${theme.colors.card} p-3 sm:p-4 ${theme.effects.cardBorderWidth} ${theme.colors.border} hover:border-blue-500 transition cursor-pointer ${theme.effects.borderRadius}`}
                           >
                             <h3
                               className={`font-bold ${theme.colors.text} mb-2 sm:mb-3 ${theme.font.size.xs} break-words`}
                             >
-                              {kanban.title}
+                              {board.title}
                             </h3>
                             <div className="flex items-center justify-between">
-                              <AssigneeAvatarStack assignees={kanban.assignee} />
+                              <AssigneeAvatarStack assignees={board.assignee} />
                             </div>
                           </div>
                         </div>
@@ -498,7 +542,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
                       <button
                         className={`relative w-full py-3 sm:py-4 ${theme.effects.cardBorderWidth} border-dashed ${theme.colors.border} ${theme.colors.card} hover:bg-gray-100 transition flex items-center justify-center gap-2 ${theme.font.size.xs} ${theme.effects.borderRadius}`}
                         onClick={() =>
-                          setSelectedKanban({
+                          setSelectedBoard({
                             id: '',
                             title: '',
                             assignee_id: '',
@@ -508,7 +552,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
                         }
                       >
                         <Plus className="w-3 h-3 sm:w-4 sm:h-4" style={{ strokeWidth: 3 }} />
-                        칸반 추가
+                        보드 추가
                       </button>
                     </div>
                   </div>
@@ -527,7 +571,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
         </div>
       </div>
 
-      {/* 모달 */}
+      {/* 모달 (하단) (동일) */}
       {showUserMenu && (
         <div
           ref={userMenuRef}
@@ -577,8 +621,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout, currentGroupId,
         <UserProfileModal user={userProfile} onClose={() => setShowUserProfile(false)} />
       )}
 
-      {selectedKanban && (
-        <KanbanDetailModal kanban={selectedKanban} onClose={() => setSelectedKanban(null)} />
+      {selectedBoard && (
+        <BoardDetailModal board={selectedBoard} onClose={() => setSelectedBoard(null)} />
       )}
     </div>
   );

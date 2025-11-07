@@ -1,23 +1,30 @@
 package OrangeCloud.UserRepo.oauth;
 
-import OrangeCloud.UserRepo.entity.User;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 
-@Getter
-@RequiredArgsConstructor
 public class CustomOAuth2User implements OAuth2User {
 
-    private final User user;
+    private final UUID userId;
+    private final String email;
+    private final String name;
+    private final String googleId;
     private final Map<String, Object> attributes;
+    private final Collection<? extends GrantedAuthority> authorities;
+
+    public CustomOAuth2User(UUID userId, String email, String name, String googleId, 
+                           Map<String, Object> attributes, Collection<? extends GrantedAuthority> authorities) {
+        this.userId = userId;
+        this.email = email;
+        this.name = name;
+        this.googleId = googleId;
+        this.attributes = attributes;
+        this.authorities = authorities;
+    }
 
     @Override
     public Map<String, Object> getAttributes() {
@@ -26,22 +33,23 @@ public class CustomOAuth2User implements OAuth2User {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(
-                new SimpleGrantedAuthority(user.getRole())
-        );
+        return authorities;
     }
 
     @Override
     public String getName() {
-        return user.getEmail();
+        return name;
+    }
+
+    public UUID getUserId() {
+        return userId;
     }
 
     public String getEmail() {
-        return user.getEmail();
+        return email;
     }
 
-    // UUID 반환 (JwtTokenProvider에서 사용)
-    public UUID getUserId() {
-        return user.getUserId();
+    public String getGoogleId() {
+        return googleId;
     }
 }
