@@ -81,12 +81,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     // ============================================================================
 
     /**
-     * 이름으로 활성화된 사용자 검색
-     */
-    @Query("SELECT u FROM User u WHERE u.name LIKE %:name% AND u.isActive = true")
-    List<User> findActiveByNameContaining(@Param("name") String name);
-
-    /**
      * 이메일로 검색 (활성화된 사용자만)
      */
     List<User> findAllByEmailAndIsActiveTrue(String email);
