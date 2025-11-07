@@ -195,11 +195,6 @@ func (s *projectService) GetProjectsByWorkspaceID(workspaceID, userID string, to
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 워크스페이스 ID", 400)
 	}
 
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
-	}
-
 	// Check if user is workspace member via User Service
 	ctx := context.Background()
 	isMember, err := s.userClient.ValidateWorkspaceMembership(ctx, workspaceID, userID, token)
@@ -295,11 +290,6 @@ func (s *projectService) DeleteProject(projectID, userID string) error {
 
 // SearchProjects searches projects in a workspace
 func (s *projectService) SearchProjects(userID string, token string, req *dto.SearchProjectsRequest) (*dto.PaginatedProjectsResponse, error) {
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
-	}
-
 	workspaceUUID, err := uuid.Parse(req.WorkspaceID)
 	if err != nil {
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 워크스페이스 ID", 400)
