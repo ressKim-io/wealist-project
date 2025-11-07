@@ -3,33 +3,32 @@ import { AxiosResponse } from 'axios';
 
 // --- DTO Interfaces ---
 
-// 워크스페이스 멤버 응답 DTO: 백엔드의 OWNER/ADMIN/MEMBER를 MASTER/ORGANIZER/MEMBER로 사용합니다.
 export interface WorkspaceMember {
   id: string; // WorkspaceMember ID (not userId)
   workspaceId: string;
   userId: string;
   userName: string;
   userEmail: string;
-  roleName: 'MASTER' | 'ORGANIZER' | 'MEMBER';
+  roleName: 'OWNER' | 'ADMIN' | 'MEMBER';
   isDefault: boolean;
   joinedAt: string;
 }
 
 // 멤버 역할 변경 요청 DTO
 interface UpdateMemberRoleRequest {
-  roleName: 'ORGANIZER' | 'MEMBER';
+  roleName: 'ADMIN' | 'MEMBER';
 }
 
 // 멤버 초대 요청 DTO (기능 요구사항에 따라 POST 요청을 가정)
 interface InviteMemberRequest {
   email: string;
-  roleName: 'ORGANIZER' | 'MEMBER';
+  roleName: 'ADMIN' | 'MEMBER';
 }
 
 // 백엔드 역할을 프론트엔드 역할로 매핑하는 함수 (OWNER -> MASTER, ADMIN -> ORGANIZER)
 const mapRole = (role: string): WorkspaceMember['roleName'] => {
-  if (role === 'OWNER') return 'MASTER';
-  if (role === 'ADMIN') return 'ORGANIZER';
+  if (role === 'OWNER') return 'OWNER';
+  if (role === 'ADMIN') return 'ADMIN';
   // API 명세에 MEMBER가 아닌 다른 역할이 있다면 여기에 추가
   return 'MEMBER';
 };
@@ -64,7 +63,7 @@ export async function getWorkspaceMembers(
 export async function inviteMemberByEmail(
   workspaceId: string,
   email: string,
-  roleName: 'ORGANIZER' | 'MEMBER',
+  roleName: 'ADMIN' | 'MEMBER',
   token: string,
 ): Promise<void> {
   const requestBody: InviteMemberRequest = { email, roleName };
@@ -81,7 +80,7 @@ export async function inviteMemberByEmail(
 export async function updateMemberRole(
   workspaceId: string,
   memberId: string, // WorkspaceMember ID
-  newRoleName: 'ORGANIZER' | 'MEMBER',
+  newRoleName: 'ADMIN' | 'MEMBER',
   token: string,
 ): Promise<WorkspaceMember> {
   const requestBody: UpdateMemberRoleRequest = { roleName: newRoleName };

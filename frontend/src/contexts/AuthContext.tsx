@@ -47,14 +47,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // 2. [내부 전용] 로그인 상태 설정 함수 (OAuthRedirectPage에서 사용됨)
-  const setLoginState = useCallback((newToken: string, newUserId: string, newEmail: string) => {
-    localStorage.setItem('access_token', newToken);
-    localStorage.setItem('user_id', newUserId);
-    localStorage.setItem('user_email', newEmail);
-    setToken(newToken);
-    setUserId(newUserId);
-    setUserEmail(newEmail);
-  }, []);
+  // const setLoginState = useCallback((newToken: string, newUserId: string, newEmail: string) => {
+  //   localStorage.setItem('access_token', newToken);
+  //   localStorage.setItem('user_id', newUserId);
+  //   localStorage.setItem('user_email', newEmail);
+  //   setToken(newToken);
+  //   setUserId(newUserId);
+  //   setUserEmail(newEmail);
+  // }, []);
 
   // 3. 로그아웃 핸들러
   const logout = useCallback(async () => {

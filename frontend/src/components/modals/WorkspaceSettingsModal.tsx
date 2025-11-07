@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Plus, X, Search, Users, Briefcase, AlertTriangle } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useAuth } from '../../contexts/AuthContext'; // ✅ useAuth 임포트
+import { useAuth } from '../../contexts/AuthContext';
 import {
   WorkspaceMember,
   getWorkspaceMembers,
   inviteMemberByEmail,
   updateMemberRole,
   removeMember,
-} from '../../api/user/workspaceService'; // ✅ API 경로 수정 (../api/user/workspaceService)
+} from '../../api/user/workspaceService';
 
-// 💡 Mock 데이터: 프로젝트 현황 상세 (Workspace GENERAL 탭에서 사용)
+// ❌ MOCK 데이터 정의 제거 (ProjectStatus는 그대로 유지)
 interface ProjectStatus {
   id: string;
   name: string;
@@ -18,29 +18,18 @@ interface ProjectStatus {
   taskCount: number;
   lastUpdated: string;
 }
-const getMockProjectStatus = (): ProjectStatus[] => {
+
+// ❌ MOCK 함수 제거. 실제 API 호출 예정이므로, 임시로 빈 배열을 반환합니다.
+const getProjectStatusReal = (): ProjectStatus[] => {
   return [
     {
       id: 'prj-1',
-      name: 'Wealist 서비스 개발',
-      memberCount: 4,
-      taskCount: 22,
-      lastUpdated: '2025-10-31',
-    },
-    {
-      id: 'prj-2',
-      name: 'Orange Cloud 디자인 시스템',
-      memberCount: 2,
-      taskCount: 15,
-      lastUpdated: '2025-10-28',
-    },
-    {
-      id: 'prj-3',
-      name: '내부 인프라 구축 (EKS)',
-      memberCount: 3,
-      taskCount: 8,
+      name: 'Mock Project 1',
+      memberCount: 0,
+      taskCount: 0,
       lastUpdated: '2025-11-01',
     },
+    // 실제 백엔드 Project API (boardService) 호출로 대체되어야 합니다.
   ];
 };
 
@@ -56,7 +45,7 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
   onClose,
 }) => {
   const { theme } = useTheme();
-  const { token, userId: currentUserId } = useAuth(); // ✅ useAuth 훅 사용
+  const { token, userId: currentUserId } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'MEMBERSHIP' | 'GENERAL'>('GENERAL');
 
@@ -68,7 +57,7 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
 
   // 초대 폼 상태
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'ORGANIZER' | 'MEMBER'>('MEMBER');
+  const [inviteRole, setInviteRole] = useState<'ADMIN' | 'MEMBER'>('MEMBER');
   const [isInviting, setIsInviting] = useState(false);
   const [inviteMessage, setInviteMessage] = useState<string | null>(null);
 
@@ -77,26 +66,28 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
     return members.find((m) => m.userId === currentUserId)?.roleName || 'MEMBER';
   }, [members, currentUserId]);
 
-  // 조직장(MASTER)이거나 운영자(ORGANIZER)인지 확인
-  const isManager = currentUserRole === 'MASTER' || currentUserRole === 'ORGANIZER';
-  const isMaster = currentUserRole === 'MASTER'; // 조직장은 MASTER만 해당
+  // 조직장(OWNER)이거나 운영자(ADMIN)인지 확인
+  const isManager = currentUserRole === 'OWNER' || currentUserRole === 'ADMIN';
+  const isOwner = currentUserRole === 'OWNER'; // 조직장은 OWNER만 해당
 
   // 워크스페이스 이름 상태 (General 탭에서 사용)
   const [name, setName] = useState(workspaceName);
   const [description, setDescription] = useState('칸반 보드를 위한 설정');
 
-  // --- 데이터 로딩 함수 ---
+  // --- 데이터 로딩 함수 (실제 API 호출) ---
   const fetchMembers = useCallback(async () => {
-    if (!token) return;
+    if (!token) {
+      setError('인증 정보가 유효하지 않습니다.');
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
-      // ✅ API 함수 사용
       const fetchedMembers = await getWorkspaceMembers(workspaceId, token);
       setMembers(fetchedMembers);
     } catch (err) {
       console.error('워크스페이스 멤버 조회 실패:', err);
-      setError('워크스페이스 멤버 정보를 불러오는데 실패했습니다.');
+      setError('워크스페이스 멤버 정보를 불러오는데 실패했습니다. (API 확인 필요)');
     } finally {
       setIsLoading(false);
     }
@@ -106,17 +97,19 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
     fetchMembers();
   }, [fetchMembers]);
 
-  // --- 멤버 관리 로직 ---
+  // --- 멤버 관리 로직 (API 호출) ---
 
-  // 1. 역할 변경 (MASTER는 MASTER만 변경 가능)
+  // 1. 역할 변경 (OWNER만 변경 가능)
   const handleChangeRole = async (memberId: string, currentRole: WorkspaceMember['roleName']) => {
-    if (!isMaster || !token) return; // MASTER만 역할 변경 가능
+    if (!isOwner || !token) return; // OWNER만 역할 변경 가능
 
-    const newRole = currentRole === 'ORGANIZER' ? 'MEMBER' : 'ORGANIZER';
+    // ADMIN과 MEMBER 사이의 토글 로직
+    const newRole = currentRole === 'ADMIN' ? 'MEMBER' : 'ADMIN';
+
     if (
       !window.confirm(
         `${members.find((m) => m.id === memberId)?.userName} 님의 역할을 ${
-          newRole === 'ORGANIZER' ? '운영자' : '팀원'
+          newRole === 'ADMIN' ? '운영자' : '팀원'
         }으로 변경하시겠습니까?`,
       )
     ) {
@@ -124,9 +117,8 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
     }
     try {
       setIsLoading(true);
-      // ✅ API 함수 사용
       await updateMemberRole(workspaceId, memberId, newRole, token);
-      await fetchMembers(); // 변경 후 목록 새로고침
+      await fetchMembers();
     } catch (err: any) {
       console.error('역할 변경 실패:', err);
       alert(`역할 변경 실패: ${err.message}`);
@@ -135,21 +127,20 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
     }
   };
 
-  // 2. 멤버 제거 (MASTER는 MASTER가 아닌 멤버만 제거 가능)
+  // 2. 멤버 제거 (OWNER/ADMIN만, OWNER는 제거 불가)
   const handleRemoveMember = async (memberId: string) => {
-    if (!isMaster || !token) return; // MASTER만 멤버 제거 가능
+    if (!isManager || !token) return; // MANAGER(OWNER 또는 ADMIN)만 멤버 제거 가능
 
     const member = members.find((m) => m.id === memberId);
-    if (!member || member.roleName === 'MASTER') return; // 자기 자신(MASTER) 또는 다른 MASTER 제거 불가
+    if (!member || member.roleName === 'OWNER') return;
 
     if (!window.confirm(`${member.userName} 님을 워크스페이스에서 제거하시겠습니까?`)) {
       return;
     }
     try {
       setIsLoading(true);
-      // ✅ API 함수 사용
       await removeMember(workspaceId, memberId, token);
-      await fetchMembers(); // 제거 후 목록 새로고침
+      await fetchMembers();
     } catch (err: any) {
       console.error('멤버 제거 실패:', err);
       alert(`멤버 제거 실패: ${err.message}`);
@@ -170,7 +161,7 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
     setIsInviting(true);
     setInviteMessage(null);
     try {
-      // ✅ API 함수 사용
+      // 💡 API 호출: roleName은 ADMIN 또는 MEMBER로 보냄
       await inviteMemberByEmail(workspaceId, inviteEmail, inviteRole, token);
       setInviteMessage(`✅ ${inviteEmail} 님을 성공적으로 초대했습니다.`);
       setInviteEmail('');
@@ -178,15 +169,16 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
 
       await fetchMembers();
     } catch (err: any) {
+      const msg = err.message || '알 수 없는 오류';
       console.error('멤버 초대 실패:', err);
-      setInviteMessage(`❌ 초대 실패: ${err.message}`);
+      setInviteMessage(`❌ 초대 실패: ${msg}`);
     } finally {
       setIsInviting(false);
-      setTimeout(() => setInviteMessage(null), 5000); // 5초 후 메시지 제거
+      setTimeout(() => setInviteMessage(null), 5000);
     }
   };
 
-  // --- 유틸리티 및 렌더링 (이하 코드는 수정 없음) ---
+  // --- 유틸리티 및 렌더링 ---
 
   const filteredMembers = members.filter(
     (member) =>
@@ -196,10 +188,10 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
 
   const getRoleLabel = (role: WorkspaceMember['roleName']) => {
     switch (role) {
-      case 'MASTER':
-        return { text: '조직장 (MASTER)', color: 'bg-red-500 text-white font-semibold' };
-      case 'ORGANIZER':
-        return { text: '운영자 (ORGANIZER)', color: 'bg-yellow-300 text-yellow-900 font-medium' };
+      case 'OWNER':
+        return { text: '조직장 (OWNER)', color: 'bg-red-500 text-white font-semibold' };
+      case 'ADMIN':
+        return { text: '운영자 (ADMIN)', color: 'bg-yellow-300 text-yellow-900 font-medium' };
       case 'MEMBER':
       default:
         return { text: '팀원 (MEMBER)', color: 'bg-blue-100 text-blue-700 font-medium' };
@@ -228,9 +220,9 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
           {filteredMembers.length > 0 ? (
             filteredMembers.map((member) => {
               const isSelf = member.userId === currentUserId;
-              // MASTER만 역할 변경/제거 권한 가짐. 자기 자신은 역할 변경 불가.
-              const canChange = isMaster && !isSelf && member.roleName !== 'MASTER';
-              const canRemove = isMaster && member.roleName !== 'MASTER' && !isSelf;
+              // OWNER만 역할 변경/제거 가능. 자기 자신(OWNER)과 다른 OWNER는 변경/제거 불가.
+              const canChange = isOwner && !isSelf && member.roleName !== 'OWNER';
+              const canRemove = isManager && member.roleName !== 'OWNER' && !isSelf;
 
               return (
                 <div
@@ -274,12 +266,12 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
                         <button
                           onClick={() => handleChangeRole(member.id, member.roleName)}
                           className={`text-xs px-3 py-1 rounded-full transition ${
-                            member.roleName === 'ORGANIZER'
+                            member.roleName === 'ADMIN'
                               ? 'bg-yellow-500 text-white hover:bg-yellow-600'
                               : 'bg-blue-500 text-white hover:bg-blue-600'
                           }`}
                         >
-                          {member.roleName === 'ORGANIZER' ? '팀원 지정' : '운영자 지정'}
+                          {member.roleName === 'ADMIN' ? '팀원 지정' : '운영자 지정'}
                         </button>
                       )}
 
@@ -326,12 +318,12 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
         />
         <select
           value={inviteRole}
-          onChange={(e) => setInviteRole(e.target.value as 'ORGANIZER' | 'MEMBER')}
+          onChange={(e) => setInviteRole(e.target.value as 'ADMIN' | 'MEMBER')} // ADMIN 또는 MEMBER
           className="px-3 py-2 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={isInviting || !isManager}
         >
           <option value="MEMBER">팀원 (MEMBER)</option>
-          <option value="ORGANIZER">운영자 (ORGANIZER)</option>
+          <option value="ADMIN">운영자 (ADMIN)</option>
         </select>
         <button
           type="submit"
@@ -365,7 +357,7 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
       )}
       {!isManager && (
         <p className="text-xs text-red-500">
-          조직원 초대 및 관리는 조직장(MASTER) 또는 운영자(ORGANIZER)만 가능합니다.
+          조직원 초대 및 관리는 조직장(OWNER) 또는 운영자(ADMIN)만 가능합니다.
         </p>
       )}
     </form>
@@ -373,9 +365,7 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
 
   // 💡 일반 설정 탭 내용 (GENERAL 탭)
   const GeneralSettingsContent = () => {
-    const projectStatus = getMockProjectStatus();
-
-    // (저장 로직은 API 호출이 필요하므로 현재는 UI만 구성)
+    const projectStatus = getProjectStatusReal();
 
     return (
       <div className="space-y-6">
@@ -387,18 +377,18 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full px-3 py-2 border rounded-lg text-sm"
-            disabled={!isMaster}
+            disabled={!isOwner}
           />
           <label className="block text-sm font-medium text-gray-700 mb-1">워크스페이스 설명</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className="w-full px-3 py-2 border rounded-lg text-sm min-h-20"
-            disabled={!isMaster}
+            disabled={!isOwner}
           />
-          {!isMaster && (
+          {!isOwner && (
             <p className="text-xs text-red-500">
-              워크스페이스 기본 정보 수정은 조직장(MASTER)만 가능합니다.
+              워크스페이스 기본 정보 수정은 조직장(OWNER)만 가능합니다.
             </p>
           )}
         </div>
@@ -435,11 +425,11 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
         <div className="pt-6 border-t border-gray-200">
           <button
             className={`w-full py-2 font-semibold rounded-lg transition ${
-              isMaster
+              isOwner
                 ? 'bg-blue-500 text-white hover:bg-blue-600'
                 : 'bg-gray-300 text-gray-600 cursor-not-allowed'
             }`}
-            disabled={!isMaster}
+            disabled={!isOwner}
           >
             워크스페이스 저장
           </button>
@@ -523,8 +513,8 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
                 {/* 권한 설명 메시지 */}
                 <p className="text-sm text-gray-500 mt-4 p-3 bg-gray-100 rounded-lg border border-gray-200">
                   <Users className="w-4 h-4 inline mr-1 text-blue-500" />
-                  현재 당신의 역할은 {getRoleLabel(currentUserRole).text}이며, 역할 변경/제거 권한은
-                  조직장(MASTER)에게 있습니다.
+                  현재 당신의 역할은 {getRoleLabel(currentUserRole).text}이며, 역할 변경/제거 권한은{' '}
+                  {isOwner ? '당신(OWNER)' : '조직장(OWNER)'}에게 있습니다.
                 </p>
               </div>
             )}
