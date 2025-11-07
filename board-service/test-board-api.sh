@@ -31,27 +31,27 @@ FAILED=0
 # ============================================================================
 
 print_header() {
-    echo -e "\n${BLUE}========================================${NC}"
-    echo -e "${BLUE}$1${NC}"
-    echo -e "${BLUE}========================================${NC}"
+    echo -e "\n${BLUE}========================================${NC}" >&2
+    echo -e "${BLUE}$1${NC}" >&2
+    echo -e "${BLUE}========================================${NC}" >&2
 }
 
 print_step() {
-    echo -e "\n${YELLOW}>>> $1${NC}"
+    echo -e "\n${YELLOW}>>> $1${NC}" >&2
 }
 
 print_success() {
-    echo -e "${GREEN}✓ $1${NC}"
+    echo -e "${GREEN}✓ $1${NC}" >&2
     PASSED=$((PASSED + 1))
 }
 
 print_error() {
-    echo -e "${RED}✗ $1${NC}"
+    echo -e "${RED}✗ $1${NC}" >&2
     FAILED=$((FAILED + 1))
 }
 
 print_info() {
-    echo -e "${BLUE}ℹ $1${NC}"
+    echo -e "${BLUE}ℹ $1${NC}" >&2
 }
 
 # Test API call
@@ -92,7 +92,7 @@ test_api() {
     else
         print_error "$method $url - Expected: $expected_status, Got: $http_code"
         print_info "Response body:"
-        echo "$body"
+        echo "$body" >&2
         return 1
     fi
 }
@@ -117,7 +117,7 @@ USER_EMAIL=$(echo "$response" | jq -r '.email')
 
 if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "null" ]; then
     print_error "Failed to get access token from User Service"
-    echo "$response"
+    echo "$response" >&2
     exit 1
 fi
 
@@ -146,12 +146,12 @@ WORKSPACE_ID=$(echo "$workspace_response" | jq -r '.id')
 
 if [ -z "$WORKSPACE_ID" ] || [ "$WORKSPACE_ID" = "null" ]; then
     print_error "Failed to create workspace"
-    echo "$workspace_response"
+    echo "$workspace_response" >&2
     exit 1
 fi
 
 print_success "Created workspace: $WORKSPACE_ID"
-echo "$workspace_response" | jq '.'
+echo "$workspace_response" | jq '.' >&2
 
 # ============================================================================
 # Step 3: Test Board Service - Project APIs
@@ -173,7 +173,7 @@ PROJECT_ID=$(echo "$project_data" | jq -r '.data.id' 2>/dev/null)
 
 if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
     print_error "Failed to get project ID from response"
-    echo "$project_data"
+    echo "$project_data" >&2
     exit 1
 fi
 
@@ -321,7 +321,7 @@ BOARD_ID=$(echo "$board_data" | jq -r '.data.id' 2>/dev/null)
 
 if [ -z "$BOARD_ID" ] || [ "$BOARD_ID" = "null" ]; then
     print_error "Failed to get board ID from response"
-    echo "$board_data"
+    echo "$board_data" >&2
     exit 1
 fi
 
@@ -485,18 +485,18 @@ test_api "DELETE" "${BOARD_SERVICE_URL}/api/projects/${PROJECT_ID}" \
 print_header "Test Summary"
 
 TOTAL=$((PASSED + FAILED))
-echo -e "${BLUE}Total Tests: $TOTAL${NC}"
-echo -e "${GREEN}Passed: $PASSED${NC}"
-echo -e "${RED}Failed: $FAILED${NC}"
+echo -e "${BLUE}Total Tests: $TOTAL${NC}" >&2
+echo -e "${GREEN}Passed: $PASSED${NC}" >&2
+echo -e "${RED}Failed: $FAILED${NC}" >&2
 
 if [ $FAILED -eq 0 ]; then
-    echo -e "\n${GREEN}========================================${NC}"
-    echo -e "${GREEN}🎉 All tests passed!${NC}"
-    echo -e "${GREEN}========================================${NC}"
+    echo -e "\n${GREEN}========================================${NC}" >&2
+    echo -e "${GREEN}🎉 All tests passed!${NC}" >&2
+    echo -e "${GREEN}========================================${NC}" >&2
     exit 0
 else
-    echo -e "\n${RED}========================================${NC}"
-    echo -e "${RED}❌ Some tests failed!${NC}"
-    echo -e "${RED}========================================${NC}"
+    echo -e "\n${RED}========================================${NC}" >&2
+    echo -e "${RED}❌ Some tests failed!${NC}" >&2
+    echo -e "${RED}========================================${NC}" >&2
     exit 1
 fi
