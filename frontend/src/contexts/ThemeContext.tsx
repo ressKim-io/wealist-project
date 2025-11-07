@@ -16,8 +16,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // 테마 변경 시 body에 클래스 적용
   useEffect(() => {
-    // 💡 모든 테마 클래스 제거 로직 간소화 (현재는 modern만 사용해도 되지만, 안전을 위해)
-    document.body.classList.remove('theme-retro', 'theme-modern', 'theme-dark');
+    document.body.classList.remove('theme-modern');
     // 현재 테마 클래스 추가
     document.body.classList.add(theme.cssClass);
   }, [theme.cssClass]);

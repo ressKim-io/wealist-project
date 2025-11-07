@@ -1,12 +1,15 @@
+// src/components/modals/BoardDetailModal.tsx (수정 완료)
+
 import React, { useState, useCallback, useMemo } from 'react';
 import { X, Calendar, Tag, User, Settings, Send, Trash, Plus } from 'lucide-react';
-import { CustomField, Kanban, KanbanWithCustomFields, Priority } from '../../types/kanban';
+// 1. 타입 임포트 변경
+import { CustomField, Board, BoardWithCustomFields, Priority } from '../../types/board';
 
 // =============================================================================
 // MOCK TYPES & CONTEXTS (실제 앱에서는 별도 파일에 정의됨)
 // =============================================================================
 
-// 💡 Mock Theme Context (Tailwind CSS를 위한 최소한의 테마 정의)
+// 💡 Mock Theme Context (제공된 코드와 동일)
 const useTheme = () => ({
   theme: {
     font: {
@@ -28,7 +31,7 @@ const useTheme = () => ({
   },
 });
 
-// 💡 Mock Kanban, CustomField, Comment Types
+// 💡 Mock Comment Type (제공된 코드와 동일)
 interface Comment {
   id: number;
   author: string;
@@ -37,14 +40,15 @@ interface Comment {
   timestamp: string;
 }
 
-interface KanbanDetailModalProps {
-  kanban: KanbanWithCustomFields;
+// 2. Props 인터페이스 변경
+interface BoardDetailModalProps {
+  board: BoardWithCustomFields; // kanban -> board
   onClose: () => void;
-  // onSave: (updatedKanban: KanbanWithCustomFields) => void; // 실제 구현 시 사용
+  // onSave: (updatedBoard: BoardWithCustomFields) => void; // 실제 구현 시 사용
 }
 
 // =============================================================================
-// CUSTOM FIELD MODAL COMPONENT (Dependency)
+// CUSTOM FIELD MODAL COMPONENT (제공된 코드와 동일)
 // =============================================================================
 
 interface CustomFieldModalProps {
@@ -54,6 +58,7 @@ interface CustomFieldModalProps {
 }
 
 const CustomFieldModal: React.FC<CustomFieldModalProps> = ({ initialField, onSave, onClose }) => {
+  /* ... (제공된 코드와 동일) ... */
   const { theme } = useTheme();
   const [field, setField] = useState<CustomField>(
     initialField || {
@@ -152,7 +157,6 @@ const CustomFieldModal: React.FC<CustomFieldModalProps> = ({ initialField, onSav
             </div>
           )}
 
-          {/* 추가 옵션 (Select일 때만 보임) */}
           {(isSelect || field.type === 'PERSON') && (
             <div className="flex items-center">
               <input
@@ -188,14 +192,15 @@ const CustomFieldModal: React.FC<CustomFieldModalProps> = ({ initialField, onSav
 };
 
 // =============================================================================
-// MAIN MODAL COMPONENT
+// MAIN MODAL COMPONENT (수정 완료)
 // =============================================================================
 
-const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }) => {
+// 3. 컴포넌트 이름 및 Props 변경
+const BoardDetailModal: React.FC<BoardDetailModalProps> = ({ board, onClose }) => {
   const { theme } = useTheme();
-  const isCreating = kanban.id === '';
+  const isCreating = board.id === ''; // kanban -> board
 
-  // 💡 Mock Custom Fields State
+  // 💡 Mock Custom Fields State (동일)
   const [customFields, setCustomFields] = useState<CustomField[]>([
     {
       id: 'cf-status',
@@ -211,9 +216,9 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
     { id: 'cf-sprint', name: '스프린트 번호', type: 'NUMBER' },
   ]);
 
-  // 💡 Mock Comments State
+  // 💡 Mock Comments State (동일)
   const [comments, setComments] = useState<Comment[]>(
-    kanban.id
+    board.id // kanban -> board
       ? [
           {
             id: 1,
@@ -237,32 +242,36 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
   const [showCustomFieldModal, setShowCustomFieldModal] = useState(false);
   const [fieldToEdit, setFieldToEdit] = useState<CustomField | undefined>(undefined);
 
-  // 💡 Kanban State with Custom Field Values initialization
-  const [currentKanban, setCurrentKanban] = useState<KanbanWithCustomFields>(() => ({
-    ...kanban,
-    customFieldValues: kanban.customFieldValues || {},
-    title: kanban.title || '',
-    assignee: kanban.assignee || '사용자 본인',
-    assignee_id: kanban.assignee_id || 'user_id_123',
-    status: kanban.status || 'BACKLOG',
-    dueDate: kanban.dueDate || '',
-    priority: kanban.priority || 'MEDIUM',
-    description: kanban.description || '',
+  // 💡 Board State
+  // 4. State 변수 및 타입 변경
+  const [currentBoard, setCurrentBoard] = useState<BoardWithCustomFields>(() => ({
+    ...board, // kanban -> board
+    customFieldValues: board.customFieldValues || {}, // kanban -> board
+    title: board.title || '', // kanban -> board
+    assignee: board.assignee || '사용자 본인', // kanban -> board
+    assignee_id: board.assignee_id || 'user_id_123', // kanban -> board
+    status: board.status || 'BACKLOG', // kanban -> board
+    dueDate: board.dueDate || '', // kanban -> board
+    priority: board.priority || 'MEDIUM', // kanban -> board
+    description: board.description || '', // kanban -> board
   }));
 
   // =============================================================================
   // HANDLERS
   // =============================================================================
 
+  // 5. 핸들러 내부 변수명 변경
   const handleFieldChange = React.useCallback(
-    <T extends keyof Kanban>(field: T, value: Kanban[T]) => {
-      setCurrentKanban((prev) => ({ ...prev, [field]: value }));
+    <T extends keyof Board>(field: T, value: Board[T]) => {
+      // Kanban -> Board
+      setCurrentBoard((prev) => ({ ...prev, [field]: value })); // setCurrentKanban -> setCurrentBoard
     },
-    [setCurrentKanban],
+    [setCurrentBoard],
   );
 
   const handleCustomFieldChange = useCallback((fieldId: string, value: any) => {
-    setCurrentKanban((prev) => ({
+    setCurrentBoard((prev) => ({
+      // setCurrentKanban -> setCurrentBoard
       ...prev,
       customFieldValues: {
         ...prev.customFieldValues,
@@ -285,13 +294,13 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
   const handleAddComment = () => {
     if (!newComment.trim() || isLoading) return;
 
-    const authorName = currentKanban.assignee || '익명 사용자';
+    const authorName = currentBoard.assignee || '익명 사용자'; // currentKanban -> currentBoard
     setComments((prev) => [
       ...prev,
       {
         id: prev.length + 1,
         author: authorName,
-        authorId: currentKanban.assignee_id,
+        authorId: currentBoard.assignee_id, // currentKanban -> currentBoard
         content: newComment,
         timestamp: '방금 전',
       },
@@ -300,8 +309,8 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
   };
 
   const handleSave = () => {
-    if (!currentKanban.title.trim()) {
-      // alert() 대신 커스텀 모달을 사용해야 하지만, 여기서는 mock으로 alert을 사용합니다.
+    if (!currentBoard.title.trim()) {
+      // currentKanban -> currentBoard
       alert('제목은 필수입니다.');
       return;
     }
@@ -310,10 +319,10 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
 
     // 🚧 [Mock API 호출]
     setTimeout(() => {
-      // 부모 컴포넌트에 최종 데이터 전달 (추후 구현)
-      // onSave(currentKanban);
+      // onSave(currentBoard); // currentKanban -> currentBoard
       const action = isCreating ? '생성' : '수정 및 저장';
-      alert(`[Mock] 칸반 '${currentKanban.title}' ${action} 완료!`);
+      // 6. UI 텍스트 변경
+      alert(`[Mock] 보드 '${currentBoard.title}' ${action} 완료!`); // currentKanban -> currentBoard
 
       setIsLoading(false);
       onClose();
@@ -321,8 +330,10 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
   };
 
   const handleDelete = () => {
-    if (window.confirm(`정말로 칸반 "${currentKanban.title}"을(를) 삭제하시겠습니까?`)) {
-      alert(`[Mock] 칸반 삭제 처리 완료.`);
+    // 6. UI 텍스트 변경
+    if (window.confirm(`정말로 보드 "${currentBoard.title}"을(를) 삭제하시겠습니까?`)) {
+      // currentKanban -> currentBoard
+      alert(`[Mock] 보드 삭제 처리 완료.`);
       onClose();
     }
   };
@@ -341,14 +352,12 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
     [],
   );
 
-  // 💡 Custom Field 렌더링 함수
+  // 💡 Custom Field 렌더링 함수 (동일, 내부 변수명 변경)
   const renderCustomField = (field: CustomField) => {
-    const currentValue = currentKanban.customFieldValues?.[field.id] || field.defaultValue || '';
+    const currentValue = currentBoard.customFieldValues?.[field.id] || field.defaultValue || ''; // currentKanban -> currentBoard
 
-    // 다중 선택 값을 쉼표로 분리하여 표시 (SELECT + allowMultipleSections)
+    // ... (이하 로직은 제공된 코드와 동일) ...
     const displayValue = Array.isArray(currentValue) ? currentValue.join(', ') : currentValue;
-
-    // 입력/선택 필드 렌더링 로직
     const inputField = () => {
       const baseClasses = `w-full px-3 py-2 border ${theme.colors.border} bg-gray-50 text-sm ${theme.effects.borderRadius} focus:ring-2 focus:ring-blue-500`;
 
@@ -384,7 +393,6 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
           );
         case 'SELECT':
           if (field.allowMultipleSections) {
-            // 다중 선택 (Mock: 텍스트 입력 후 쉼표로 분리)
             return (
               <input
                 type="text"
@@ -444,7 +452,7 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
     );
   };
 
-  // 💡 시스템 필드 렌더링 함수 (Assignee, DueDate, Priority)
+  // 💡 시스템 필드 렌더링 함수 (동일)
   const renderSystemField = ({
     id,
     label,
@@ -466,7 +474,7 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
       <div className="flex items-center gap-2">
         <div className="flex-1">{input}</div>
         <button
-          onClick={() => setShowCustomFieldModal(true)} // Mock: 커스텀 필드 모달로 연결
+          onClick={() => setShowCustomFieldModal(true)} // Mock
           className="p-1 text-gray-400 hover:text-red-500 transition flex-shrink-0"
           title="시스템 필드 설정을 변경하려면 프로젝트 설정에서 진행하세요"
           disabled={isLoading}
@@ -477,7 +485,7 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
     </div>
   );
 
-  // 💡 System Fields List
+  // 💡 System Fields List (동일, 내부 변수명 변경)
   const systemFields = useMemo(
     () => [
       // 1. 담당자 필드 (Assignee)
@@ -488,7 +496,7 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
         input: (
           <input
             type="text"
-            value={currentKanban.assignee || ''}
+            value={currentBoard.assignee || ''} // currentKanban -> currentBoard
             onChange={(e) => handleFieldChange('assignee', e.target.value)}
             placeholder="담당자 이름 검색..."
             className={`w-full px-3 py-2 border ${theme.colors.border} bg-gray-50 ${theme.font.size.sm} ${theme.effects.borderRadius} font-medium focus:outline-none focus:ring-2 focus:ring-blue-500`}
@@ -503,7 +511,7 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
         icon: Tag,
         input: (
           <select
-            value={currentKanban.priority}
+            value={currentBoard.priority} // currentKanban -> currentBoard
             onChange={(e) => handleFieldChange('priority', e.target.value as Priority)}
             className={`w-full px-3 py-2 border ${theme.colors.border} bg-gray-50 ${theme.font.size.sm} ${theme.effects.borderRadius} font-bold focus:outline-none focus:ring-2 focus:ring-blue-500`}
             disabled={isLoading}
@@ -524,7 +532,7 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
         input: (
           <input
             type="date"
-            value={currentKanban.dueDate}
+            value={currentBoard.dueDate} // currentKanban -> currentBoard
             onChange={(e) => handleFieldChange('dueDate', e.target.value)}
             className={`w-full px-3 py-2 border ${theme.colors.border} bg-gray-50 ${theme.font.size.sm} ${theme.effects.borderRadius} font-medium focus:outline-none focus:ring-2 focus:ring-blue-500`}
             disabled={isLoading}
@@ -533,7 +541,7 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
       },
     ],
     [
-      currentKanban,
+      currentBoard, // currentKanban -> currentBoard
       handleFieldChange,
       isLoading,
       priorityMap,
@@ -559,9 +567,10 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
                 {/* 제목 입력 필드 */}
                 <input
                   type="text"
-                  value={currentKanban.title}
+                  value={currentBoard.title} // currentKanban -> currentBoard
                   onChange={(e) => handleFieldChange('title', e.target.value)}
-                  placeholder={isCreating ? '새 칸반 제목을 입력하세요 (필수)' : '제목'}
+                  // 6. UI 텍스트 변경
+                  placeholder={isCreating ? '새 보드 제목을 입력하세요 (필수)' : '제목'}
                   className={`w-full ${
                     theme.font.size.base
                   } font-bold mb-1 break-words focus:outline-none focus:ring-2 focus:ring-blue-500 ${
@@ -570,7 +579,7 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
                   disabled={isLoading}
                 />
                 {/* <div className={`${theme.font.size.sm} ${theme.colors.subText}`}>
-                  컬럼: <span className="font-semibold">{currentKanban.status}</span>
+                  컬럼: <span className="font-semibold">{currentBoard.status}</span>
                 </div> */}
               </div>
               <button
@@ -612,7 +621,7 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
                   상세 내용:
                 </label>
                 <textarea
-                  value={currentKanban.description}
+                  value={currentBoard.description} // currentKanban -> currentBoard
                   onChange={(e) => handleFieldChange('description', e.target.value)}
                   placeholder="상세 내용 및 목표를 입력하세요."
                   className={`w-full px-3 py-2 ${theme.effects.cardBorderWidth} ${theme.colors.border} bg-gray-50 ${theme.font.size.sm} min-h-24 ${theme.effects.borderRadius} resize-none focus:outline-none focus:ring-2 focus:ring-blue-500`}
@@ -679,7 +688,7 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
             <div className={`flex gap-3 mt-6 pt-4`}>
               <button
                 onClick={handleSave}
-                disabled={isLoading || !currentKanban.title.trim()}
+                disabled={isLoading || !currentBoard.title.trim()} // currentKanban -> currentBoard
                 className={`flex-1 ${theme.colors.primary} text-white py-3 font-bold ${theme.colors.primaryHover} transition ${theme.font.size.sm} ${theme.effects.borderRadius} disabled:opacity-50`}
               >
                 {isLoading ? '처리 중...' : isCreating ? '생성' : '수정 및 저장'}
@@ -714,4 +723,5 @@ const KanbanDetailModal: React.FC<KanbanDetailModalProps> = ({ kanban, onClose }
   );
 };
 
-export default KanbanDetailModal;
+// 7. export 이름 변경
+export default BoardDetailModal;

@@ -1,24 +1,15 @@
-// src/App.tsx (수정본)
+import React, { Suspense, lazy } from 'react';
+import { ThemeProvider } from './contexts/ThemeContext'; // ✅
+// 1. react-router-dom에서 필요한 것들을 임포트합니다.
+import { Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
 
-import React, { useState, Suspense, lazy } from 'react';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { AuthResponse } from './api/userService';
-import SelectWorkspacePage from './components/SelectWorkspacePage';
-// import { createWorkspace, WorkspaceCreate } from './api/KanbanService'; // 주석처리: 에러 방지
-
-// --- 변경 ---
-type AppState = 'AUTH' | 'SELECT_WORKSPACE' | 'CREATE_WORKSPACE' | 'KANBAN';
-
-// Lazy load 페이지들
+// Lazy load 페이지들 (이름 일관성 유지)
 const AuthPage = lazy(() => import('./pages/Authpage'));
-// 💡 컴포넌트 파일 이름이 SelectGroupPage이더라도,
-//    이 컴포넌트는 이제 Workspace를 선택하는 역할을 합니다.
-const SelectGroupPage = lazy(() => import('./components/SelectWorkspacePage'));
+const SelectWorkspacePage = lazy(() => import('./components/SelectWorkspacePage'));
 const MainDashboard = lazy(() => import('./pages/Dashboard'));
 const OAuthRedirectPage = lazy(() => import('./pages/OAuthRedirectPage'));
 
 const LoadingScreen = ({ msg = '로딩 중..' }) => (
-  // ... (로딩 스크린 코드는 동일)
   <div className="text-center min-h-screen flex items-center justify-center bg-gray-50">
     <div className="p-8 bg-white rounded-xl shadow-lg">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
@@ -27,109 +18,61 @@ const LoadingScreen = ({ msg = '로딩 중..' }) => (
   </div>
 );
 
-const App: React.FC = () => {
-  // --- 변경 ---
-  const [appState, setAppState] = useState<AppState>('AUTH');
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  // --- 변경 ---
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
-  // const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+// 2. 인증이 필요한 페이지를 감싸는 '보호 라우트' 컴포넌트
+const ProtectedRoute = () => {
+  const accessToken = localStorage.getItem('access_token');
+  // 토큰이 없으면 로그인 페이지로 리다이렉트
+  if (!accessToken) {
+    return <Navigate to="/" replace />;
+  }
+  // 토큰이 있으면 자식 컴포넌트(SelectWorkspacePage 또는 MainDashboard)를 렌더링
+  return <Outlet />;
+};
 
-  // handleAuthSuccess는 OAuthRedirectPage에서 호출됩니다.
-  const handleAuthSuccess = (authData: AuthResponse) => {
-    if (authData.accessToken && authData.userId) {
-      setAccessToken(authData.accessToken);
-      setUserId(authData.userId);
-      localStorage.setItem('access_token', authData.accessToken);
-      localStorage.setItem('user_id', authData.userId);
-      // --- 변경 ---
-      setAppState('SELECT_WORKSPACE');
-    } else {
-      handleLogout();
-    }
-  };
+const App: React.FC = () => {
+  // 3. App.tsx는 이제 라우트 정의만 담당합니다. (State 제거)
+
+  // 4. [신규] MainDashboard로 전달할 로그아웃 핸들러 생성
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user_id');
-    setAccessToken(null);
-    setUserId(null);
-    // --- 변경 ---
-    setCurrentWorkspaceId(null);
-    setAppState('AUTH');
+    // 로그아웃 후 로그인 페이지로 이동
+    navigate('/');
   };
 
-  // --- 함수 이름 및 인자 변경 ---
-  const handleWorkspaceSelectionSuccess = (workspaceId: string) => {
-    if (!accessToken || !userId) {
-      handleLogout();
-      return;
-    }
-    // --- 변경 ---
-    setCurrentWorkspaceId(workspaceId);
-    setAppState('KANBAN');
-  };
-  /*
-  // (참고) 기존 handleGroupSelectionSuccess 로직
-  const handleGroupSelectionSuccess = (groupId: string) => {
-    if (!accessToken || !userId) {
-      handleLogout();
-      return;
-    }
-    setCurrentGroupId(groupId);
-    setAppState('KANBAN');
-  };
-  */
-
-  const renderContent = () => {
-    // 1. OAuth Redirect Check (동일)
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasOAuthTokens = urlParams.has('accessToken') && urlParams.has('refreshToken');
-    const isRedirectPath = window.location.pathname.includes('/oauth/redirect');
-
-    if (isRedirectPath || hasOAuthTokens) {
-      return <OAuthRedirectPage onAuthSuccess={handleAuthSuccess} />;
-    }
-
-    // 2. Standard State Routing
-    if (appState === 'AUTH') {
-      return <AuthPage />;
-    }
-
-    // --- 변경 ---
-    if (appState === 'SELECT_WORKSPACE' && userId && accessToken) {
-      return (
-        <SelectWorkspacePage
-          userId={userId}
-          accessToken={accessToken}
-          // --- prop 이름 및 핸들러 변경 ---
-          onWorkspaceSelected={handleWorkspaceSelectionSuccess}
-        />
-      );
-    }
-
-    // if (appState === 'CREATE_WORKSPACE') { ... }
-
-    // --- 변경 ---
-    if (appState === 'KANBAN' && currentWorkspaceId && accessToken) {
-      return (
-        <MainDashboard
-          onLogout={handleLogout}
-          // --- prop 이름 및 값 변경 ---
-          currentGroupId={currentWorkspaceId}
-          accessToken={accessToken}
-        />
-      );
-    }
-
-    // 3. Fallback (동일)
-    return <AuthPage />;
-  };
-
+  // 5. renderContent 함수 대신 Routes를 사용합니다.
   return (
     <ThemeProvider>
-      <Suspense fallback={<LoadingScreen />}>{renderContent()}</Suspense>
+      <Suspense fallback={<LoadingScreen />}>
+        <Routes>
+          {/* 1. 로그인 페이지 */}
+          <Route path="/" element={<AuthPage />} />
+
+          {/* 2. OAuth 콜백 페이지 */}
+          <Route path="/oauth/callback" element={<OAuthRedirectPage />} />
+
+          {/* 3. 보호되는 라우트 (인증 필요) */}
+          <Route element={<ProtectedRoute />}>
+            {/* SelectWorkspacePage는 이제 props가 필요 없습니다.
+              (ts(2739) 오류는 SelectWorkspacePage.tsx 파일 내부를 수정해야 해결됩니다.)
+            */}
+            <Route path="/workspaces" element={<SelectWorkspacePage />} />
+
+            {/* MainDashboard는 onLogout prop이 필요합니다.
+              (ts(2741) 오류 해결)
+            */}
+            <Route
+              path="/kanban/:workspaceId"
+              element={<MainDashboard onLogout={handleLogout} />}
+            />
+          </Route>
+
+          {/* 4. 일치하는 라우트가 없으면 로그인 페이지로 */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </ThemeProvider>
   );
 };
