@@ -6,7 +6,7 @@ import UserProfileModal from '../components/modals/UserProfileModal';
 import { UserProfile } from '../types';
 import { Board, BoardWithCustomFields } from '../types/board';
 import BoardDetailModal from '../components/modals/BoardDetailModal';
-import { getProjects, getBoards, ProjectResponse, BoardResponse } from '../api/boardService';
+import { getProjects, getBoards, ProjectResponse, BoardResponse } from '../api/board/boardService';
 
 interface Column {
   id: string;

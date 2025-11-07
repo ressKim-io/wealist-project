@@ -30,8 +30,6 @@ const ProtectedRoute = () => {
 };
 
 const App: React.FC = () => {
-  // 3. App.tsx는 이제 라우트 정의만 담당합니다. (State 제거)
-
   // 4. [신규] MainDashboard로 전달할 로그아웃 핸들러 생성
   const navigate = useNavigate();
 

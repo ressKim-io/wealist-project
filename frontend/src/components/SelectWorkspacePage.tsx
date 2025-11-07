@@ -8,7 +8,7 @@ import {
   CreateWorkspaceRequest,
   getWorkspaces,
   createWorkspace,
-} from '../api/userService';
+} from '../api/user/userService';
 import { Search, Plus, X, AlertCircle } from 'lucide-react';
 
 // 2. Props 인터페이스 제거 (더 이상 App.tsx에서 props를 받지 않음)
