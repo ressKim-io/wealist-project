@@ -80,10 +80,17 @@ test_api() {
 
     if [ "$http_code" -eq "$expected_status" ]; then
         print_success "$method $url - Status: $http_code"
-        echo "$body" | jq '.' 2>/dev/null || echo "$body"
+        # Try to format JSON, if it fails, just print raw
+        if echo "$body" | jq '.' >/dev/null 2>&1; then
+            echo "$body" | jq '.'
+        else
+            print_info "Response is not valid JSON:"
+            echo "$body"
+        fi
         echo "$body"
     else
         print_error "$method $url - Expected: $expected_status, Got: $http_code"
+        print_info "Response body:"
         echo "$body"
         return 1
     fi
@@ -161,7 +168,15 @@ project_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/projects" \
     }" \
     201)
 
-PROJECT_ID=$(echo "$project_data" | jq -r '.data.id // .id')
+# Debug: Show raw response
+print_info "Raw project response:"
+echo "$project_data"
+
+PROJECT_ID=$(echo "$project_data" | jq -r '.data.id // .id' 2>/dev/null)
+if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
+    # Try alternative paths
+    PROJECT_ID=$(echo "$project_data" | jq -r '.id' 2>/dev/null)
+fi
 
 if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
     print_error "Failed to get project ID from response"
