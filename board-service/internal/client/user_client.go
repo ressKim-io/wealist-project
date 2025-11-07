@@ -17,6 +17,11 @@ type UserClient interface {
 	SearchUsers(ctx context.Context, query string) ([]UserInfo, error)
 	GetSimpleUser(userID string) (*SimpleUser, error)
 	GetSimpleUsers(userIDs []string) ([]SimpleUser, error)
+
+	// Workspace validation methods (calls User Service /api/workspace endpoints)
+	CheckWorkspaceExists(ctx context.Context, workspaceID string, token string) (bool, error)
+	ValidateWorkspaceMembership(ctx context.Context, workspaceID string, userID string, token string) (bool, error)
+	GetWorkspace(ctx context.Context, workspaceID string, token string) (*WorkspaceInfo, error)
 }
 
 type userClient struct {
@@ -37,6 +42,15 @@ type SimpleUser struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	AvatarURL string `json:"avatarUrl"`
+}
+
+// WorkspaceInfo represents workspace information from User Service.
+type WorkspaceInfo struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	OwnerID     string `json:"ownerId"`
+	IsPublic    bool   `json:"isPublic"`
 }
 
 // NewUserClient creates a new User Service client.
@@ -190,4 +204,105 @@ func (c *userClient) SearchUsers(ctx context.Context, query string) ([]UserInfo,
 	}
 
 	return users, nil
+}
+
+// CheckWorkspaceExists checks if a workspace exists in User Service
+// Note: User Service endpoint is /api/workspace (singular) not /api/workspaces
+func (c *userClient) CheckWorkspaceExists(ctx context.Context, workspaceID string, token string) (bool, error) {
+	url := fmt.Sprintf("%s/api/workspace/%s", c.baseURL, workspaceID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return false, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Add Bearer token for authentication
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("failed to send request to user service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// If workspace exists, return true
+	if resp.StatusCode == http.StatusOK {
+		return true, nil
+	}
+
+	// If workspace not found, return false
+	if resp.StatusCode == http.StatusNotFound {
+		return false, nil
+	}
+
+	// Any other status is an error
+	return false, fmt.Errorf("user service returned unexpected status %d", resp.StatusCode)
+}
+
+// ValidateWorkspaceMembership validates if a user is a member of a workspace
+// Note: User Service endpoint is /api/workspace (singular) not /api/workspaces
+func (c *userClient) ValidateWorkspaceMembership(ctx context.Context, workspaceID string, userID string, token string) (bool, error) {
+	url := fmt.Sprintf("%s/api/workspace/%s/members/%s", c.baseURL, workspaceID, userID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return false, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Add Bearer token for authentication
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("failed to send request to user service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// If user is a member, return true
+	if resp.StatusCode == http.StatusOK {
+		return true, nil
+	}
+
+	// If not a member or not found, return false
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusForbidden {
+		return false, nil
+	}
+
+	// Any other status is an error
+	return false, fmt.Errorf("user service returned unexpected status %d", resp.StatusCode)
+}
+
+// GetWorkspace retrieves workspace information from User Service
+// Note: User Service endpoint is /api/workspace (singular) not /api/workspaces
+func (c *userClient) GetWorkspace(ctx context.Context, workspaceID string, token string) (*WorkspaceInfo, error) {
+	url := fmt.Sprintf("%s/api/workspace/%s", c.baseURL, workspaceID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Add Bearer token for authentication
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request to user service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("workspace not found")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("user service returned status %d", resp.StatusCode)
+	}
+
+	var workspace WorkspaceInfo
+	if err := json.NewDecoder(resp.Body).Decode(&workspace); err != nil {
+		return nil, fmt.Errorf("failed to decode workspace response: %w", err)
+	}
+
+	return &workspace, nil
 }

@@ -72,9 +72,7 @@ func autoMigrateAll(db *gorm.DB, logger *zap.Logger) error {
 	models := []interface{}{
 		&domain.SchemaVersion{},
 		&domain.Role{},
-		&domain.Workspace{},
-		&domain.WorkspaceMember{},
-		&domain.WorkspaceJoinRequest{},
+		// Workspace models removed - managed by User Service
 		&domain.Project{},
 		&domain.ProjectMember{},
 		&domain.ProjectJoinRequest{},

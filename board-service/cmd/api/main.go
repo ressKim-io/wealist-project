@@ -80,7 +80,6 @@ func main() {
 
 	// 5.6. Initialize repositories
 	roleRepo := repository.NewRoleRepository(db)
-	workspaceRepo := repository.NewWorkspaceRepository(db)
 	projectRepo := repository.NewProjectRepository(db)
 	customFieldRepo := repository.NewCustomFieldRepository(db)
 	boardRepo := repository.NewBoardRepository(db)
@@ -91,8 +90,7 @@ func main() {
 	// Note: customFieldService needs boardRepo (for Phase 4 TODO), then injected into projectService
 	customFieldService := service.NewCustomFieldService(customFieldRepo, projectRepo, roleRepo, boardRepo, log, db)
 	boardService := service.NewBoardService(boardRepo, projectRepo, customFieldRepo, roleRepo, userClient, log, db)
-	workspaceService := service.NewWorkspaceService(workspaceRepo, roleRepo, userClient, log, db)
-	projectService := service.NewProjectService(projectRepo, workspaceRepo, roleRepo, userOrderRepo, customFieldService, userClient, log, db)
+	projectService := service.NewProjectService(projectRepo, roleRepo, userOrderRepo, customFieldService, userClient, log, db)
 	userOrderService := service.NewUserOrderService(userOrderRepo, projectRepo, customFieldRepo, boardRepo, userOrderCache, log)
 	commentService := service.NewCommentService(commentRepo, boardRepo, projectRepo, userClient, log, db) // Add CommentService
 
@@ -130,37 +128,11 @@ func main() {
 	api.Use(middleware.AuthMiddleware(cfg.JWT.Secret))
 	{
 		// Initialize handlers
-		workspaceHandler := handler.NewWorkspaceHandler(workspaceService)
 		projectHandler := handler.NewProjectHandler(projectService)
 		customFieldHandler := handler.NewCustomFieldHandler(customFieldService)
 		boardHandler := handler.NewBoardHandler(boardService)
 		userOrderHandler := handler.NewUserOrderHandler(userOrderService)
 		commentHandler := handler.NewCommentHandler(commentService) // Add CommentHandler
-
-		// Workspace routes
-		workspaces := api.Group("/workspaces")
-		{
-			// Workspace CRUD
-			workspaces.POST("", workspaceHandler.CreateWorkspace)
-			workspaces.GET("", workspaceHandler.GetWorkspaces)             // Get all workspaces for user
-			workspaces.GET("/search", workspaceHandler.SearchWorkspaces)   // Must be before /:id
-			workspaces.GET("/:id", workspaceHandler.GetWorkspace)
-			workspaces.PUT("/:id", workspaceHandler.UpdateWorkspace)
-			workspaces.DELETE("/:id", workspaceHandler.DeleteWorkspace)
-
-			// Join Requests
-			workspaces.POST("/join-requests", workspaceHandler.CreateJoinRequest)
-			workspaces.GET("/:id/join-requests", workspaceHandler.GetJoinRequests)
-			workspaces.PUT("/join-requests/:id", workspaceHandler.UpdateJoinRequest)
-
-			// Members
-			workspaces.GET("/:id/members", workspaceHandler.GetWorkspaceMembers)
-			workspaces.PUT("/:id/members/:memberId/role", workspaceHandler.UpdateMemberRole)
-			workspaces.DELETE("/:id/members/:memberId", workspaceHandler.RemoveMember)
-
-			// Default Workspace
-			workspaces.POST("/default", workspaceHandler.SetDefaultWorkspace)
-		}
 
 		// Project routes
 		projects := api.Group("/projects")

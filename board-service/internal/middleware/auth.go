@@ -50,8 +50,9 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
-		// Store user ID in context
+		// Store user ID and token in context
 		c.Set("user_id", claims.Sub)
+		c.Set("token", tokenString)
 
 		c.Next()
 	}
