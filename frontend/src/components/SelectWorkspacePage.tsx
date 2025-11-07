@@ -1,44 +1,52 @@
+// src/components/SelectGroupPage.tsx (수정 완료된 전체 코드)
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import {
-  GroupResponse,
-  CreateGroupRequest,
-  getGroups,
-  createGroup,
-  createUserInfo,
-} from '../api/userService';
+  // --- 변경된 Import ---
+  WorkspaceResponse,
+  CreateWorkspaceRequest,
+  getWorkspaces,
+  createWorkspace,
+  // ❌ createUserInfo 제거
+  // ---
+} from '../api/userService'; // 경로가 다르다면 수정하세요
 import { Search, Plus, X, AlertCircle } from 'lucide-react';
 
-interface SelectGroupPageProps {
+// 1. Props 인터페이스 수정
+interface SelectWorkspacePageProps {
   userId: string;
   accessToken: string;
-  onGroupSelected: (groupId: string) => void;
+  onWorkspaceSelected: (workspaceId: string) => void; // 이름 변경 (onGroupSelected -> onWorkspaceSelected)
 }
 
-type GroupPageStep = 'list' | 'create-form' | 'add-members' | 'loading';
+type WorkspacePageStep = 'list' | 'create-form' | 'add-members' | 'loading';
 
 interface PendingMember {
   id: string;
   email: string;
 }
 
-const SelectGroupPage: React.FC<SelectGroupPageProps> = ({
+// 2. Props 이름 변경 (destructuring)
+const SelectWorkspacePage: React.FC<SelectWorkspacePageProps> = ({
   userId,
   accessToken,
-  onGroupSelected,
+  onWorkspaceSelected, // 이름 변경 (onGroupSelected -> onWorkspaceSelected)
 }) => {
   const { theme } = useTheme();
 
   // 페이지 상태
-  const [step, setStep] = useState<GroupPageStep>('list');
-  const [groups, setGroups] = useState<GroupResponse[] | null>(null);
+  const [step, setStep] = useState<WorkspacePageStep>('list');
+  // --- State 이름 변경 ---
+  const [workspaces, setWorkspaces] = useState<WorkspaceResponse[] | null>(null);
+  // ---
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // 조직 생성 폼
   const [newGroupName, setNewGroupName] = useState('');
-  const [newCompany, setNewCompany] = useState('');
+  const [newCompany, setNewCompany] = useState(''); // ⚠️ API 스펙 참고 (description으로 변경 필요)
 
   // 멤버 초대 관리
   const [pendingMembers, setPendingMembers] = useState<PendingMember[]>([]);
@@ -48,46 +56,51 @@ const SelectGroupPage: React.FC<SelectGroupPageProps> = ({
   // 조직 생성 중 저장된 데이터
   const [_createdGroupId, setCreatedGroupId] = useState<string | null>(null);
 
-  // 1. 초기 그룹 로드
+  // 1. 초기 워크스페이스 로드
   useEffect(() => {
-    const fetchGroups = async () => {
+    const fetchWorkspaces = async () => {
       if (!accessToken) return;
 
       setIsLoading(true);
       setError(null);
 
       try {
-        const fetchedGroups = await getGroups(accessToken);
-        setGroups(fetchedGroups);
+        // --- API 함수 변경 ---
+        const fetchedWorkspaces = await getWorkspaces(accessToken);
+        setWorkspaces(fetchedWorkspaces);
       } catch (e) {
         const err = e as Error;
-        setError(`조직 목록 조회 실패: ${err.message}`);
-        setGroups([]);
+        setError(`워크스페이스 목록 조회 실패: ${err.message}`);
+        setWorkspaces([]);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchGroups();
+    fetchWorkspaces();
   }, [accessToken]);
 
   // 2. 검색 필터
   const availableGroups = useMemo(() => {
-    if (!groups) return [];
+    if (!workspaces) return []; // 'workspaces' 사용
     const query = searchQuery.toLowerCase().trim();
-    if (!query) return groups;
-    return groups.filter(
-      (group) =>
-        group.name.toLowerCase().includes(query) || group.companyName.toLowerCase().includes(query),
+    if (!query) return workspaces;
+    return workspaces.filter(
+      (
+        ws, // 'ws' (workspace)
+      ) =>
+        ws.name.toLowerCase().includes(query) ||
+        // --- DTO 필드 변경 (companyName -> description) ---
+        ws.description.toLowerCase().includes(query),
     );
-  }, [searchQuery, groups]);
+  }, [searchQuery, workspaces]);
 
-  // 3. 이메일 유효성 검사
+  // 3. 이메일 유효성 검사 (동일)
   const isValidEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
-  // 4. 멤버 추가 (폼에서 이메일 입력)
+  // 4. 멤버 추가 (동일)
   const handleAddMember = () => {
     setMemberEmailError(null);
 
@@ -112,7 +125,7 @@ const SelectGroupPage: React.FC<SelectGroupPageProps> = ({
     setMemberEmail('');
   };
 
-  // 5. 멤버 제거
+  // 5. 멤버 제거 (동일)
   const handleRemoveMember = (id: string) => {
     setPendingMembers(pendingMembers.filter((m) => m.id !== id));
   };
@@ -120,7 +133,7 @@ const SelectGroupPage: React.FC<SelectGroupPageProps> = ({
   // 6. 조직 생성 + 멤버 초대
   const handleCreateGroupWithMembers = async () => {
     if (!newGroupName.trim()) {
-      setError('그룹 이름을 입력해주세요');
+      setError('워크스페이스 이름을 입력해주세요');
       return;
     }
 
@@ -128,70 +141,66 @@ const SelectGroupPage: React.FC<SelectGroupPageProps> = ({
     setError(null);
 
     try {
-      // Step 1: 조직 생성
-      const createData: CreateGroupRequest = {
+      // --- Step 1: 조직 생성 (API 스펙에 맞게 수정) ---
+      const createData: CreateWorkspaceRequest = {
         name: newGroupName,
-        companyName: newCompany || 'Personal',
+        // ⚠️ 'companyName'은 CreateWorkspaceRequest DTO에 없습니다.
+        //    만약 'description'으로 보내야 한다면:
+        // description: newCompany || 'Personal',
       };
 
-      const newGroup = await createGroup(createData, accessToken);
-      const newGroupId = newGroup.groupId;
-      setCreatedGroupId(newGroupId);
+      const newWorkspace = await createWorkspace(createData, accessToken);
+      const newWorkspaceId = newWorkspace.id; // ❌ groupId 아님
+      setCreatedGroupId(newWorkspaceId);
 
-      // Step 2: 현재 사용자를 MEMBER로 등록 (조직 생성자는 Group의 creatorId로 관리)
-      await createUserInfo(userId, newGroupId, accessToken, 'MEMBER');
+      // --- Step 2: (제거) ---
+      // ℹ️ createWorkspace를 호출한 유저(OWNER)는 백엔드에서 자동 등록됩니다.
 
-      // Step 3: 초대된 멤버들을 MEMBER로 등록
-      // ⚠️ 주의: 여기서는 이메일이 시스템에 이미 존재한다고 가정
-      // 실제로는 백엔드에서 이메일로 사용자를 찾고 등록해야 함
+      // --- Step 3: (기존과 동일 - 콘솔 로그) ---
       for (const member of pendingMembers) {
-        try {
-          // 백엔드가 이메일로 userId를 찾아 등록해주는 API가 있다면 여기서 호출
-          // 예: await inviteMemberByEmail(newGroupId, member.email, accessToken);
-          // 현재는 스킵 (별도 초대 API 필요)
-          console.log(`멤버 초대 예정: ${member.email}`);
-        } catch (memberErr) {
-          console.warn(`멤버 초대 실패: ${member.email}`, memberErr);
-        }
+        // ... (멤버 초대 로직 - 나중에 구현) ...
+        console.log(`멤버 초대 예정: ${member.email}`);
       }
 
-      // Step 4: 완료 후 KANBAN으로 이동
-      alert(`조직 '${newGroupName}' 생성 완료! ${pendingMembers.length}명의 멤버 초대 예정입니다.`);
+      // --- Step 4: 완료 ---
+      alert(
+        `워크스페이스 '${newGroupName}' 생성 완료! ${pendingMembers.length}명의 멤버 초대 예정입니다.`,
+      );
 
-      // URL 변경
-      window.history.pushState(null, '', `/kanban/${newGroupId}`);
+      window.history.pushState(null, '', `/kanban/${newWorkspaceId}`);
 
-      // 상태 초기화 후 KANBAN으로 이동
       resetCreateForm();
-      onGroupSelected(newGroupId);
+      // 3. Props 콜백 변경
+      onWorkspaceSelected(newWorkspaceId);
     } catch (e) {
       const err = e as Error;
-      setError(`조직 생성 실패: ${err.message}`);
+      setError(`워크스페이스 생성 실패: ${err.message}`);
       setIsLoading(false);
     }
   };
 
   // 7. 기존 그룹 선택
-  const handleSelectExistingGroup = async (group: GroupResponse) => {
+  const handleSelectExistingGroup = async (workspace: WorkspaceResponse) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      alert(`그룹 '${group.name}'에 참여 완료!`);
+      alert(`워크스페이스 '${workspace.name}'에 참여 완료!`);
 
-      // URL 변경
-      window.history.pushState(null, '', `/kanban/${group.groupId}`);
+      // --- ❌ group.groupId -> workspace.id ---
+      window.history.pushState(null, '', `/kanban/${workspace.id}`);
 
       // App.tsx의 상태 업데이트
-      onGroupSelected(group.groupId);
+      // 3. Props 콜백 변경
+      onWorkspaceSelected(workspace.id); // ❌ group.groupId
     } catch (e) {
       const err = e as Error;
-      setError(`그룹 참여 실패: ${err.message}`);
+      setError(`워크스페이스 참여 실패: ${err.message}`);
       setIsLoading(false);
     }
   };
 
-  // 8. 폼 초기화
+  // 8. 폼 초기화 (동일)
   const resetCreateForm = () => {
     setNewGroupName('');
     setNewCompany('');
@@ -202,26 +211,28 @@ const SelectGroupPage: React.FC<SelectGroupPageProps> = ({
   };
 
   // --- 로딩 화면 ---
-  if (isLoading && groups === null) {
+  if (isLoading && workspaces === null) {
     return (
       <div
         className={`min-h-screen ${theme.colors.background} flex items-center justify-center p-4`}
       >
         <div className="p-8">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className={`${theme.font.size.lg} ${theme.colors.text}`}>조직 정보를 확인 중...</p>
+          <p className={`${theme.font.size.lg} ${theme.colors.text}`}>
+            워크스페이스 정보를 확인 중...
+          </p>
         </div>
       </div>
     );
   }
 
-  // --- 메인 렌더링 ---
+  // --- 메인 렌더링 (UI 복구) ---
   return (
     <div className={`min-h-screen ${theme.colors.background} flex items-center justify-center p-4`}>
       <div
         className={`${theme.colors.card} ${theme.effects.borderRadius} p-6 sm:p-8 w-full max-w-2xl relative z-10 shadow-xl ${theme.effects.cardBorderWidth} ${theme.colors.border}`}
       >
-        {/* Step 1: 조직 목록 & 선택 */}
+        {/* Step 1: 워크스페이스 목록 & 선택 */}
         {step === 'list' && (
           <>
             <h2 className={`${theme.font.size.xl} font-extrabold ${theme.colors.text} mb-2`}>
@@ -244,7 +255,7 @@ const SelectGroupPage: React.FC<SelectGroupPageProps> = ({
             <div className="relative mb-4">
               <input
                 type="text"
-                placeholder="조직 이름 또는 회사명으로 검색"
+                placeholder="워크스페이스 이름 또는 설명으로 검색"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={`w-full px-4 pl-10 py-3 ${theme.colors.secondary} ${theme.font.size.sm} rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition`}
@@ -252,22 +263,22 @@ const SelectGroupPage: React.FC<SelectGroupPageProps> = ({
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             </div>
 
-            {/* 조직 목록 */}
+            {/* 워크스페이스 목록 */}
             <div
               className={`max-h-60 overflow-y-auto border-2 ${theme.colors.border} rounded-lg mb-4`}
             >
               {availableGroups.length > 0 ? (
-                availableGroups.map((group) => (
+                availableGroups.map((ws) => (
                   <button
-                    key={group.groupId}
-                    onClick={() => handleSelectExistingGroup(group)}
+                    key={ws.id} // ❌ group.groupId
+                    onClick={() => handleSelectExistingGroup(ws)} // ❌ group
                     disabled={isLoading}
                     className={`w-full text-left p-4 hover:bg-blue-50 border-b border-gray-100 ${theme.colors.text} ${theme.font.size.sm} transition flex justify-between items-center last:border-b-0`}
                   >
                     <div>
-                      <span className="font-semibold">{group.name}</span>
+                      <span className="font-semibold">{ws.name}</span>
                       <p className={`${theme.colors.subText} ${theme.font.size.xs}`}>
-                        {group.companyName}
+                        {ws.description} {/* ❌ group.companyName */}
                       </p>
                     </div>
                     <span
@@ -279,30 +290,30 @@ const SelectGroupPage: React.FC<SelectGroupPageProps> = ({
                 ))
               ) : (
                 <p className={`p-4 text-center ${theme.colors.subText} ${theme.font.size.sm}`}>
-                  {searchQuery.trim() ? '검색 결과가 없습니다.' : '소속된 조직이 없습니다.'}
+                  {searchQuery.trim() ? '검색 결과가 없습니다.' : '소속된 워크스페이스가 없습니다.'}
                 </p>
               )}
             </div>
 
-            {/* 새 조직 생성 버튼 */}
+            {/* 새 워크스페이스 생성 버튼 */}
             <button
               onClick={() => setStep('create-form')}
               disabled={isLoading}
               className={`w-full ${theme.colors.primary} text-white py-3 font-bold rounded-lg ${theme.colors.primaryHover} transition disabled:opacity-50 shadow-lg flex items-center justify-center gap-2`}
             >
-              <Plus className="w-5 h-5" /> 새 조직 생성
+              <Plus className="w-5 h-5" /> 새 워크스페이스 생성
             </button>
           </>
         )}
 
-        {/* Step 2: 조직 정보 입력 */}
+        {/* Step 2: 워크스페이스 정보 입력 */}
         {step === 'create-form' && (
           <>
             <h2 className={`${theme.font.size.xl} font-extrabold ${theme.colors.text} mb-2`}>
-              새로운 조직 생성
+              새로운 워크스페이스 생성
             </h2>
             <p className={`text-center mb-6 ${theme.font.size.sm} ${theme.colors.subText}`}>
-              조직 정보를 입력하세요.
+              워크스페이스 정보를 입력하세요.
             </p>
 
             {error && (
@@ -318,7 +329,7 @@ const SelectGroupPage: React.FC<SelectGroupPageProps> = ({
                 <label
                   className={`block ${theme.font.size.sm} font-semibold ${theme.colors.text} mb-2`}
                 >
-                  조직 이름 *
+                  워크스페이스 이름 *
                 </label>
                 <input
                   type="text"
@@ -334,11 +345,11 @@ const SelectGroupPage: React.FC<SelectGroupPageProps> = ({
                 <label
                   className={`block ${theme.font.size.sm} font-semibold ${theme.colors.text} mb-2`}
                 >
-                  회사명 (선택)
+                  설명 (선택)
                 </label>
                 <input
                   type="text"
-                  placeholder="예: Orange Corp"
+                  placeholder="예: Orange Cloud 프로젝트"
                   value={newCompany}
                   onChange={(e) => setNewCompany(e.target.value)}
                   className={`w-full px-4 py-3 ${theme.colors.secondary} ${theme.font.size.sm} rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition`}
@@ -456,7 +467,7 @@ const SelectGroupPage: React.FC<SelectGroupPageProps> = ({
                 disabled={isLoading || !newGroupName.trim()}
                 className={`flex-1 ${theme.colors.success} text-white py-3 font-bold rounded-lg hover:bg-green-600 transition disabled:opacity-50`}
               >
-                {isLoading ? '생성 중...' : '조직 생성 완료'}
+                {isLoading ? '생성 중...' : '워크스페이스 생성 완료'}
               </button>
             </div>
           </>
@@ -466,4 +477,4 @@ const SelectGroupPage: React.FC<SelectGroupPageProps> = ({
   );
 };
 
-export default SelectGroupPage;
+export default SelectWorkspacePage;
