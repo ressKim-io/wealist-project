@@ -42,12 +42,12 @@ print_step() {
 
 print_success() {
     echo -e "${GREEN}✓ $1${NC}"
-    ((PASSED++))
+    PASSED=$((PASSED + 1))
 }
 
 print_error() {
     echo -e "${RED}✗ $1${NC}"
-    ((FAILED++))
+    FAILED=$((FAILED + 1))
 }
 
 print_info() {
