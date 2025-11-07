@@ -1,6 +1,15 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import React, { useEffect, useState, useRef } from 'react';
-import { ChevronDown, Plus, Home, Bell, MessageSquare, Briefcase, File } from 'lucide-react';
+import {
+  ChevronDown,
+  Plus,
+  Home,
+  Bell,
+  MessageSquare,
+  Briefcase,
+  File,
+  Settings,
+} from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import UserProfileModal from '../components/modals/UserProfileModal';
 import { UserProfile } from '../types';
@@ -123,8 +132,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     navigate('/workspaces');
   };
   const { theme } = useTheme();
-  const currentRole = useRef<'ORGANIZER' | 'OPERATOR' | 'VIEWER'>('OPERATOR');
-
+  const currentRole = useRef<'OWNER' | 'ORGANIZER' | 'MEMBER'>('ORGANIZER');
+  const canAccessSettings = currentRole.current === 'OWNER' || currentRole.current === 'ORGANIZER';
   // 상태 관리
   const [projects, setProjects] = useState<ProjectResponse[]>([]);
   const [columns, setColumns] = useState<Column[]>([]);
@@ -153,7 +162,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     const fetchProjects = async () => {
       setIsLoading(true);
       setError(null);
-
+      console.log(currentWorkspaceId);
       try {
         console.log(`[Dashboard] 프로젝트 로드 시작 (Workspace: ${currentWorkspaceId})`);
         const fetchedProjects = await getProjects(currentWorkspaceId, accessToken);
@@ -193,7 +202,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
       setIsLoading(true);
       setError(null);
-
+      console.log(selectedProject);
       try {
         console.log(`[Dashboard] 보드 로드 시작 (Project: ${selectedProject.name})`);
         const boardsResponse = await getBoards(selectedProject.id, accessToken);
@@ -302,8 +311,6 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   }, [showProjectSelector]);
 
   const sidebarWidth = 'w-16 sm:w-20';
-  const canManageMembers =
-    currentRole.current === 'ORGANIZER' || currentRole.current === 'OPERATOR';
 
   return (
     <div className={`min-h-screen flex ${theme.colors.background} relative`}>
@@ -445,11 +452,20 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
               </div>
             )}
           </div>
-
+          {canAccessSettings && (
+            <button
+              // onClick={() => setIsSettingsModalOpen(true)}
+              className={`flex items-center gap-1 p-2 rounded-lg transition ${theme.colors.secondary} ${theme.colors.text} hover:bg-gray-100 font-semibold text-sm`}
+              title="조직 설정 및 멤버 관리"
+            >
+              <Settings className="w-4 h-4" />
+              설정
+            </button>
+          )}
           {selectedProject && (
             <button
               className={`flex items-center gap-2 p-1 rounded-lg transition ${
-                canManageMembers ? 'hover:bg-blue-100' : 'hover:bg-gray-100'
+                canAccessSettings ? 'hover:bg-blue-100' : 'hover:bg-gray-100'
               }`}
               title="조직원"
             >
