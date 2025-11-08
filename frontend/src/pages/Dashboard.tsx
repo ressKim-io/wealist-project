@@ -607,6 +607,15 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
               className={`flex items-center gap-2 font-bold text-xl ${theme.colors.text} hover:opacity-80 transition`}
             >
               {selectedProject?.name || '프로젝트 선택'}
+              {canAccessSettings && selectedProject && (
+                <button
+                  onClick={() => setShowProjectSettings(true)}
+                  className={`p-2 rounded-lg transition ${theme.colors.text} hover:bg-gray-100`}
+                  title="프로젝트 설정"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
+              )}
               <ChevronDown
                 className={`w-5 h-5 text-gray-500 transition-transform ${
                   showProjectSelector ? 'rotate-180' : 'rotate-0'
@@ -614,16 +623,6 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                 style={{ strokeWidth: 2.5 }}
               />
             </button>
-
-            {canAccessSettings && selectedProject && (
-              <button
-                onClick={() => setShowProjectSettings(true)}
-                className={`p-2 rounded-lg transition ${theme.colors.text} hover:bg-gray-100`}
-                title="프로젝트 설정"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-            )}
 
             {showProjectSelector && (
               <div
