@@ -2,6 +2,7 @@ package service
 
 import (
 	"board-service/internal/apperrors"
+	"board-service/internal/cache"
 	"board-service/internal/client"
 	"board-service/internal/domain"
 	"board-service/internal/dto"
@@ -40,6 +41,8 @@ type projectService struct {
 	userOrderRepo      repository.UserOrderRepository
 	customFieldService CustomFieldService
 	userClient         client.UserClient
+	workspaceCache     cache.WorkspaceCache
+	userInfoCache      cache.UserInfoCache
 	logger             *zap.Logger
 	db                 *gorm.DB
 }
@@ -50,6 +53,8 @@ func NewProjectService(
 	userOrderRepo repository.UserOrderRepository,
 	customFieldService CustomFieldService,
 	userClient client.UserClient,
+	workspaceCache cache.WorkspaceCache,
+	userInfoCache cache.UserInfoCache,
 	logger *zap.Logger,
 	db *gorm.DB,
 ) ProjectService {
@@ -59,6 +64,8 @@ func NewProjectService(
 		userOrderRepo:      userOrderRepo,
 		customFieldService: customFieldService,
 		userClient:         userClient,
+		workspaceCache:     workspaceCache,
+		userInfoCache:      userInfoCache,
 		logger:             logger,
 		db:                 db,
 	}
@@ -76,25 +83,10 @@ func (s *projectService) CreateProject(userID string, token string, req *dto.Cre
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 워크스페이스 ID", 400)
 	}
 
-	// Check if workspace exists via User Service
+	// Check workspace membership with caching
 	ctx := context.Background()
-	workspaceExists, err := s.userClient.CheckWorkspaceExists(ctx, req.WorkspaceID, token)
-	if err != nil {
-		s.logger.Error("Failed to check workspace existence", zap.Error(err), zap.String("workspace_id", req.WorkspaceID))
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeWorkspaceValidationFailed, "워크스페이스 확인 실패", 500)
-	}
-	if !workspaceExists {
-		return nil, apperrors.New(apperrors.ErrCodeWorkspaceNotFound, "워크스페이스를 찾을 수 없습니다", 404)
-	}
-
-	// Check if user is workspace member via User Service
-	isMember, err := s.userClient.ValidateWorkspaceMembership(ctx, req.WorkspaceID, userID, token)
-	if err != nil {
-		s.logger.Error("Failed to validate workspace membership", zap.Error(err), zap.String("workspace_id", req.WorkspaceID), zap.String("user_id", userID))
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeWorkspaceValidationFailed, "워크스페이스 멤버십 확인 실패", 500)
-	}
-	if !isMember {
-		return nil, apperrors.New(apperrors.ErrCodeWorkspaceAccessDenied, "워크스페이스 멤버가 아닙니다", 403)
+	if err := s.validateWorkspaceMembership(ctx, req.WorkspaceID, userID, token); err != nil {
+		return nil, err
 	}
 
 	// Get OWNER role
@@ -195,15 +187,10 @@ func (s *projectService) GetProjectsByWorkspaceID(workspaceID, userID string, to
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 워크스페이스 ID", 400)
 	}
 
-	// Check if user is workspace member via User Service
+	// Check workspace membership with caching
 	ctx := context.Background()
-	isMember, err := s.userClient.ValidateWorkspaceMembership(ctx, workspaceID, userID, token)
-	if err != nil {
-		s.logger.Error("Failed to validate workspace membership", zap.Error(err), zap.String("workspace_id", workspaceID), zap.String("user_id", userID))
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeWorkspaceValidationFailed, "워크스페이스 멤버십 확인 실패", 500)
-	}
-	if !isMember {
-		return nil, apperrors.New(apperrors.ErrCodeWorkspaceAccessDenied, "워크스페이스 멤버가 아닙니다", 403)
+	if err := s.validateWorkspaceMembership(ctx, workspaceID, userID, token); err != nil {
+		return nil, err
 	}
 
 	projects, err := s.repo.FindByWorkspaceID(workspaceUUID)
@@ -295,15 +282,10 @@ func (s *projectService) SearchProjects(userID string, token string, req *dto.Se
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 워크스페이스 ID", 400)
 	}
 
-	// Check if user is workspace member via User Service
+	// Check workspace membership with caching
 	ctx := context.Background()
-	isMember, err := s.userClient.ValidateWorkspaceMembership(ctx, req.WorkspaceID, userID, token)
-	if err != nil {
-		s.logger.Error("Failed to validate workspace membership", zap.Error(err), zap.String("workspace_id", req.WorkspaceID), zap.String("user_id", userID))
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeWorkspaceValidationFailed, "워크스페이스 멤버십 확인 실패", 500)
-	}
-	if !isMember {
-		return nil, apperrors.New(apperrors.ErrCodeWorkspaceAccessDenied, "워크스페이스 멤버가 아닙니다", 403)
+	if err := s.validateWorkspaceMembership(ctx, req.WorkspaceID, userID, token); err != nil {
+		return nil, err
 	}
 
 	// Default values
@@ -359,15 +341,10 @@ func (s *projectService) CreateJoinRequest(userID string, token string, req *dto
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "프로젝트 조회 실패", 500)
 	}
 
-	// Check if user is workspace member via User Service
+	// Check workspace membership with caching
 	ctx := context.Background()
-	isMember, err := s.userClient.ValidateWorkspaceMembership(ctx, project.WorkspaceID.String(), userID, token)
-	if err != nil {
-		s.logger.Error("Failed to validate workspace membership", zap.Error(err), zap.String("workspace_id", project.WorkspaceID.String()), zap.String("user_id", userID))
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeWorkspaceValidationFailed, "워크스페이스 멤버십 확인 실패", 500)
-	}
-	if !isMember {
-		return nil, apperrors.New(apperrors.ErrCodeWorkspaceAccessDenied, "워크스페이스 멤버가 아닙니다", 403)
+	if err := s.validateWorkspaceMembership(ctx, project.WorkspaceID.String(), userID, token); err != nil {
+		return nil, err
 	}
 
 	// Check if already a member
@@ -633,6 +610,95 @@ func (s *projectService) RemoveMember(projectID, memberID, requestUserID string)
 
 // Helper methods
 
+// validateWorkspaceMembership checks workspace membership with caching
+func (s *projectService) validateWorkspaceMembership(ctx context.Context, workspaceID, userID, token string) error {
+	// Try cache first
+	cacheExists, isMember, err := s.workspaceCache.GetMembership(ctx, workspaceID, userID)
+	if err != nil {
+		s.logger.Warn("Failed to get workspace membership from cache", zap.Error(err))
+		// Continue to User Service call on cache error
+	}
+
+	if cacheExists {
+		// Cache hit
+		if !isMember {
+			return apperrors.New(apperrors.ErrCodeWorkspaceAccessDenied, "워크스페이스 멤버가 아닙니다", 403)
+		}
+		return nil
+	}
+
+	// Cache miss - validate via User Service
+	// First check if workspace exists
+	workspaceExists, err := s.userClient.CheckWorkspaceExists(ctx, workspaceID, token)
+	if err != nil {
+		s.logger.Error("Failed to check workspace existence", zap.Error(err), zap.String("workspace_id", workspaceID))
+		return apperrors.Wrap(err, apperrors.ErrCodeWorkspaceValidationFailed, "워크스페이스 확인 실패", 500)
+	}
+	if !workspaceExists {
+		return apperrors.New(apperrors.ErrCodeWorkspaceNotFound, "워크스페이스를 찾을 수 없습니다", 404)
+	}
+
+	// Check membership
+	isMember, err = s.userClient.ValidateWorkspaceMembership(ctx, workspaceID, userID, token)
+	if err != nil {
+		s.logger.Error("Failed to validate workspace membership", zap.Error(err), zap.String("workspace_id", workspaceID), zap.String("user_id", userID))
+		return apperrors.Wrap(err, apperrors.ErrCodeWorkspaceValidationFailed, "워크스페이스 멤버십 확인 실패", 500)
+	}
+
+	// Cache the result
+	if cacheErr := s.workspaceCache.SetMembership(ctx, workspaceID, userID, isMember); cacheErr != nil {
+		s.logger.Warn("Failed to cache workspace membership", zap.Error(cacheErr))
+		// Don't fail the request on cache write error
+	}
+
+	if !isMember {
+		return apperrors.New(apperrors.ErrCodeWorkspaceAccessDenied, "워크스페이스 멤버가 아닙니다", 403)
+	}
+
+	return nil
+}
+
+// getUserInfoWithCache retrieves user info with caching
+func (s *projectService) getUserInfoWithCache(ctx context.Context, userID string) (*dto.UserInfo, error) {
+	// Try cache first
+	cacheExists, cachedUser, err := s.userInfoCache.GetUserInfo(ctx, userID)
+	if err != nil {
+		s.logger.Warn("Failed to get user info from cache", zap.Error(err))
+	}
+
+	if cacheExists && cachedUser != nil {
+		// Cache hit - convert to dto.UserInfo
+		return &dto.UserInfo{
+			UserID: cachedUser.UserID,
+			Name:   cachedUser.Name,
+			Email:  cachedUser.Email,
+		}, nil
+	}
+
+	// Cache miss - fetch from User Service
+	userInfo, err := s.userClient.GetUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Cache the result
+	cacheUser := &cache.UserInfo{
+		UserID:   userInfo.UserID,
+		Name:     userInfo.Name,
+		Email:    userInfo.Email,
+		IsActive: userInfo.IsActive,
+	}
+	if cacheErr := s.userInfoCache.SetUserInfo(ctx, cacheUser); cacheErr != nil {
+		s.logger.Warn("Failed to cache user info", zap.Error(cacheErr))
+	}
+
+	return &dto.UserInfo{
+		UserID: userInfo.UserID,
+		Name:   userInfo.Name,
+		Email:  userInfo.Email,
+	}, nil
+}
+
 func (s *projectService) checkProjectOwnerPermission(userID, projectID uuid.UUID) error {
 	member, err := s.repo.FindMemberByUserAndProject(userID, projectID)
 	if err != nil {
@@ -682,9 +748,9 @@ func (s *projectService) toProjectResponse(project *domain.Project) (*dto.Projec
 		UpdatedAt:   project.UpdatedAt,
 	}
 
-	// Fetch user info from User Service
+	// Fetch user info with caching
 	ctx := context.Background()
-	userInfo, err := s.userClient.GetUser(ctx, project.OwnerID.String())
+	userInfo, err := s.getUserInfoWithCache(ctx, project.OwnerID.String())
 	if err != nil {
 		s.logger.Warn("Failed to fetch user info", zap.Error(err), zap.String("user_id", project.OwnerID.String()))
 		// Continue without user info
@@ -711,9 +777,9 @@ func (s *projectService) toMemberResponse(member *domain.ProjectMember) (*dto.Pr
 		JoinedAt:  member.JoinedAt,
 	}
 
-	// Fetch user info from User Service
+	// Fetch user info with caching
 	ctx := context.Background()
-	userInfo, err := s.userClient.GetUser(ctx, member.UserID.String())
+	userInfo, err := s.getUserInfoWithCache(ctx, member.UserID.String())
 	if err != nil {
 		s.logger.Warn("Failed to fetch user info", zap.Error(err), zap.String("user_id", member.UserID.String()))
 	} else {
@@ -734,9 +800,9 @@ func (s *projectService) toJoinRequestResponse(req *domain.ProjectJoinRequest) (
 		UpdatedAt:   req.UpdatedAt,
 	}
 
-	// Fetch user info from User Service
+	// Fetch user info with caching
 	ctx := context.Background()
-	userInfo, err := s.userClient.GetUser(ctx, req.UserID.String())
+	userInfo, err := s.getUserInfoWithCache(ctx, req.UserID.String())
 	if err != nil {
 		s.logger.Warn("Failed to fetch user info", zap.Error(err), zap.String("user_id", req.UserID.String()))
 	} else {

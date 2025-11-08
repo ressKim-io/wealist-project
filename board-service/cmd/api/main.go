@@ -77,6 +77,8 @@ func main() {
 
 	// 5.5. Initialize caches
 	userOrderCache := cache.NewUserOrderCache(rdb)
+	workspaceCache := cache.NewWorkspaceCache(rdb)
+	userInfoCache := cache.NewUserInfoCache(rdb)
 
 	// 5.6. Initialize repositories
 	roleRepo := repository.NewRoleRepository(db)
@@ -89,10 +91,10 @@ func main() {
 	// 5.7. Initialize services
 	// Note: customFieldService needs boardRepo (for Phase 4 TODO), then injected into projectService
 	customFieldService := service.NewCustomFieldService(customFieldRepo, projectRepo, roleRepo, boardRepo, log, db)
-	boardService := service.NewBoardService(boardRepo, projectRepo, customFieldRepo, roleRepo, userClient, log, db)
-	projectService := service.NewProjectService(projectRepo, roleRepo, userOrderRepo, customFieldService, userClient, log, db)
+	boardService := service.NewBoardService(boardRepo, projectRepo, customFieldRepo, roleRepo, userClient, userInfoCache, log, db)
+	projectService := service.NewProjectService(projectRepo, roleRepo, userOrderRepo, customFieldService, userClient, workspaceCache, userInfoCache, log, db)
 	userOrderService := service.NewUserOrderService(userOrderRepo, projectRepo, customFieldRepo, boardRepo, userOrderCache, log)
-	commentService := service.NewCommentService(commentRepo, boardRepo, projectRepo, userClient, log, db) // Add CommentService
+	commentService := service.NewCommentService(commentRepo, boardRepo, projectRepo, userClient, userInfoCache, log, db) // Add CommentService
 
 	// 6. Configure Gin mode
 	if cfg.Server.Env == "prod" {

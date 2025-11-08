@@ -2,6 +2,7 @@ package service
 
 import (
 	"board-service/internal/apperrors"
+	"board-service/internal/cache"
 	"board-service/internal/client"
 	"board-service/internal/domain"
 	"board-service/internal/dto"
@@ -24,23 +25,25 @@ type CommentService interface {
 }
 
 type commentService struct {
-	commentRepo repository.CommentRepository
-	boardRepo  repository.BoardRepository
-	projectRepo repository.ProjectRepository
-	userClient  client.UserClient
-	logger      *zap.Logger
-	db          *gorm.DB
+	commentRepo   repository.CommentRepository
+	boardRepo     repository.BoardRepository
+	projectRepo   repository.ProjectRepository
+	userClient    client.UserClient
+	userInfoCache cache.UserInfoCache
+	logger        *zap.Logger
+	db            *gorm.DB
 }
 
 // NewCommentService creates a new instance of CommentService.
-func NewCommentService(cr repository.CommentRepository, kr repository.BoardRepository, pr repository.ProjectRepository, uc client.UserClient, l *zap.Logger, db *gorm.DB) CommentService {
+func NewCommentService(cr repository.CommentRepository, kr repository.BoardRepository, pr repository.ProjectRepository, uc client.UserClient, uic cache.UserInfoCache, l *zap.Logger, db *gorm.DB) CommentService {
 	return &commentService{
-		commentRepo: cr,
-		boardRepo:  kr,
-		projectRepo: pr,
-		userClient:  uc,
-		logger:      l,
-		db:          db,
+		commentRepo:   cr,
+		boardRepo:     kr,
+		projectRepo:   pr,
+		userClient:    uc,
+		userInfoCache: uic,
+		logger:        l,
+		db:            db,
 	}
 }
 
@@ -72,21 +75,16 @@ func (s *commentService) CreateComment(ctx context.Context, req dto.CreateCommen
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "failed to create comment", 500)
 	}
 
-	user, err := s.userClient.GetSimpleUser(userID.String())
-	if err != nil {
-		// Log the error but proceed, as the comment is already created.
-		s.logger.Error("Failed to get user info for comment", zap.Error(err), zap.String("userID", userID.String()))
-		user = &client.SimpleUser{Name: "Unknown User", AvatarURL: ""} // Fallback user
-	}
+	user := s.getSimpleUserWithCache(ctx, userID.String())
 
 	return &dto.CommentResponse{
-		ID:        comment.ID,
-		UserID:    comment.UserID,
-		UserName:  user.Name,
+		ID:         comment.ID,
+		UserID:     comment.UserID,
+		UserName:   user.Name,
 		UserAvatar: user.AvatarURL,
-		Content:   comment.Content,
-		CreatedAt: comment.CreatedAt,
-		UpdatedAt: comment.UpdatedAt,
+		Content:    comment.Content,
+		CreatedAt:  comment.CreatedAt,
+		UpdatedAt:  comment.UpdatedAt,
 	}, nil
 }
 
@@ -113,34 +111,28 @@ func (s *commentService) GetCommentsByBoardID(ctx context.Context, boardID uuid.
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "failed to get comments", 500)
 	}
 
-	// Batch fetch user info
+	// Batch fetch user info with caching
 	userIDs := make([]string, 0, len(comments))
 	for _, c := range comments {
 		userIDs = append(userIDs, c.UserID.String())
 	}
 
-	users, err := s.userClient.GetSimpleUsers(userIDs)
-	userMap := make(map[string]client.SimpleUser)
-	if err == nil {
-		for _, u := range users {
-			userMap[u.ID] = u
-		}
-	}
+	userMap := s.getSimpleUsersBatch(ctx, userIDs)
 
 	responses := make([]dto.CommentResponse, len(comments))
 	for i, c := range comments {
 		user, ok := userMap[c.UserID.String()]
 		if !ok {
-			user = client.SimpleUser{Name: "Unknown User", AvatarURL: ""}
+			user = cache.SimpleUser{Name: "Unknown User", AvatarURL: ""}
 		}
 		responses[i] = dto.CommentResponse{
-			ID:        c.ID,
-			UserID:    c.UserID,
-			UserName:  user.Name,
+			ID:         c.ID,
+			UserID:     c.UserID,
+			UserName:   user.Name,
 			UserAvatar: user.AvatarURL,
-			Content:   c.Content,
-			CreatedAt: c.CreatedAt,
-			UpdatedAt: c.UpdatedAt,
+			Content:    c.Content,
+			CreatedAt:  c.CreatedAt,
+			UpdatedAt:  c.UpdatedAt,
 		}
 	}
 
@@ -166,20 +158,16 @@ func (s *commentService) UpdateComment(ctx context.Context, commentID uuid.UUID,
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "failed to update comment", 500)
 	}
 
-	user, err := s.userClient.GetSimpleUser(userID.String())
-	if err != nil {
-		s.logger.Error("Failed to get user info for comment", zap.Error(err), zap.String("userID", userID.String()))
-		user = &client.SimpleUser{Name: "Unknown User", AvatarURL: ""} // Fallback user
-	}
+	user := s.getSimpleUserWithCache(ctx, userID.String())
 
 	return &dto.CommentResponse{
-		ID:        comment.ID,
-		UserID:    comment.UserID,
-		UserName:  user.Name,
+		ID:         comment.ID,
+		UserID:     comment.UserID,
+		UserName:   user.Name,
 		UserAvatar: user.AvatarURL,
-		Content:   comment.Content,
-		CreatedAt: comment.CreatedAt,
-		UpdatedAt: comment.UpdatedAt,
+		Content:    comment.Content,
+		CreatedAt:  comment.CreatedAt,
+		UpdatedAt:  comment.UpdatedAt,
 	}, nil
 }
 
@@ -200,4 +188,92 @@ func (s *commentService) DeleteComment(ctx context.Context, commentID uuid.UUID,
 	}
 
 	return s.commentRepo.Delete(comment.ID)
+}
+
+// getSimpleUserWithCache retrieves simple user info with caching
+func (s *commentService) getSimpleUserWithCache(ctx context.Context, userID string) cache.SimpleUser {
+	// Try cache first
+	cacheExists, cachedUser, err := s.userInfoCache.GetSimpleUser(ctx, userID)
+	if err != nil {
+		s.logger.Warn("Failed to get simple user from cache", zap.Error(err))
+	}
+
+	if cacheExists && cachedUser != nil {
+		return *cachedUser
+	}
+
+	// Cache miss - fetch from User Service
+	user, err := s.userClient.GetSimpleUser(userID)
+	if err != nil {
+		s.logger.Error("Failed to get user info for comment", zap.Error(err), zap.String("userID", userID))
+		return cache.SimpleUser{Name: "Unknown User", AvatarURL: ""}
+	}
+
+	// Cache the result
+	cacheUser := &cache.SimpleUser{
+		ID:        user.ID,
+		Name:      user.Name,
+		AvatarURL: user.AvatarURL,
+	}
+	if cacheErr := s.userInfoCache.SetSimpleUser(ctx, cacheUser); cacheErr != nil {
+		s.logger.Warn("Failed to cache simple user", zap.Error(cacheErr))
+	}
+
+	return *cacheUser
+}
+
+// getSimpleUsersBatch retrieves simple user info for multiple users with caching
+func (s *commentService) getSimpleUsersBatch(ctx context.Context, userIDs []string) map[string]cache.SimpleUser {
+	if len(userIDs) == 0 {
+		return make(map[string]cache.SimpleUser)
+	}
+
+	// Try to get from cache first
+	cachedUsers, err := s.userInfoCache.GetSimpleUsersBatch(ctx, userIDs)
+	if err != nil {
+		s.logger.Warn("Failed to get users from cache", zap.Error(err))
+		cachedUsers = make(map[string]*cache.SimpleUser)
+	}
+
+	// Find missing user IDs (not in cache)
+	missingUserIDs := []string{}
+	for _, userID := range userIDs {
+		if _, exists := cachedUsers[userID]; !exists {
+			missingUserIDs = append(missingUserIDs, userID)
+		}
+	}
+
+	// Fetch missing users from User Service
+	userMap := make(map[string]cache.SimpleUser)
+
+	if len(missingUserIDs) > 0 {
+		users, err := s.userClient.GetSimpleUsers(missingUserIDs)
+		if err != nil {
+			s.logger.Warn("Failed to fetch users from User Service", zap.Error(err))
+		} else {
+			// Cache the fetched users
+			simpleUsers := make([]cache.SimpleUser, 0, len(users))
+			for _, user := range users {
+				cacheUser := cache.SimpleUser{
+					ID:        user.ID,
+					Name:      user.Name,
+					AvatarURL: user.AvatarURL,
+				}
+				userMap[user.ID] = cacheUser
+				simpleUsers = append(simpleUsers, cacheUser)
+			}
+			if cacheErr := s.userInfoCache.SetSimpleUsersBatch(ctx, simpleUsers); cacheErr != nil {
+				s.logger.Warn("Failed to cache users", zap.Error(cacheErr))
+			}
+		}
+	}
+
+	// Add cached users to result
+	for userID, cachedUser := range cachedUsers {
+		if _, exists := userMap[userID]; !exists {
+			userMap[userID] = *cachedUser
+		}
+	}
+
+	return userMap
 }

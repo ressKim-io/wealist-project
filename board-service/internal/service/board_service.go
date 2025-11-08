@@ -2,6 +2,7 @@ package service
 
 import (
 	"board-service/internal/apperrors"
+	"board-service/internal/cache"
 	"board-service/internal/client"
 	"board-service/internal/domain"
 	"board-service/internal/dto"
@@ -29,6 +30,7 @@ type boardService struct {
 	customFieldRepo repository.CustomFieldRepository
 	roleRepo        repository.RoleRepository
 	userClient      client.UserClient
+	userInfoCache   cache.UserInfoCache
 	logger          *zap.Logger
 	db              *gorm.DB
 }
@@ -39,6 +41,7 @@ func NewBoardService(
 	customFieldRepo repository.CustomFieldRepository,
 	roleRepo repository.RoleRepository,
 	userClient client.UserClient,
+	userInfoCache cache.UserInfoCache,
 	logger *zap.Logger,
 	db *gorm.DB,
 ) BoardService {
@@ -48,6 +51,7 @@ func NewBoardService(
 		customFieldRepo: customFieldRepo,
 		roleRepo:        roleRepo,
 		userClient:      userClient,
+		userInfoCache:   userInfoCache,
 		logger:          logger,
 		db:              db,
 	}
@@ -575,19 +579,9 @@ func (s *boardService) buildBoardResponse(
 		userIDs = append(userIDs, board.AssigneeID.String())
 	}
 
-	// Fetch users from User Service (batch)
+	// Fetch users with caching
 	ctx := context.Background()
-	users, err := s.userClient.GetUsersBatch(ctx, userIDs)
-	if err != nil {
-		s.logger.Warn("Failed to fetch users from User Service", zap.Error(err))
-		users = []client.UserInfo{} // Continue without user info
-	}
-
-	// Convert to map for easy lookup
-	userMap := make(map[string]client.UserInfo)
-	for _, user := range users {
-		userMap[user.UserID] = user
-	}
+	userMap := s.getUserInfoBatch(ctx, userIDs)
 
 	// Build response
 	response := &dto.BoardResponse{
@@ -683,4 +677,66 @@ func (s *boardService) buildBoardResponse(
 	}
 
 	return response, nil
+}
+
+// getUserInfoBatch fetches user info for multiple users with caching
+func (s *boardService) getUserInfoBatch(ctx context.Context, userIDs []string) map[string]client.UserInfo {
+	if len(userIDs) == 0 {
+		return make(map[string]client.UserInfo)
+	}
+
+	// Try to get from cache first
+	cachedUsers, err := s.userInfoCache.GetSimpleUsersBatch(ctx, userIDs)
+	if err != nil {
+		s.logger.Warn("Failed to get users from cache", zap.Error(err))
+		cachedUsers = make(map[string]*cache.SimpleUser)
+	}
+
+	// Find missing user IDs (not in cache)
+	missingUserIDs := []string{}
+	for _, userID := range userIDs {
+		if _, exists := cachedUsers[userID]; !exists {
+			missingUserIDs = append(missingUserIDs, userID)
+		}
+	}
+
+	// Fetch missing users from User Service
+	userMap := make(map[string]client.UserInfo)
+
+	if len(missingUserIDs) > 0 {
+		users, err := s.userClient.GetUsersBatch(ctx, missingUserIDs)
+		if err != nil {
+			s.logger.Warn("Failed to fetch users from User Service", zap.Error(err))
+		} else {
+			// Cache the fetched users
+			simpleUsers := make([]cache.SimpleUser, 0, len(users))
+			for _, user := range users {
+				userMap[user.UserID] = user
+				// Note: UserInfo and SimpleUser have different fields
+				// For now, we'll just cache what we got
+				simpleUsers = append(simpleUsers, cache.SimpleUser{
+					ID:        user.UserID,
+					Name:      user.Name,
+					AvatarURL: "", // UserInfo doesn't have avatar URL
+				})
+			}
+			if cacheErr := s.userInfoCache.SetSimpleUsersBatch(ctx, simpleUsers); cacheErr != nil {
+				s.logger.Warn("Failed to cache users", zap.Error(cacheErr))
+			}
+		}
+	}
+
+	// Add cached users to result
+	for userID, cachedUser := range cachedUsers {
+		if _, exists := userMap[userID]; !exists {
+			userMap[userID] = client.UserInfo{
+				UserID:   cachedUser.ID,
+				Name:     cachedUser.Name,
+				Email:    "", // SimpleUser doesn't have email
+				IsActive: true,
+			}
+		}
+	}
+
+	return userMap
 }
