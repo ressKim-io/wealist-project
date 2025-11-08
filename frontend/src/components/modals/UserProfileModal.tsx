@@ -1,83 +1,43 @@
 /**
- * 사용자 프로필 모달 컴포넌트 (UI 목업 버전)
+ * 사용자 프로필 모달 컴포넌트
  *
  * [백엔드 개발자 참고사항]
  *
- * 1. 프로필 구조:
- *    - 기본 프로필: userId 단일 키로 관리 (workspaceId = null)
- *    - 워크스페이스별 프로필: userId + workspaceId 복합 키로 관리
+ * 모든 API 로직은 src/api/user/userService.ts에 구현되어 있습니다.
+ * userService.ts 파일에서 USE_MOCK_DATA 플래그를 false로 변경하면
+ * 자동으로 실제 API를 호출합니다.
  *
- * 2. API 엔드포인트 (예상):
- *    - GET  /api/profiles/me                    : 기본 프로필 조회
- *    - PUT  /api/profiles/me                    : 기본 프로필 업데이트
- *    - GET  /api/profiles/workspace/{workspaceId} : 특정 워크스페이스 프로필 조회
- *    - PUT  /api/profiles/workspace/{workspaceId} : 워크스페이스 프로필 생성/업데이트
- *
- * 3. UserProfile DTO 구조:
- *    {
- *      profileId: string (UUID)
- *      userId: string (UUID)
- *      workspaceId?: string | null (UUID, 기본 프로필은 null)
- *      name: string
- *      email: string | null
- *      profileImageUrl: string | null
- *      createdAt: string (ISO-8601)
- *      updatedAt: string (ISO-8601)
- *    }
- *
- * 4. 저장 로직:
- *    - 기본 프로필: workspaceId 없이 저장
- *    - 워크스페이스 프로필: 선택된 workspaceId와 함께 저장
- *    - 같은 userId + workspaceId 조합이 있으면 UPDATE, 없으면 INSERT
+ * 필요한 백엔드 API:
+ * 1. GET  /api/profiles/me                         - 기본 프로필 조회
+ * 2. PUT  /api/profiles/me                         - 기본 프로필 업데이트
+ * 3. GET  /api/profiles/workspace/{workspaceId}    - 워크스페이스 프로필 조회
+ * 4. PUT  /api/profiles/workspace/{workspaceId}    - 워크스페이스 프로필 생성/수정
+ * 5. GET  /api/workspaces                          - 내가 속한 워크스페이스 목록
  */
 
-import React, { useState, useRef, ChangeEvent } from 'react';
+import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { X, Camera } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { UserProfile } from '../../types';
+import {
+  getMyProfile,
+  updateMyProfile,
+  getWorkspaceProfile,
+  updateWorkspaceProfile,
+  getWorkspaces,
+  WorkspaceResponse,
+  UserProfileResponse,
+} from '../../api/user/userService';
 
 interface UserProfileModalProps {
   user: UserProfile;
   onClose: () => void;
 }
 
-// ========================================
-// 목업 데이터 (백엔드 연동 전까지 사용)
-// ========================================
-
-// 워크스페이스 목업 데이터
-const MOCK_WORKSPACES = [
-  { id: 'workspace-1', name: '오렌지클라우드' },
-  { id: 'workspace-2', name: '데이터랩' },
-  { id: 'workspace-3', name: '마케팅팀' },
-];
-
-// 사용자 프로필 목업 데이터
-const MOCK_USER_PROFILE: UserProfile = {
-  profileId: 'profile-default-001',
-  userId: 'user-123',
-  name: '김개발',
-  email: 'dev.kim@example.com',
-  profileImageUrl: null,
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
-};
-
-// 워크스페이스별 프로필 목업 데이터 (userId + workspaceId가 키)
-const MOCK_WORKSPACE_PROFILES: Record<string, UserProfile> = {
-  'workspace-1': {
-    profileId: 'profile-ws-001',
-    userId: 'user-123',
-    name: '김개발 (오렌지클라우드)',
-    email: 'dev.kim@orangecloud.com',
-    profileImageUrl: null,
-    createdAt: '2024-01-02T00:00:00Z',
-    updatedAt: '2024-01-02T00:00:00Z',
-  },
-};
-
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) => {
   const { theme } = useTheme();
+  const { token } = useAuth();
 
   // ========================================
   // 상태 관리
@@ -86,26 +46,105 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
   // 탭 상태: 'default' (기본 프로필) | 'workspace' (워크스페이스별 프로필)
   const [activeTab, setActiveTab] = useState<'default' | 'workspace'>('default');
 
-  // 선택된 워크스페이스 ID
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>(MOCK_WORKSPACES[0].id);
+  // 워크스페이스 목록
+  const [workspaces, setWorkspaces] = useState<WorkspaceResponse[]>([]);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>('');
 
   // 파일 입력 Ref
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 기본 프로필 상태
-  const [defaultProfile, setDefaultProfile] = useState<UserProfile>(MOCK_USER_PROFILE);
-  const [defaultName, setDefaultName] = useState(MOCK_USER_PROFILE.name);
-  const [defaultEmail, setDefaultEmail] = useState(MOCK_USER_PROFILE.email || '');
+  const [defaultProfile, setDefaultProfile] = useState<UserProfileResponse | null>(null);
+  const [defaultName, setDefaultName] = useState('');
+  const [defaultEmail, setDefaultEmail] = useState('');
 
-  // 워크스페이스 프로필 상태 (선택된 워크스페이스에 따라 동적으로 변경)
-  const [workspaceProfiles, setWorkspaceProfiles] = useState(MOCK_WORKSPACE_PROFILES);
+  // 워크스페이스 프로필 상태
+  const [workspaceProfile, setWorkspaceProfile] = useState<UserProfileResponse | null>(null);
   const [workspaceName, setWorkspaceName] = useState('');
   const [workspaceEmail, setWorkspaceEmail] = useState('');
 
   // 프로필 이미지 미리보기 URL
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
 
+  // 로딩 및 에러 상태
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // ========================================
+  // 초기 데이터 로드
+  // ========================================
+
+  useEffect(() => {
+    const loadInitialData = async () => {
+      if (!token) {
+        setError('인증 토큰이 없습니다. 다시 로그인해주세요.');
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        // 기본 프로필과 워크스페이스 목록 동시 로드
+        const [profile, workspaceList] = await Promise.all([
+          getMyProfile(token),
+          getWorkspaces(token),
+        ]);
+
+        setDefaultProfile(profile);
+        setDefaultName(profile.name);
+        setDefaultEmail(profile.email || '');
+
+        setWorkspaces(workspaceList);
+        if (workspaceList.length > 0) {
+          setSelectedWorkspaceId(workspaceList[0].id);
+        }
+      } catch (err) {
+        console.error('[Initial Data Load Error]', err);
+        setError('프로필 정보를 불러오는데 실패했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadInitialData();
+  }, [token]);
+
+  // ========================================
+  // 워크스페이스 프로필 로드
+  // ========================================
+
+  useEffect(() => {
+    const loadWorkspaceProfile = async () => {
+      if (!token || !selectedWorkspaceId || activeTab !== 'workspace') {
+        return;
+      }
+
+      try {
+        const profile = await getWorkspaceProfile(selectedWorkspaceId, token);
+
+        if (profile) {
+          setWorkspaceProfile(profile);
+          setWorkspaceName(profile.name);
+          setWorkspaceEmail(profile.email || '');
+        } else {
+          // 프로필이 없으면 기본 프로필 정보로 초기화
+          setWorkspaceProfile(null);
+          const workspace = workspaces.find((ws) => ws.id === selectedWorkspaceId);
+          setWorkspaceName(`${defaultProfile?.name || ''} (${workspace?.name || ''})`);
+          setWorkspaceEmail(defaultProfile?.email || '');
+        }
+      } catch (err) {
+        console.error('[Workspace Profile Load Error]', err);
+        // 에러 발생 시 기본값으로 설정
+        setWorkspaceProfile(null);
+        const workspace = workspaces.find((ws) => ws.id === selectedWorkspaceId);
+        setWorkspaceName(`${defaultProfile?.name || ''} (${workspace?.name || ''})`);
+        setWorkspaceEmail(defaultProfile?.email || '');
+      }
+    };
+
+    loadWorkspaceProfile();
+  }, [selectedWorkspaceId, activeTab, token, workspaces, defaultProfile]);
 
   // ========================================
   // 이미지 업로드 핸들러
@@ -132,96 +171,60 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
 
   const handleWorkspaceChange = (workspaceId: string) => {
     setSelectedWorkspaceId(workspaceId);
-
-    // 해당 워크스페이스의 프로필이 있으면 불러오기, 없으면 기본값 설정
-    const wsProfile = workspaceProfiles[workspaceId];
-    if (wsProfile) {
-      setWorkspaceName(wsProfile.name);
-      setWorkspaceEmail(wsProfile.email || '');
-    } else {
-      // 프로필이 없으면 기본 프로필 정보로 초기화
-      const workspace = MOCK_WORKSPACES.find((ws) => ws.id === workspaceId);
-      setWorkspaceName(`${defaultProfile.name} (${workspace?.name || ''})`);
-      setWorkspaceEmail(defaultProfile.email || '');
-    }
+    setAvatarPreviewUrl(null); // 워크스페이스 변경 시 미리보기 초기화
   };
 
   // ========================================
   // 저장 핸들러
   // ========================================
 
-  /**
-   * [백엔드 개발자 참고]
-   *
-   * 기본 프로필 저장:
-   * - PUT /api/profiles/me
-   * - Body: { name, email, profileImageUrl }
-   * - workspaceId는 전송하지 않음 (또는 null)
-   */
-  const handleSaveDefaultProfile = () => {
-    console.log('[목업] 기본 프로필 저장:', {
-      userId: defaultProfile.userId,
-      workspaceId: null,
-      name: defaultName,
-      email: defaultEmail,
-      profileImageUrl: avatarPreviewUrl,
-    });
+  const handleSave = async () => {
+    if (!token) {
+      setError('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      return;
+    }
 
-    setDefaultProfile({
-      ...defaultProfile,
-      name: defaultName,
-      email: defaultEmail,
-      profileImageUrl: avatarPreviewUrl,
-    });
+    try {
+      setLoading(true);
+      setError(null);
 
-    alert('기본 프로필이 저장되었습니다 (목업)');
-  };
-
-  /**
-   * [백엔드 개발자 참고]
-   *
-   * 워크스페이스 프로필 저장:
-   * - PUT /api/profiles/workspace/{workspaceId}
-   * - Body: { name, email, profileImageUrl }
-   * - 같은 userId + workspaceId가 있으면 UPDATE, 없으면 INSERT
-   */
-  const handleSaveWorkspaceProfile = () => {
-    const newProfile: UserProfile = {
-      profileId: `profile-ws-${Date.now()}`, // 실제로는 백엔드에서 생성
-      userId: defaultProfile.userId,
-      name: workspaceName,
-      email: workspaceEmail,
-      profileImageUrl: avatarPreviewUrl,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    setWorkspaceProfiles({
-      ...workspaceProfiles,
-      [selectedWorkspaceId]: newProfile,
-    });
-
-    console.log('[목업] 워크스페이스 프로필 저장:', {
-      userId: defaultProfile.userId,
-      workspaceId: selectedWorkspaceId,
-      name: workspaceName,
-      email: workspaceEmail,
-      profileImageUrl: avatarPreviewUrl,
-    });
-
-    alert(`${MOCK_WORKSPACES.find((ws) => ws.id === selectedWorkspaceId)?.name} 프로필이 저장되었습니다 (목업)`);
-  };
-
-  const handleSave = () => {
-    setLoading(true);
-    setTimeout(() => {
       if (activeTab === 'default') {
-        handleSaveDefaultProfile();
+        // 기본 프로필 저장
+        const updatedProfile = await updateMyProfile(
+          {
+            name: defaultName,
+            email: defaultEmail || undefined,
+            profileImageUrl: avatarPreviewUrl || undefined,
+          },
+          token,
+        );
+
+        setDefaultProfile(updatedProfile);
+        alert('기본 프로필이 저장되었습니다.');
       } else {
-        handleSaveWorkspaceProfile();
+        // 워크스페이스 프로필 저장
+        const updatedProfile = await updateWorkspaceProfile(
+          selectedWorkspaceId,
+          {
+            name: workspaceName,
+            email: workspaceEmail || undefined,
+            profileImageUrl: avatarPreviewUrl || undefined,
+          },
+          token,
+        );
+
+        setWorkspaceProfile(updatedProfile);
+        const workspaceName_display = workspaces.find((ws) => ws.id === selectedWorkspaceId)?.name;
+        alert(`${workspaceName_display} 프로필이 저장되었습니다.`);
       }
+
+      setAvatarPreviewUrl(null);
+    } catch (err) {
+      console.error('[Profile Save Error]', err);
+      setError('프로필 저장에 실패했습니다.');
+    } finally {
       setLoading(false);
-    }, 500); // 목업 딜레이
+    }
   };
 
   // ========================================
@@ -239,18 +242,26 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
   // 현재 활성 탭의 프로필 정보 가져오기
   // ========================================
 
-  const currentProfile =
-    activeTab === 'default' ? defaultProfile : workspaceProfiles[selectedWorkspaceId] || defaultProfile;
-
+  const currentProfile = activeTab === 'default' ? defaultProfile : (workspaceProfile || defaultProfile);
   const currentName = activeTab === 'default' ? defaultName : workspaceName;
   const currentEmail = activeTab === 'default' ? defaultEmail : workspaceEmail;
-
   const setCurrentName = activeTab === 'default' ? setDefaultName : setWorkspaceName;
   const setCurrentEmail = activeTab === 'default' ? setDefaultEmail : setWorkspaceEmail;
 
   // ========================================
   // 렌더링
   // ========================================
+
+  if (!defaultProfile) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white p-8 rounded-xl shadow-lg">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-700">프로필 정보를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -261,9 +272,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
         <div
           className={`relative ${theme.colors.card} ${theme.effects.borderWidth} ${theme.colors.border} ${theme.effects.borderRadius} shadow-xl`}
         >
-          {/* ========================================
-              헤더: 제목 + 닫기 버튼
-              ======================================== */}
+          {/* 헤더 */}
           <div
             className={`flex items-center justify-between p-6 pb-4 ${theme.effects.borderWidth} ${theme.colors.border} border-t-0 border-l-0 border-r-0`}
           >
@@ -277,9 +286,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
             </button>
           </div>
 
-          {/* ========================================
-              탭 메뉴: 기본 프로필 / 워크스페이스별 프로필
-              ======================================== */}
+          {/* 탭 메뉴 */}
           <div className="flex border-b border-gray-200 px-6">
             <button
               onClick={() => setActiveTab('default')}
@@ -305,11 +312,16 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
             </button>
           </div>
 
-          {/* ========================================
-              탭 컨텐츠
-              ======================================== */}
+          {/* 탭 컨텐츠 */}
           <div className="p-6 space-y-5">
-            {/* 워크스페이스 선택 (워크스페이스별 프로필 탭에서만 표시) */}
+            {/* 에러 메시지 */}
+            {error && (
+              <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm">
+                {error}
+              </div>
+            )}
+
+            {/* 워크스페이스 선택 */}
             {activeTab === 'workspace' && (
               <div>
                 <label className={`block ${theme.font.size.xs} mb-2 text-gray-500 font-medium`}>
@@ -320,7 +332,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
                   onChange={(e) => handleWorkspaceChange(e.target.value)}
                   className={`w-full px-3 py-2 ${theme.effects.cardBorderWidth} ${theme.colors.border} ${theme.colors.card} ${theme.font.size.xs} ${theme.effects.borderRadius} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 >
-                  {MOCK_WORKSPACES.map((workspace) => (
+                  {workspaces.map((workspace) => (
                     <option key={workspace.id} value={workspace.id}>
                       {workspace.name}
                     </option>
@@ -341,7 +353,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
                     alt="프로필 미리보기"
                     className="w-24 h-24 object-cover border-2 border-gray-300 rounded-full"
                   />
-                ) : currentProfile.profileImageUrl ? (
+                ) : currentProfile?.profileImageUrl ? (
                   <img
                     src={currentProfile.profileImageUrl}
                     alt="프로필 이미지"
@@ -371,7 +383,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
               </div>
             </div>
 
-            {/* 사용자 ID (읽기 전용) */}
+            {/* 사용자 ID */}
             <div>
               <label className={`block ${theme.font.size.xs} mb-2 text-gray-500 font-medium`}>
                 사용자 ID:
@@ -380,7 +392,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
                 type="text"
                 readOnly
                 disabled
-                value={currentProfile.userId}
+                value={currentProfile?.userId || ''}
                 className="w-full px-3 py-2 border border-gray-300 text-gray-700 text-xs rounded-md disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
               />
             </div>
