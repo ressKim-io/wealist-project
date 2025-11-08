@@ -190,23 +190,37 @@ let MOCK_WORKSPACE_MEMBERS: Record<string, WorkspaceMember[]> = {
     {
       userId: 'user-123',
       name: '김개발',
-      email: 'dev.kim@example.com',
+      email: 'dev.kim@orangecloud.com',
       role: 'OWNER',
       joinedAt: '2024-01-01T00:00:00Z',
     },
     {
       userId: 'user-456',
       name: '이디자인',
-      email: 'design.lee@example.com',
+      email: 'design.lee@orangecloud.com',
       role: 'ADMIN',
       joinedAt: '2024-01-05T00:00:00Z',
     },
     {
       userId: 'user-789',
-      name: '박기획',
-      email: 'plan.park@example.com',
+      name: '박프론트',
+      email: 'frontend.park@orangecloud.com',
       role: 'MEMBER',
       joinedAt: '2024-01-10T00:00:00Z',
+    },
+    {
+      userId: 'user-101',
+      name: '정백엔드',
+      email: 'backend.jung@orangecloud.com',
+      role: 'MEMBER',
+      joinedAt: '2024-01-12T00:00:00Z',
+    },
+    {
+      userId: 'user-202',
+      name: '최데브옵스',
+      email: 'devops.choi@orangecloud.com',
+      role: 'MEMBER',
+      joinedAt: '2024-01-15T00:00:00Z',
     },
   ],
 };
@@ -216,15 +230,15 @@ let MOCK_PENDING_MEMBERS: Record<string, PendingMember[]> = {
   'workspace-1': [
     {
       userId: 'user-pending-1',
-      name: '최신입',
-      email: 'new.choi@example.com',
-      requestedAt: '2024-01-15T00:00:00Z',
+      name: '한신입',
+      email: 'newbie.han@gmail.com',
+      requestedAt: '2024-01-20T09:30:00Z',
     },
     {
       userId: 'user-pending-2',
       name: '강인턴',
-      email: 'intern.kang@example.com',
-      requestedAt: '2024-01-16T00:00:00Z',
+      email: 'intern.kang@naver.com',
+      requestedAt: '2024-01-21T14:20:00Z',
     },
   ],
 };
