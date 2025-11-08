@@ -809,12 +809,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                           draggedFromColumn !== column.id &&
                           draggedBoard &&
                           !draggedColumn && (
-                            <div className="relative py-4 px-2">
-                              <div className="h-16 border-2 border-dashed border-blue-500 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-                                <div className="text-center text-blue-600 text-xs font-semibold">
-                                  ⬇️ 여기에 추가됩니다
-                                </div>
-                              </div>
+                            <div className="relative py-2">
+                              <div className="h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50"></div>
                             </div>
                           )}
 
