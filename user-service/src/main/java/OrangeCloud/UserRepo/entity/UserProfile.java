@@ -27,6 +27,9 @@ public class UserProfile {
     @Column(name = "name", length = 50, nullable = false)
     private String name;
 
+    @Column(name = "email", length = 100)
+    private String email; // null 허용
+
     @Column(name = "profile_image_url")
     private String profileImageUrl; // null 허용 (기본 이미지 사용 가능)
 
@@ -44,6 +47,10 @@ public class UserProfile {
 
     public void updateName(String name) {
         this.name = name;
+    }
+
+    public void updateEmail(String email) {
+        this.email = email;
     }
 
     public void updateProfileImageUrl(String profileImageUrl) {

@@ -28,6 +28,22 @@ export interface CreateWorkspaceRequest {
   // description?: string; // API 스펙에 name만 required이므로 일단 제외
 }
 
+export interface UserProfileResponse {
+  profileId: string;
+  userId: string;
+  name: string;
+  email: string | null;
+  profileImageUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateProfileRequest {
+  name?: string;
+  email?: string;
+  profileImageUrl?: string;
+}
+
 // --- API Service Functions ---
 
 /**
@@ -49,6 +65,33 @@ export const createWorkspace = async (
 ): Promise<WorkspaceResponse> => {
   const response: AxiosResponse<WorkspaceResponse> = await userRepoClient.post(
     '/api/workspaces',
+    data,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+  return response.data;
+};
+
+/**
+ * 내 프로필 조회 (GET /api/profiles/me)
+ */
+export const getMyProfile = async (accessToken: string): Promise<UserProfileResponse> => {
+  const response: AxiosResponse<UserProfileResponse> = await userRepoClient.get('/api/profiles/me', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return response.data;
+};
+
+/**
+ * 내 프로필 업데이트 (PUT /api/profiles/me)
+ */
+export const updateMyProfile = async (
+  data: UpdateProfileRequest,
+  accessToken: string,
+): Promise<UserProfileResponse> => {
+  const response: AxiosResponse<UserProfileResponse> = await userRepoClient.put(
+    '/api/profiles/me',
     data,
     {
       headers: { Authorization: `Bearer ${accessToken}` },

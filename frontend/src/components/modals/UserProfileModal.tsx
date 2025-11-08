@@ -1,7 +1,8 @@
-import React, { useState, useRef, ChangeEvent } from 'react';
+import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { X, Camera, MessageSquare } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { UserProfile } from '../../types';
+import { getMyProfile, updateMyProfile } from '../../api/user/userService';
 
 interface UserProfileModalProps {
   user: UserProfile;
@@ -14,14 +15,42 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
   // Ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const mockUserId = 'user-c4t9x-d2e8y-p6r0s';
   const isGoogleConnected = true;
 
   // 상태 관리
+  const [profile, setProfile] = useState<UserProfile>(user);
   const [name, setName] = useState(user.name);
-  const [email, setEmail] = useState(user.email);
+  const [email, setEmail] = useState(user.email || '');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   // 💡 프로필 이미지 미리보기 URL 상태
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+
+  // 💡 모달이 열릴 때 최신 프로필 데이터 fetch
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const token = localStorage.getItem('accessToken');
+        if (!token) {
+          setError('인증 토큰이 없습니다. 다시 로그인해주세요.');
+          return;
+        }
+        const profileData = await getMyProfile(token);
+        setProfile(profileData);
+        setName(profileData.name);
+        setEmail(profileData.email || '');
+      } catch (err) {
+        console.error('[Profile Fetch Error]', err);
+        setError('프로필 정보를 불러오는데 실패했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   // --- 프로필 사진 변경 로직 ---
 
@@ -49,19 +78,49 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
 
   // DM 버튼 클릭 핸들러 (Mock)
   const handleDmClick = () => {
-    console.log(`[DM] ${user.name} 님에게 DM 보내기 요청`);
+    console.log(`[DM] ${profile.name} 님에게 DM 보내기 요청`);
     // TODO: 실제 DM 기능(채팅 모듈) 구현 필요
     onClose();
   };
 
-  // 저장 버튼 클릭 핸들러 (Mock)
-  const handleSave = () => {
-    console.log(`[저장] 사용자 정보 업데이트: ${name}, ${email}`);
-    if (avatarPreviewUrl) {
-      console.log(`[저장] 새 프로필 사진을 서버에 업로드해야 합니다.`);
-      // TODO: 여기서 실제 파일 업로드 API 호출 및 DB 업데이트 로직 구현
+  // 저장 버튼 클릭 핸들러
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        setError('인증 토큰이 없습니다. 다시 로그인해주세요.');
+        return;
+      }
+
+      console.log(`[저장] 사용자 정보 업데이트: ${name}, ${email}`);
+
+      // 프로필 업데이트 API 호출
+      const updatedProfile = await updateMyProfile(
+        {
+          name,
+          email: email || undefined,
+          profileImageUrl: avatarPreviewUrl || undefined,
+        },
+        token,
+      );
+
+      console.log('[저장 성공]', updatedProfile);
+      setProfile(updatedProfile);
+
+      if (avatarPreviewUrl) {
+        console.log(`[저장] 프로필 사진이 업데이트되었습니다.`);
+        // TODO: 실제 파일 업로드가 필요한 경우, 파일 업로드 API 호출 추가
+      }
+
+      onClose();
+    } catch (err) {
+      console.error('[Profile Update Error]', err);
+      setError('프로필 업데이트에 실패했습니다.');
+    } finally {
+      setLoading(false);
     }
-    onClose();
   };
 
   // --- 모달 닫힐 때 정리 ---
@@ -106,11 +165,17 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
                     alt="프로필 미리보기"
                     className={`w-28 h-28 object-cover ${theme.effects.borderWidth} ${theme.colors.border} rounded-full`}
                   />
+                ) : profile.profileImageUrl ? (
+                  <img
+                    src={profile.profileImageUrl}
+                    alt="프로필 이미지"
+                    className={`w-28 h-28 object-cover ${theme.effects.borderWidth} ${theme.colors.border} rounded-full`}
+                  />
                 ) : (
                   <div
                     className={`w-28 h-28 ${theme.colors.primary} ${theme.effects.borderWidth} ${theme.colors.border} flex items-center justify-center text-white text-4xl font-bold ${theme.effects.borderRadius} rounded-full`}
                   >
-                    {user.name[0]}
+                    {profile.name[0]}
                   </div>
                 )}
 
@@ -143,6 +208,20 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
               </button>
             </div>
 
+            {/* 에러 메시지 표시 */}
+            {error && (
+              <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm">
+                {error}
+              </div>
+            )}
+
+            {/* 로딩 표시 */}
+            {loading && (
+              <div className="p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded-md text-sm">
+                처리 중...
+              </div>
+            )}
+
             {/* 사용자 ID (읽기 전용) */}
             <div>
               <label className={`block ${theme.font.size.xs} mb-2 text-gray-500 font-medium`}>
@@ -152,9 +231,9 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
                 type="text"
                 readOnly
                 disabled
-                value={mockUserId}
-                className={`w-full px-3 py-2 border border-gray-300 text-gray-700 text-xs rounded-md 
-              disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed focus:outline-none`} // 💡 read-only 대신 disabled 사용 및 클래스 수정
+                value={profile.userId}
+                className={`w-full px-3 py-2 border border-gray-300 text-gray-700 text-xs rounded-md
+              disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed focus:outline-none`}
               />
             </div>
 
