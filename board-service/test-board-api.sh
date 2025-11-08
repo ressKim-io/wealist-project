@@ -81,11 +81,14 @@ test_api() {
     if [ "$http_code" -eq "$expected_status" ]; then
         print_success "$method $url - Status: $http_code"
         # Print formatted JSON to stderr (for display only)
-        if echo "$body" | jq '.' >/dev/null 2>&1; then
-            echo "$body" | jq '.' >&2
-        else
-            print_info "Response is not valid JSON:" >&2
-            echo "$body" >&2
+        # Skip JSON formatting for empty responses (like 204 No Content)
+        if [ -n "$body" ]; then
+            if echo "$body" | jq '.' >/dev/null 2>&1; then
+                echo "$body" | jq '.' >&2
+            else
+                print_info "Response is not valid JSON:" >&2
+                echo "$body" >&2
+            fi
         fi
         # Return raw body to stdout (for capture)
         echo "$body"
@@ -334,7 +337,7 @@ test_api "GET" "${BOARD_SERVICE_URL}/api/boards/${BOARD_ID}" \
     200
 
 # Get Boards by Project
-test_api "GET" "${BOARD_SERVICE_URL}/api/boards?project_id=${PROJECT_ID}" \
+test_api "GET" "${BOARD_SERVICE_URL}/api/boards?projectId=${PROJECT_ID}" \
     "Get Boards in Project" \
     "" \
     200
@@ -371,7 +374,7 @@ else
     print_info "Comment ID: $COMMENT_ID"
 
     # Get Comments by Board
-    test_api "GET" "${BOARD_SERVICE_URL}/api/comments?board_id=${BOARD_ID}" \
+    test_api "GET" "${BOARD_SERVICE_URL}/api/comments?boardId=${BOARD_ID}" \
         "Get Comments for Board" \
         "" \
         200
@@ -388,7 +391,7 @@ else
     test_api "DELETE" "${BOARD_SERVICE_URL}/api/comments/${COMMENT_ID}" \
         "Delete Comment" \
         "" \
-        200
+        204
 fi
 
 # ============================================================================
