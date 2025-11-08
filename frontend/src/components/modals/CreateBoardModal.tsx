@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { X, Tag, CheckSquare } from 'lucide-react';
+import { X, Tag, CheckSquare, AlertCircle, Calendar, User, Plus } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { CUSTOM_FIELD_COLORS } from '../../constants/colors';
 import {
   CustomStageResponse,
   CustomRoleResponse,
+  CustomImportanceResponse,
   getProjectStages,
   getProjectRoles,
+  getProjectImportances,
   createBoard,
+  createStage,
+  createRole,
+  createImportance,
 } from '../../api/board/boardService';
 
 interface CreateBoardModalProps {
@@ -30,28 +36,42 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
   const [content, setContent] = useState('');
   const [selectedStageId, setSelectedStageId] = useState(initialStageId || '');
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
+  const [selectedImportanceId, setSelectedImportanceId] = useState<string>('');
+  const [assigneeId, setAssigneeId] = useState<string>('');
+  const [dueDate, setDueDate] = useState<string>('');
 
   // Data state
   const [stages, setStages] = useState<CustomStageResponse[]>([]);
   const [roles, setRoles] = useState<CustomRoleResponse[]>([]);
+  const [importances, setImportances] = useState<CustomImportanceResponse[]>([]);
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingFields, setIsLoadingFields] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Inline creation state
+  const [showCreateStage, setShowCreateStage] = useState(false);
+  const [showCreateRole, setShowCreateRole] = useState(false);
+  const [showCreateImportance, setShowCreateImportance] = useState(false);
+  const [newFieldName, setNewFieldName] = useState('');
+  const [newFieldColor, setNewFieldColor] = useState(CUSTOM_FIELD_COLORS[0].hex);
+  const [newImportanceLevel, setNewImportanceLevel] = useState(1);
+
   // 1. Custom Fields 조회
   useEffect(() => {
     const fetchCustomFields = async () => {
       setIsLoadingFields(true);
       try {
-        const [stagesData, rolesData] = await Promise.all([
+        const [stagesData, rolesData, importancesData] = await Promise.all([
           getProjectStages(projectId, accessToken),
           getProjectRoles(projectId, accessToken),
+          getProjectImportances(projectId, accessToken),
         ]);
 
         setStages(stagesData);
         setRoles(rolesData);
+        setImportances(importancesData);
 
         // 기본값 설정
         if (!selectedStageId && stagesData.length > 0) {
@@ -60,8 +80,13 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
         if (rolesData.length > 0) {
           setSelectedRoleIds([rolesData[0].id]);
         }
+        // Importance는 선택 사항이므로 기본값 없음
 
-        console.log('✅ Custom Fields 로드:', { stages: stagesData.length, roles: rolesData.length });
+        console.log('✅ Custom Fields 로드:', {
+          stages: stagesData.length,
+          roles: rolesData.length,
+          importances: importancesData.length,
+        });
       } catch (err) {
         console.error('❌ Custom Fields 로드 실패:', err);
         setError('커스텀 필드를 불러오는데 실패했습니다.');
@@ -88,6 +113,73 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
         return [...prev, roleId];
       }
     });
+  };
+
+  // 2.1 Inline custom field creation handlers
+  const handleCreateCustomField = async (type: 'stage' | 'role' | 'importance') => {
+    if (!newFieldName.trim()) {
+      setError('이름을 입력해주세요.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      let newField:
+        | CustomStageResponse
+        | CustomRoleResponse
+        | CustomImportanceResponse
+        | undefined;
+
+      if (type === 'stage') {
+        newField = await createStage(
+          { projectId, name: newFieldName.trim(), color: newFieldColor },
+          accessToken,
+        );
+        setStages([...stages, newField as CustomStageResponse]);
+        setSelectedStageId(newField.id);
+        setShowCreateStage(false);
+      } else if (type === 'role') {
+        newField = await createRole(
+          { projectId, name: newFieldName.trim(), color: newFieldColor },
+          accessToken,
+        );
+        setRoles([...roles, newField as CustomRoleResponse]);
+        setSelectedRoleIds([...selectedRoleIds, newField.id]);
+        setShowCreateRole(false);
+      } else if (type === 'importance') {
+        newField = await createImportance(
+          { projectId, name: newFieldName.trim(), color: newFieldColor, level: newImportanceLevel },
+          accessToken,
+        );
+        setImportances([...importances, newField as CustomImportanceResponse]);
+        setSelectedImportanceId(newField.id);
+        setShowCreateImportance(false);
+      }
+
+      // Reset form
+      setNewFieldName('');
+      setNewFieldColor(CUSTOM_FIELD_COLORS[0].hex);
+      setNewImportanceLevel(1);
+      setError(null);
+
+      console.log(`✅ ${type} 생성 성공:`, newField);
+    } catch (err) {
+      const error = err as Error;
+      console.error(`❌ ${type} 생성 실패:`, error);
+      setError(error.message || '커스텀 필드 생성에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const cancelInlineCreation = () => {
+    setShowCreateStage(false);
+    setShowCreateRole(false);
+    setShowCreateImportance(false);
+    setNewFieldName('');
+    setNewFieldColor(CUSTOM_FIELD_COLORS[0].hex);
+    setNewImportanceLevel(1);
+    setError(null);
   };
 
   // 3. 제출 핸들러
@@ -119,6 +211,9 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
           content: content.trim() || undefined,
           stageId: selectedStageId,
           roleIds: selectedRoleIds,
+          importanceId: selectedImportanceId || undefined,
+          assigneeId: assigneeId || undefined,
+          dueDate: dueDate || undefined,
         },
         accessToken,
       );
@@ -134,6 +229,84 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
       setIsLoading(false);
     }
   };
+
+  // Helper: Color Picker Component
+  const renderColorPicker = (selectedColor: string, onColorChange: (color: string) => void) => (
+    <div className="grid grid-cols-6 gap-2 mt-2">
+      {CUSTOM_FIELD_COLORS.map((color) => (
+        <button
+          key={color.hex}
+          type="button"
+          className={`w-8 h-8 rounded-md border-2 transition-all ${
+            selectedColor === color.hex
+              ? 'border-gray-800 ring-2 ring-blue-500 scale-110'
+              : 'border-gray-300 hover:scale-105'
+          }`}
+          style={{ backgroundColor: color.hex }}
+          onClick={() => onColorChange(color.hex)}
+          title={color.name}
+          disabled={isLoading}
+        />
+      ))}
+    </div>
+  );
+
+  // Helper: Inline Creation Form
+  const renderInlineCreationForm = (
+    type: 'stage' | 'role' | 'importance',
+    title: string,
+  ) => (
+    <div className="mt-3 p-4 border-2 border-dashed border-blue-300 rounded-lg bg-blue-50">
+      <h4 className="text-sm font-semibold text-gray-700 mb-3">새 {title} 추가</h4>
+      <div className="space-y-3">
+        <input
+          type="text"
+          value={newFieldName}
+          onChange={(e) => setNewFieldName(e.target.value)}
+          placeholder={`${title} 이름`}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          disabled={isLoading}
+          autoFocus
+        />
+        <div>
+          <label className="text-xs text-gray-600 block mb-1">색상 선택</label>
+          {renderColorPicker(newFieldColor, setNewFieldColor)}
+        </div>
+        {type === 'importance' && (
+          <div>
+            <label className="text-xs text-gray-600 block mb-1">중요도 레벨 (1-5)</label>
+            <input
+              type="number"
+              min="1"
+              max="5"
+              value={newImportanceLevel}
+              onChange={(e) => setNewImportanceLevel(parseInt(e.target.value))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              disabled={isLoading}
+            />
+          </div>
+        )}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => handleCreateCustomField(type)}
+            className="flex-1 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-sm font-medium"
+            disabled={isLoading || !newFieldName.trim()}
+          >
+            추가
+          </button>
+          <button
+            type="button"
+            onClick={cancelInlineCreation}
+            className="flex-1 px-3 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition text-sm font-medium"
+            disabled={isLoading}
+          >
+            취소
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div
@@ -231,6 +404,18 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
                   </button>
                 ))}
               </div>
+              {!showCreateStage && !showCreateRole && !showCreateImportance && (
+                <button
+                  type="button"
+                  onClick={() => setShowCreateStage(true)}
+                  className="mt-2 w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition text-sm flex items-center justify-center gap-1"
+                  disabled={isLoading}
+                >
+                  <Plus className="w-4 h-4" />
+                  새 진행 단계 추가
+                </button>
+              )}
+              {showCreateStage && renderInlineCreationForm('stage', '진행 단계')}
             </div>
 
             {/* Role Selection */}
@@ -263,6 +448,110 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
                     )}
                   </button>
                 ))}
+              </div>
+              {!showCreateStage && !showCreateRole && !showCreateImportance && (
+                <button
+                  type="button"
+                  onClick={() => setShowCreateRole(true)}
+                  className="mt-2 w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition text-sm flex items-center justify-center gap-1"
+                  disabled={isLoading}
+                >
+                  <Plus className="w-4 h-4" />
+                  새 역할 추가
+                </button>
+              )}
+              {showCreateRole && renderInlineCreationForm('role', '역할')}
+            </div>
+
+            {/* Importance Selection */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <AlertCircle className="w-4 h-4 inline mr-1" />
+                중요도 (선택)
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {/* "없음" 버튼 */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedImportanceId('')}
+                  className={`px-3 py-2 rounded-lg border-2 transition text-sm font-medium ${
+                    selectedImportanceId === ''
+                      ? 'border-purple-500 bg-purple-50 text-purple-700'
+                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                  }`}
+                  disabled={isLoading}
+                >
+                  <span className="inline-block w-3 h-3 rounded-full mr-2 bg-gray-300" />
+                  없음
+                </button>
+                {importances.map((importance) => (
+                  <button
+                    key={importance.id}
+                    type="button"
+                    onClick={() => setSelectedImportanceId(importance.id)}
+                    className={`px-3 py-2 rounded-lg border-2 transition text-sm font-medium ${
+                      selectedImportanceId === importance.id
+                        ? 'border-purple-500 bg-purple-50 text-purple-700'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
+                    disabled={isLoading}
+                  >
+                    <span
+                      className="inline-block w-3 h-3 rounded-full mr-2"
+                      style={{ backgroundColor: importance.color || '#6B7280' }}
+                    />
+                    {importance.name}
+                    {'level' in importance && (
+                      <span className="ml-1 text-xs">Lv.{importance.level}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {!showCreateStage && !showCreateRole && !showCreateImportance && (
+                <button
+                  type="button"
+                  onClick={() => setShowCreateImportance(true)}
+                  className="mt-2 w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition text-sm flex items-center justify-center gap-1"
+                  disabled={isLoading}
+                >
+                  <Plus className="w-4 h-4" />
+                  새 중요도 추가
+                </button>
+              )}
+              {showCreateImportance && renderInlineCreationForm('importance', '중요도')}
+            </div>
+
+            {/* Assignee and Due Date */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Assignee */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <User className="w-4 h-4 inline mr-1" />
+                  담당자 (선택)
+                </label>
+                <input
+                  type="text"
+                  value={assigneeId}
+                  onChange={(e) => setAssigneeId(e.target.value)}
+                  placeholder="담당자 ID"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  disabled={isLoading}
+                />
+              </div>
+
+              {/* Due Date */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <Calendar className="w-4 h-4 inline mr-1" />
+                  마감일 (선택)
+                </label>
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  disabled={isLoading}
+                />
               </div>
             </div>
 
