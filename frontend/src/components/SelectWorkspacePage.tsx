@@ -214,7 +214,9 @@ const SelectWorkspacePage: React.FC = () => {
         {/* Step 1: 워크스페이스 목록 & 선택 */}
         {step === 'list' && (
           <>
-            <h2 className={`${theme.font.size.xl} font-extrabold ${theme.colors.text} mb-2`}>
+            <h2
+              className={`text-center ${theme.font.size.xl} font-extrabold ${theme.colors.text} mb-2`}
+            >
               워크스페이스 선택
             </h2>
             <p className={`text-center mb-6 ${theme.font.size.sm} ${theme.colors.subText}`}>
@@ -251,7 +253,13 @@ const SelectWorkspacePage: React.FC = () => {
                   <div
                     key={ws.id}
                     onClick={() => !isLoading && handleSelectExistingWorkspace(ws)}
-                    className={`w-full text-left p-4 hover:bg-blue-50 border-b border-gray-100 ${theme.colors.text} ${theme.font.size.sm} transition flex justify-between items-center last:border-b-0 ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    className={`w-full text-left p-4 hover:bg-blue-50 border-b border-gray-100 ${
+                      theme.colors.text
+                    } ${
+                      theme.font.size.sm
+                    } transition flex justify-between items-center last:border-b-0 ${
+                      isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                    }`}
                   >
                     <div>
                       <span className="font-semibold">{ws.name}</span>
@@ -260,18 +268,18 @@ const SelectWorkspacePage: React.FC = () => {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {ws.ownerId === userId && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleManageWorkspace(ws);
-                          }}
-                          className="p-2 hover:bg-gray-200 rounded-lg transition"
-                          title="워크스페이스 관리"
-                        >
-                          <Settings className="w-4 h-4 text-gray-600" />
-                        </button>
-                      )}
+                      {/* {ws.ownerId === userId && ( */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleManageWorkspace(ws);
+                        }}
+                        className="p-2 hover:bg-gray-200 rounded-lg transition"
+                        title="워크스페이스 관리"
+                      >
+                        <Settings className="w-4 h-4 text-gray-600" />
+                      </button>
+                      {/* )} */}
                       <span
                         className={`${theme.colors.info} ${theme.font.size.xs} px-2 py-1 border border-blue-200 rounded`}
                       >
@@ -301,7 +309,9 @@ const SelectWorkspacePage: React.FC = () => {
         {/* Step 2: 워크스페이스 정보 입력 */}
         {step === 'create-form' && (
           <>
-            <h2 className={`${theme.font.size.xl} font-extrabold ${theme.colors.text} mb-2`}>
+            <h2
+              className={`text-center ${theme.font.size.xl} font-extrabold ${theme.colors.text} mb-2`}
+            >
               새로운 워크스페이스 생성
             </h2>
             <p className={`text-center mb-6 ${theme.font.size.sm} ${theme.colors.subText}`}>

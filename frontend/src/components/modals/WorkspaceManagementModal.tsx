@@ -303,9 +303,7 @@ const WorkspaceManagementModal: React.FC<WorkspaceManagementModalProps> = ({
         >
           {/* 헤더 */}
           <div className="flex items-center justify-between p-4 pb-3">
-            <h2 className={`${theme.font.size.base} font-bold text-gray-800`}>
-              워크스페이스 관리 - {workspaceName}
-            </h2>
+            <h2 className={`${theme.font.size.base} font-bold text-gray-800`}>워크스페이스 관리</h2>
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-100 rounded-lg transition"
@@ -464,7 +462,9 @@ const WorkspaceManagementModal: React.FC<WorkspaceManagementModalProps> = ({
                 <button
                   onClick={handleSaveSettings}
                   disabled={loading}
-                  className={`w-full ${theme.colors.primary} text-white py-3 ${theme.effects.borderRadius} font-semibold transition ${
+                  className={`w-full ${theme.colors.primary} text-white py-3 ${
+                    theme.effects.borderRadius
+                  } font-semibold transition ${
                     loading ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
                   }`}
                 >
