@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
+/**
+ * ProjectModal - 프로젝트 생성 및 편집을 위한 통합 모달
+ * - project prop이 있으면 편집 모드, 없으면 생성 모드
+ */
 interface ProjectData {
   id: string;
   name: string;
