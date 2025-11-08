@@ -284,6 +284,8 @@ func (s *boardService) GetBoards(userID string, req *dto.GetBoardsRequest) (*dto
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
 	}
 
+	ctx := context.Background()
+
 	// 1. Check if user is project member
 	_, err = s.projectRepo.FindMemberByUserAndProject(userUUID, projectUUID)
 	if err != nil {
