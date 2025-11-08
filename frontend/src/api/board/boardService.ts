@@ -423,6 +423,207 @@ export const getProjectImportances = async (
 };
 
 // ============================================================================
+// Custom Fields CRUD API
+// ============================================================================
+
+export interface CreateCustomStageRequest {
+  projectId: string;
+  name: string;
+  color: string;
+}
+
+export interface UpdateCustomStageRequest {
+  name: string;
+  color: string;
+}
+
+export interface CreateCustomRoleRequest {
+  projectId: string;
+  name: string;
+  color: string;
+}
+
+export interface UpdateCustomRoleRequest {
+  name: string;
+  color: string;
+}
+
+export interface CreateCustomImportanceRequest {
+  projectId: string;
+  name: string;
+  color: string;
+  level: number; // 1-5
+}
+
+export interface UpdateCustomImportanceRequest {
+  name: string;
+  color: string;
+  level: number;
+}
+
+/**
+ * Stage를 생성합니다.
+ * POST /api/custom-fields/stages
+ */
+export const createStage = async (
+  data: CreateCustomStageRequest,
+  token: string,
+): Promise<CustomStageResponse> => {
+  try {
+    const response = await boardService.post('/api/custom-fields/stages', data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('createStage error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Stage를 수정합니다.
+ * PUT /api/custom-fields/stages/{id}
+ */
+export const updateStage = async (
+  stageId: string,
+  data: UpdateCustomStageRequest,
+  token: string,
+): Promise<CustomStageResponse> => {
+  try {
+    const response = await boardService.put(`/api/custom-fields/stages/${stageId}`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('updateStage error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Stage를 삭제합니다.
+ * DELETE /api/custom-fields/stages/{id}
+ */
+export const deleteStage = async (stageId: string, token: string): Promise<void> => {
+  try {
+    await boardService.delete(`/api/custom-fields/stages/${stageId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (error) {
+    console.error('deleteStage error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Role을 생성합니다.
+ * POST /api/custom-fields/roles
+ */
+export const createRole = async (
+  data: CreateCustomRoleRequest,
+  token: string,
+): Promise<CustomRoleResponse> => {
+  try {
+    const response = await boardService.post('/api/custom-fields/roles', data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('createRole error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Role을 수정합니다.
+ * PUT /api/custom-fields/roles/{id}
+ */
+export const updateRole = async (
+  roleId: string,
+  data: UpdateCustomRoleRequest,
+  token: string,
+): Promise<CustomRoleResponse> => {
+  try {
+    const response = await boardService.put(`/api/custom-fields/roles/${roleId}`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('updateRole error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Role을 삭제합니다.
+ * DELETE /api/custom-fields/roles/{id}
+ */
+export const deleteRole = async (roleId: string, token: string): Promise<void> => {
+  try {
+    await boardService.delete(`/api/custom-fields/roles/${roleId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (error) {
+    console.error('deleteRole error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Importance를 생성합니다.
+ * POST /api/custom-fields/importance
+ */
+export const createImportance = async (
+  data: CreateCustomImportanceRequest,
+  token: string,
+): Promise<CustomImportanceResponse> => {
+  try {
+    const response = await boardService.post('/api/custom-fields/importance', data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('createImportance error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Importance를 수정합니다.
+ * PUT /api/custom-fields/importance/{id}
+ */
+export const updateImportance = async (
+  importanceId: string,
+  data: UpdateCustomImportanceRequest,
+  token: string,
+): Promise<CustomImportanceResponse> => {
+  try {
+    const response = await boardService.put(`/api/custom-fields/importance/${importanceId}`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('updateImportance error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Importance를 삭제합니다.
+ * DELETE /api/custom-fields/importance/{id}
+ */
+export const deleteImportance = async (importanceId: string, token: string): Promise<void> => {
+  try {
+    await boardService.delete(`/api/custom-fields/importance/${importanceId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (error) {
+    console.error('deleteImportance error:', error);
+    throw error;
+  }
+};
+
+// ============================================================================
 // Comment API
 // ============================================================================
 

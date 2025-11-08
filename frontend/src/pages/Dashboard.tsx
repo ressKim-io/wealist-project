@@ -16,6 +16,8 @@ import { UserProfile } from '../types';
 import { BoardDetailModal } from '../components/modals/BoardDetailModal';
 import { CreateProjectModal } from '../components/modals/CreateProjectModal';
 import { CreateBoardModal } from '../components/modals/CreateBoardModal';
+import { CustomFieldManageModal } from '../components/modals/CustomFieldManageModal';
+import { FilterBar } from '../components/FilterBar';
 import {
   getProjects,
   getBoards,
@@ -168,6 +170,15 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showManageModal, setShowManageModal] = useState<boolean>(false);
+
+  // Filter/View 상태
+  const [currentView, setCurrentView] = useState<'stage' | 'role'>('stage');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [filterOption, setFilterOption] = useState<string>('all');
+
+  // TODO: Implement search and filter logic
+  console.log('Current filters:', { currentView, searchQuery, filterOption });
 
   // Ref
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -648,8 +659,19 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
               </div>
             </div>
           ) : selectedProject ? (
-            <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 min-w-max pb-4">
-              {columns.map((column, idx) => (
+            <>
+              {/* FilterBar */}
+              <FilterBar
+                onSearchChange={setSearchQuery}
+                onViewChange={setCurrentView}
+                onFilterChange={setFilterOption}
+                onManageClick={() => setShowManageModal(true)}
+                currentView={currentView}
+              />
+
+              {/* Boards */}
+              <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 min-w-max pb-4 mt-4">
+                {columns.map((column, idx) => (
                 <div
                   key={column.id}
                   onDragOver={(e) => {
@@ -777,7 +799,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                   </div>
                 </div>
               ))}
-            </div>
+              </div>
+            </>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center p-8">
               <Briefcase className="w-16 h-16 mb-4 text-gray-400" />
@@ -864,6 +887,15 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
           onClose={() => setSelectedBoardId(null)}
           onBoardUpdated={fetchBoards}
           onBoardDeleted={fetchBoards}
+        />
+      )}
+
+      {/* Custom Field Manage Modal */}
+      {showManageModal && selectedProject && (
+        <CustomFieldManageModal
+          projectId={selectedProject.id}
+          onClose={() => setShowManageModal(false)}
+          onFieldsUpdated={fetchBoards}
         />
       )}
     </div>
