@@ -45,10 +45,10 @@ export const getProjects = async (
 ): Promise<ProjectResponse[]> => {
   try {
     const response = await boardService.get('/api/projects', {
-      params: { workspaceId },
+      params: { workspace_id: workspaceId },
       headers: { Authorization: `Bearer ${token}` },
     });
-    return response.data.data || [];
+    return response.data.data?.projects || [];
   } catch (error) {
     console.error('getProjects error:', error);
     throw error;
