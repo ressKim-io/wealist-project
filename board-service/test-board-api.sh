@@ -415,7 +415,7 @@ test_api "GET" "${BOARD_SERVICE_URL}/api/projects/${PROJECT_ID}/orders/stage-boa
 test_api "PUT" "${BOARD_SERVICE_URL}/api/projects/${PROJECT_ID}/orders/role-columns" \
     "Update Role Column Order" \
     "{
-        \"columnIds\": [\"$ROLE_ID\", \"$CUSTOM_ROLE_ID\"]
+        \"itemIds\": [\"$ROLE_ID\", \"$CUSTOM_ROLE_ID\"]
     }" \
     200
 
@@ -423,7 +423,7 @@ test_api "PUT" "${BOARD_SERVICE_URL}/api/projects/${PROJECT_ID}/orders/role-colu
 test_api "PUT" "${BOARD_SERVICE_URL}/api/projects/${PROJECT_ID}/orders/stage-columns" \
     "Update Stage Column Order" \
     "{
-        \"columnIds\": [\"$STAGE_ID\", \"$CUSTOM_STAGE_ID\"]
+        \"itemIds\": [\"$STAGE_ID\", \"$CUSTOM_STAGE_ID\"]
     }" \
     200
 
@@ -432,7 +432,7 @@ if [ -n "$BOARD_ID" ] && [ "$BOARD_ID" != "null" ]; then
     test_api "PUT" "${BOARD_SERVICE_URL}/api/projects/${PROJECT_ID}/orders/role-boards/${ROLE_ID}" \
         "Update Board Order in Role" \
         "{
-            \"boardIds\": [\"$BOARD_ID\"]
+            \"itemIds\": [\"$BOARD_ID\"]
         }" \
         200
 fi

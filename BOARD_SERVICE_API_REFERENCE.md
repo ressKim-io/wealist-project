@@ -490,16 +490,24 @@ Content-Type: application/json
 
 Request:
 {
-  "columnIds": ["roleId1", "roleId2", ...]
+  "itemIds": ["roleId1", "roleId2", ...]
 }
 
-Response 200: { "message": "..." }
+Response 200: { "data": "역할 컬럼 순서가 업데이트되었습니다" }
 ```
 
 ### 4. Stage Column 순서 업데이트
 ```http
 PUT /api/projects/{id}/orders/stage-columns
-(동일)
+Authorization: Bearer <token>
+Content-Type: application/json
+
+Request:
+{
+  "itemIds": ["stageId1", "stageId2", ...]
+}
+
+Response 200: { "data": "진행단계 컬럼 순서가 업데이트되었습니다" }
 ```
 
 ### 5. Role 내 Board 순서 업데이트
@@ -510,16 +518,24 @@ Content-Type: application/json
 
 Request:
 {
-  "boardIds": ["boardId1", "boardId2", ...]
+  "itemIds": ["boardId1", "boardId2", ...]
 }
 
-Response 200: { "message": "..." }
+Response 200: { "data": "역할별 칸반 순서가 업데이트되었습니다" }
 ```
 
 ### 6. Stage 내 Board 순서 업데이트
 ```http
 PUT /api/projects/{id}/orders/stage-boards/{stageId}
-(동일)
+Authorization: Bearer <token>
+Content-Type: application/json
+
+Request:
+{
+  "itemIds": ["boardId1", "boardId2", ...]
+}
+
+Response 200: { "data": "진행단계별 칸반 순서가 업데이트되었습니다" }
 ```
 
 ---
@@ -538,11 +554,16 @@ PUT /api/projects/{id}/orders/stage-boards/{stageId}
    - ✅ `roleIds` (배열)
    - ❌ `roleId` (단일값)
 
-3. **Comment DELETE 응답**
+3. **User Order API 필드명**
+   - ✅ `itemIds` (모든 순서 업데이트에 공통 사용)
+   - ❌ `columnIds`, `boardIds` (사용 불가)
+   - Column 순서나 Board 순서 모두 `itemIds` 사용
+
+4. **Comment DELETE 응답**
    - ✅ 204 No Content
    - ❌ 200 OK
 
-4. **UUID 검증**
+5. **UUID 검증**
    - 모든 ID는 UUID v4 형식
    - 잘못된 형식 시 400 에러
 
