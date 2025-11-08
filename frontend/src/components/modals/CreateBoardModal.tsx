@@ -15,6 +15,7 @@ import {
   createRole,
   createImportance,
 } from '../../api/board/boardService';
+import { WorkspaceMember, getWorkspaceMembers } from '../../api/user/userService';
 
 interface CreateBoardModalProps {
   projectId: string;
@@ -27,9 +28,10 @@ interface CreateBoardModalProps {
     stageId: string;
     roleId: string;
     importanceId: string;
-    assigneeId: string;
+    assigneeIds: string[];
     dueDate: string;
   } | null;
+  workspaceId: string;
   onClose: () => void;
   onBoardCreated: () => void;
 }
@@ -38,6 +40,7 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
   projectId,
   stageId: initialStageId,
   editData,
+  workspaceId,
   onClose,
   onBoardCreated,
 }) => {
@@ -50,13 +53,18 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
   const [selectedStageId, setSelectedStageId] = useState(editData?.stageId || initialStageId || '');
   const [selectedRoleId, setSelectedRoleId] = useState<string>(editData?.roleId || '');
   const [selectedImportanceId, setSelectedImportanceId] = useState<string>(editData?.importanceId || '');
-  const [assigneeId, setAssigneeId] = useState<string>(editData?.assigneeId || '');
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>(editData?.assigneeIds || []);
   const [dueDate, setDueDate] = useState<string>(editData?.dueDate || '');
+
+  // Assignee search state
+  const [assigneeSearch, setAssigneeSearch] = useState('');
+  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
 
   // Data state
   const [stages, setStages] = useState<CustomStageResponse[]>([]);
   const [roles, setRoles] = useState<CustomRoleResponse[]>([]);
   const [importances, setImportances] = useState<CustomImportanceResponse[]>([]);
+  const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>([]);
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
@@ -116,7 +124,24 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
     fetchCustomFields();
   }, [projectId, accessToken]);
 
-  // 1.1 드롭다운 외부 클릭 감지
+  // 1.2 워크스페이스 멤버 조회
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        const members = await getWorkspaceMembers(workspaceId, accessToken);
+        setWorkspaceMembers(members);
+        console.log('✅ 워크스페이스 멤버 로드:', members.length);
+      } catch (err) {
+        console.error('❌ 워크스페이스 멤버 로드 실패:', err);
+      }
+    };
+
+    if (workspaceId) {
+      fetchMembers();
+    }
+  }, [workspaceId, accessToken]);
+
+  // 1.3 드롭다운 외부 클릭 감지
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -130,16 +155,19 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
       if (!target.closest('.importance-dropdown-container')) {
         setShowImportanceDropdown(false);
       }
+      if (!target.closest('.assignee-dropdown-container')) {
+        setShowAssigneeDropdown(false);
+      }
     };
 
-    if (showRoleDropdown || showStageDropdown || showImportanceDropdown) {
+    if (showRoleDropdown || showStageDropdown || showImportanceDropdown || showAssigneeDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showRoleDropdown, showStageDropdown, showImportanceDropdown]);
+  }, [showRoleDropdown, showStageDropdown, showImportanceDropdown, showAssigneeDropdown]);
 
   // 2. Inline custom field creation handlers
   const handleCreateCustomField = async (type: 'stage' | 'role' | 'importance') => {
@@ -237,7 +265,7 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
         stageId: selectedStageId,
         roleIds: [selectedRoleId],
         importanceId: selectedImportanceId || undefined,
-        assigneeId: assigneeId || undefined,
+        assigneeIds: selectedAssigneeIds.length > 0 ? selectedAssigneeIds : undefined,
         dueDate: dueDate || undefined,
       };
 
@@ -665,20 +693,99 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
 
             {/* Assignee and Due Date */}
             <div className="grid grid-cols-2 gap-4">
-              {/* Assignee */}
-              <div>
+              {/* Assignee - Multi Select */}
+              <div className="relative assignee-dropdown-container">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   <User className="w-4 h-4 inline mr-1" />
                   담당자 (선택)
                 </label>
+
+                {/* Selected Assignees Tags */}
+                {selectedAssigneeIds.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {selectedAssigneeIds.map((userId) => {
+                      const member = workspaceMembers.find((m) => m.userId === userId);
+                      return (
+                        <span
+                          key={userId}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
+                        >
+                          {member?.name || userId}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedAssigneeIds(selectedAssigneeIds.filter((id) => id !== userId));
+                            }}
+                            className="hover:text-blue-900"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Search Input */}
                 <input
                   type="text"
-                  value={assigneeId}
-                  onChange={(e) => setAssigneeId(e.target.value)}
-                  placeholder="담당자 ID"
+                  value={assigneeSearch}
+                  onChange={(e) => {
+                    setAssigneeSearch(e.target.value);
+                    setShowAssigneeDropdown(true);
+                  }}
+                  onFocus={() => setShowAssigneeDropdown(true)}
+                  placeholder="담당자 검색..."
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   disabled={isLoading}
                 />
+
+                {/* Dropdown */}
+                {showAssigneeDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {workspaceMembers
+                      .filter((member) =>
+                        member.name.toLowerCase().includes(assigneeSearch.toLowerCase()) ||
+                        member.email.toLowerCase().includes(assigneeSearch.toLowerCase())
+                      )
+                      .map((member) => {
+                        const isSelected = selectedAssigneeIds.includes(member.userId);
+                        return (
+                          <button
+                            key={member.userId}
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                setSelectedAssigneeIds(selectedAssigneeIds.filter((id) => id !== member.userId));
+                              } else {
+                                setSelectedAssigneeIds([...selectedAssigneeIds, member.userId]);
+                              }
+                              setAssigneeSearch('');
+                            }}
+                            className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center justify-between ${
+                              isSelected ? 'bg-blue-50' : ''
+                            }`}
+                          >
+                            <div>
+                              <div className="font-medium">{member.name}</div>
+                              <div className="text-xs text-gray-500">{member.email}</div>
+                            </div>
+                            {isSelected && (
+                              <CheckSquare className="w-4 h-4 text-blue-600" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    {workspaceMembers.filter((member) =>
+                      member.name.toLowerCase().includes(assigneeSearch.toLowerCase()) ||
+                      member.email.toLowerCase().includes(assigneeSearch.toLowerCase())
+                    ).length === 0 && (
+                      <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                        검색 결과가 없습니다
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Due Date */}
