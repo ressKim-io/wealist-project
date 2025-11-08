@@ -635,6 +635,20 @@ export const getBoards = async (
  * @returns 보드 정보
  */
 export const getBoard = async (boardId: string, token: string): Promise<BoardResponse> => {
+  if (USE_MOCK_DATA) {
+    console.log('[MOCK] getBoard 호출:', boardId);
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        const board = MOCK_BOARDS.find((b) => b.id === boardId);
+        if (board) {
+          resolve(board);
+        } else {
+          reject(new Error('보드를 찾을 수 없습니다.'));
+        }
+      }, 300);
+    });
+  }
+
   try {
     const response = await boardService.get(`/api/boards/${boardId}`, {
       headers: { Authorization: `Bearer ${token}` },

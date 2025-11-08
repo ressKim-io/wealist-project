@@ -921,10 +921,9 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
         />
       )}
 
-      {selectedBoardId && selectedProject && (
+      {selectedBoardId && (
         <BoardDetailModal
           boardId={selectedBoardId}
-          projectId={selectedProject.id}
           onClose={() => setSelectedBoardId(null)}
           onBoardUpdated={fetchBoards}
           onBoardDeleted={fetchBoards}

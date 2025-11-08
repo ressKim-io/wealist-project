@@ -35,7 +35,7 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedStageId, setSelectedStageId] = useState(initialStageId || '');
-  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
+  const [selectedRoleId, setSelectedRoleId] = useState<string>('');
   const [selectedImportanceId, setSelectedImportanceId] = useState<string>('');
   const [assigneeId, setAssigneeId] = useState<string>('');
   const [dueDate, setDueDate] = useState<string>('');
@@ -83,7 +83,7 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
           setSelectedStageId(stagesData[0].id);
         }
         if (rolesData.length > 0) {
-          setSelectedRoleIds([rolesData[0].id]);
+          setSelectedRoleId(rolesData[0].id);
         }
         // Importance는 선택 사항이므로 기본값 없음
 
@@ -128,24 +128,7 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
     };
   }, [showRoleDropdown, showStageDropdown, showImportanceDropdown]);
 
-  // 2. Role 토글 핸들러
-  const toggleRole = (roleId: string) => {
-    setSelectedRoleIds((prev) => {
-      if (prev.includes(roleId)) {
-        // 최소 1개는 선택되어야 함
-        if (prev.length === 1) {
-          setError('최소 1개의 역할을 선택해야 합니다.');
-          return prev;
-        }
-        return prev.filter((id) => id !== roleId);
-      } else {
-        setError(null);
-        return [...prev, roleId];
-      }
-    });
-  };
-
-  // 2.1 Inline custom field creation handlers
+  // 2. Inline custom field creation handlers
   const handleCreateCustomField = async (type: 'stage' | 'role' | 'importance') => {
     if (!newFieldName.trim()) {
       setError('이름을 입력해주세요.');
@@ -174,7 +157,7 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
           accessToken,
         );
         setRoles([...roles, newField as CustomRoleResponse]);
-        setSelectedRoleIds([...selectedRoleIds, newField.id]);
+        setSelectedRoleId(newField.id);
         setShowCreateRole(false);
       } else if (type === 'importance') {
         newField = await createImportance(
@@ -225,8 +208,8 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
       setError('진행 단계를 선택해주세요.');
       return;
     }
-    if (selectedRoleIds.length === 0) {
-      setError('최소 1개의 역할을 선택해야 합니다.');
+    if (!selectedRoleId) {
+      setError('역할을 선택해주세요.');
       return;
     }
 
@@ -240,7 +223,7 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
           title: title.trim(),
           content: content.trim() || undefined,
           stageId: selectedStageId,
-          roleIds: selectedRoleIds,
+          roleIds: [selectedRoleId],
           importanceId: selectedImportanceId || undefined,
           assigneeId: assigneeId || undefined,
           dueDate: dueDate || undefined,
@@ -486,84 +469,67 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
               </div>
 
               {/* Role Selection */}
-              <div className="relative">
+              <div className="relative role-dropdown-container">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   <Tag className="w-4 h-4 inline mr-1" />
-                  역할 선택 <span className="text-red-500">*</span>
+                  역할 <span className="text-red-500">*</span>
                 </label>
-                {/* 선택된 역할 태그들 */}
-                <div className="flex flex-wrap gap-1 mb-2 min-h-[32px]">
-                  {selectedRoleIds.map((roleId) => {
-                    const role = roles.find((r) => r.id === roleId);
-                    if (!role) return null;
-                    return (
-                      <div
-                        key={roleId}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded-lg text-xs font-medium"
+                <button
+                  type="button"
+                  onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition text-sm text-left flex items-center justify-between"
+                  disabled={isLoading}
+                >
+                  <span className="flex items-center gap-2">
+                    {selectedRoleId && roles.find((r) => r.id === selectedRoleId) && (
+                      <>
+                        <span
+                          className="w-3 h-3 rounded-full"
+                          style={{
+                            backgroundColor:
+                              roles.find((r) => r.id === selectedRoleId)?.color || '#6B7280',
+                          }}
+                        />
+                        {roles.find((r) => r.id === selectedRoleId)?.name}
+                      </>
+                    )}
+                  </span>
+                  <Tag className="w-4 h-4 text-gray-400" />
+                </button>
+                {/* 드롭다운 메뉴 */}
+                {showRoleDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {roles.map((role) => (
+                      <button
+                        key={role.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedRoleId(role.id);
+                          setShowRoleDropdown(false);
+                        }}
+                        className={`w-full px-3 py-2 text-left hover:bg-gray-100 transition text-sm flex items-center gap-2 ${
+                          selectedRoleId === role.id ? 'bg-blue-50' : ''
+                        }`}
                       >
                         <span
-                          className="w-2 h-2 rounded-full"
+                          className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: role.color || '#6B7280' }}
                         />
                         {role.name}
-                        <button
-                          type="button"
-                          onClick={() => toggleRole(roleId)}
-                          className="text-green-600 hover:text-green-800"
-                          disabled={isLoading}
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* 역할 추가 버튼 */}
-                <div className="relative role-dropdown-container">
-                  <button
-                    type="button"
-                    onClick={() => setShowRoleDropdown(!showRoleDropdown)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition text-sm text-left flex items-center justify-between"
-                    disabled={isLoading}
-                  >
-                    <span className="text-gray-600">+ 역할 추가</span>
-                    <Tag className="w-4 h-4 text-gray-400" />
-                  </button>
-                  {/* 드롭다운 메뉴 */}
-                  {showRoleDropdown && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                      {roles
-                        .filter((role) => !selectedRoleIds.includes(role.id))
-                        .map((role) => (
-                          <button
-                            key={role.id}
-                            type="button"
-                            onClick={() => {
-                              toggleRole(role.id);
-                              setShowRoleDropdown(false);
-                            }}
-                            className="w-full px-3 py-2 text-left hover:bg-gray-100 transition text-sm flex items-center gap-2"
-                          >
-                            <span
-                              className="w-3 h-3 rounded-full"
-                              style={{ backgroundColor: role.color || '#6B7280' }}
-                            />
-                            {role.name}
-                          </button>
-                        ))}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowRoleDropdown(false);
-                          setShowCreateRole(true);
-                        }}
-                        className="w-full px-3 py-2 text-left hover:bg-blue-50 transition text-sm text-blue-600 font-medium border-t border-gray-200 flex items-center gap-2"
-                      >
-                        <Plus className="w-4 h-4" />+ 새 역할 추가
                       </button>
-                    </div>
-                  )}
-                </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowRoleDropdown(false);
+                        setShowCreateRole(true);
+                      }}
+                      className="w-full px-3 py-2 text-left hover:bg-blue-50 transition text-sm text-blue-600 font-medium border-t border-gray-200 flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />+ 새 역할 추가
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 

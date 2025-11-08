@@ -18,6 +18,7 @@ import {
   getProjectStages,
   getProjectRoles,
   getProjectImportances,
+  getBoard,
   updateBoard,
   deleteBoard,
 } from '../../api/board/boardService';
@@ -27,16 +28,6 @@ import {
  */
 interface BoardDetailModalProps {
   boardId: string;
-  projectId: string;
-  initialData?: {
-    title: string;
-    content?: string;
-    stageId: string;
-    roleIds: string[];
-    importanceId?: string;
-    assigneeId?: string;
-    dueDate?: string;
-  };
   onClose: () => void;
   onBoardUpdated: () => void;
   onBoardDeleted: () => void;
@@ -44,8 +35,6 @@ interface BoardDetailModalProps {
 
 export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
   boardId,
-  projectId,
-
   onClose,
   onBoardUpdated,
   onBoardDeleted,
@@ -57,15 +46,14 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
   const [isEditMode, setIsEditMode] = useState(false);
 
   // Form state
-  // const [title, setTitle] = useState(initialData.title);
-  // const [content, setContent] = useState(initialData.content || '');
-  // const [selectedStageId, setSelectedStageId] = useState(initialData.stageId);
-  // const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>(initialData.roleIds);
-  // const [selectedImportanceId, setSelectedImportanceId] = useState<string>(
-  //   initialData.importanceId || '',
-  // );
-  // const [assigneeId, setAssigneeId] = useState<string>(initialData.assigneeId || '');
-  // const [dueDate, setDueDate] = useState<string>(initialData.dueDate || '');
+  const [projectId, setProjectId] = useState<string>('');
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [selectedStageId, setSelectedStageId] = useState('');
+  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
+  const [selectedImportanceId, setSelectedImportanceId] = useState<string>('');
+  const [assigneeId, setAssigneeId] = useState<string>('');
+  const [dueDate, setDueDate] = useState<string>('');
 
   // Data state
   const [stages, setStages] = useState<CustomStageResponse[]>([]);
@@ -74,6 +62,7 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingBoard, setIsLoadingBoard] = useState(true);
   const [isLoadingFields, setIsLoadingFields] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,8 +70,39 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
 
-  // Custom Fields 조회
+  // 보드 데이터 조회
   useEffect(() => {
+    const fetchBoard = async () => {
+      setIsLoadingBoard(true);
+      try {
+        const boardData = await getBoard(boardId, accessToken);
+
+        // 보드 데이터로 상태 초기화
+        setProjectId(boardData.projectId);
+        setTitle(boardData.title);
+        setContent(boardData.content || '');
+        setSelectedStageId(boardData.stage?.id || '');
+        setSelectedRoleIds(boardData.roles?.map(r => r.id) || []);
+        setSelectedImportanceId(boardData.importance?.id || '');
+        setAssigneeId(boardData.assignee?.userId || '');
+        setDueDate(boardData.dueDate || '');
+
+        console.log('✅ 보드 데이터 로드 성공:', boardData);
+      } catch (err) {
+        console.error('❌ 보드 데이터 로드 실패:', err);
+        setError('보드 정보를 불러오는데 실패했습니다.');
+      } finally {
+        setIsLoadingBoard(false);
+      }
+    };
+
+    fetchBoard();
+  }, [boardId, accessToken]);
+
+  // Custom Fields 조회 (projectId가 설정된 후)
+  useEffect(() => {
+    if (!projectId) return;
+
     const fetchCustomFields = async () => {
       setIsLoadingFields(true);
       try {
@@ -171,6 +191,28 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
       setNewComment('');
     }
   };
+
+  // 로딩 중이면 로딩 UI 표시
+  if (isLoadingBoard || isLoadingFields) {
+    return (
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[90]"
+        onClick={onClose}
+      >
+        <div
+          className={`relative w-full max-w-2xl ${theme.colors.card} p-6 ${theme.effects.borderRadius} shadow-xl`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-gray-600">보드 정보를 불러오는 중...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
