@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Send,
   Edit2,
+  Trash2,
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import {
@@ -19,7 +20,6 @@ import {
   getProjectRoles,
   getProjectImportances,
   getBoard,
-  updateBoard,
   deleteBoard,
 } from '../../api/board/boardService';
 
@@ -31,6 +31,17 @@ interface BoardDetailModalProps {
   onClose: () => void;
   onBoardUpdated: () => void;
   onBoardDeleted: () => void;
+  onEdit: (boardData: {
+    boardId: string;
+    projectId: string;
+    title: string;
+    content: string;
+    stageId: string;
+    roleId: string;
+    importanceId: string;
+    assigneeId: string;
+    dueDate: string;
+  }) => void;
 }
 
 export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
@@ -38,12 +49,10 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
   onClose,
   onBoardUpdated,
   onBoardDeleted,
+  onEdit,
 }) => {
   const { theme } = useTheme();
   const accessToken = localStorage.getItem('access_token') || '';
-
-  // Edit mode state
-  const [isEditMode, setIsEditMode] = useState(false);
 
   // Form state
   const [projectId, setProjectId] = useState<string>('');
@@ -127,42 +136,6 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
     fetchCustomFields();
   }, [projectId, accessToken]);
 
-  const handleSave = async () => {
-    if (!title.trim()) {
-      setError('보드 제목은 필수입니다.');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      await updateBoard(
-        boardId,
-        {
-          title: title.trim(),
-          content: content.trim() || undefined,
-          stageId: selectedStageId,
-          roleIds: [selectedRoleId], // 단일 역할을 배열로 변환
-          importanceId: selectedImportanceId || undefined,
-          assigneeId: assigneeId || undefined,
-          dueDate: dueDate || undefined,
-        },
-        accessToken,
-      );
-
-      console.log('✅ 보드 수정 성공:', title);
-      setIsEditMode(false);
-      onBoardUpdated();
-    } catch (err) {
-      const error = err as Error;
-      console.error('❌ 보드 수정 실패:', error);
-      setError(error.message || '보드 수정에 실패했습니다.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleDelete = async () => {
     if (!confirm('정말로 이 보드를 삭제하시겠습니까?')) return;
 
@@ -230,27 +203,9 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
         {/* Header */}
         <div className="flex items-start justify-between mb-4 pb-4 border-b border-gray-200">
           <div className="flex-1 pr-4">
-            {isEditMode ? (
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full text-xl font-bold mb-2 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={isLoading}
-              />
-            ) : (
-              <h2 className="text-xl font-bold text-gray-800 mb-2">{title}</h2>
-            )}
+            <h2 className="text-xl font-bold text-gray-800 mb-2">{title}</h2>
           </div>
           <div className="flex gap-2">
-            {!isEditMode && (
-              <button
-                onClick={() => setIsEditMode(true)}
-                className="p-2 rounded-full hover:bg-gray-100 text-gray-500 hover:text-blue-600 transition"
-              >
-                <Edit2 className="w-5 h-5" />
-              </button>
-            )}
             <button
               onClick={onClose}
               className="p-2 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition"
@@ -272,20 +227,9 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
           {/* Description */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">설명</label>
-            {isEditMode ? (
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="보드 설명을 입력하세요"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
-                rows={4}
-                disabled={isLoading}
-              />
-            ) : (
-              <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                {content || '설명이 없습니다.'}
-              </p>
-            )}
+            <p className="text-sm text-gray-600 whitespace-pre-wrap">
+              {content || '설명이 없습니다.'}
+            </p>
           </div>
 
           {/* Stage */}
@@ -294,33 +238,18 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
               <CheckSquare className="w-4 h-4 inline mr-1" />
               진행 단계
             </label>
-            {isEditMode ? (
-              <select
-                value={selectedStageId}
-                onChange={(e) => setSelectedStageId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
-                disabled={isLoading || isLoadingFields}
-              >
-                {stages.map((stage) => (
-                  <option key={stage.id} value={stage.id}>
-                    {stage.name}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span
-                  className="w-3 h-3 rounded-full"
-                  style={{
-                    backgroundColor:
-                      stages.find((s) => s.id === selectedStageId)?.color || '#6B7280',
-                  }}
-                />
-                <span className="text-sm">
-                  {stages.find((s) => s.id === selectedStageId)?.name || '알 수 없음'}
-                </span>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <span
+                className="w-3 h-3 rounded-full"
+                style={{
+                  backgroundColor:
+                    stages.find((s) => s.id === selectedStageId)?.color || '#6B7280',
+                }}
+              />
+              <span className="text-sm">
+                {stages.find((s) => s.id === selectedStageId)?.name || '알 수 없음'}
+              </span>
+            </div>
           </div>
 
           {/* Role (단일 선택) */}
@@ -329,32 +258,17 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
               <Tag className="w-4 h-4 inline mr-1" />
               역할
             </label>
-            {isEditMode ? (
-              <select
-                value={selectedRoleId}
-                onChange={(e) => setSelectedRoleId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
-                disabled={isLoading || isLoadingFields}
-              >
-                {roles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span
-                  className="w-3 h-3 rounded-full"
-                  style={{
-                    backgroundColor: roles.find((r) => r.id === selectedRoleId)?.color || '#6B7280',
-                  }}
-                />
-                <span className="text-sm">
-                  {roles.find((r) => r.id === selectedRoleId)?.name || '알 수 없음'}
-                </span>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <span
+                className="w-3 h-3 rounded-full"
+                style={{
+                  backgroundColor: roles.find((r) => r.id === selectedRoleId)?.color || '#6B7280',
+                }}
+              />
+              <span className="text-sm">
+                {roles.find((r) => r.id === selectedRoleId)?.name || '알 수 없음'}
+              </span>
+            </div>
           </div>
 
           {/* Importance */}
@@ -363,42 +277,25 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
               <AlertCircle className="w-4 h-4 inline mr-1" />
               중요도
             </label>
-            {isEditMode ? (
-              <select
-                value={selectedImportanceId}
-                onChange={(e) => setSelectedImportanceId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
-                disabled={isLoading || isLoadingFields}
-              >
-                <option value="">없음</option>
-                {importances.map((importance) => (
-                  <option key={importance.id} value={importance.id}>
-                    {importance.name}
-                    {'level' in importance ? ` (Lv.${importance.level})` : ''}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className="flex items-center gap-2">
-                {selectedImportanceId ? (
-                  <>
-                    <span
-                      className="w-3 h-3 rounded-full"
-                      style={{
-                        backgroundColor:
-                          importances.find((i) => i.id === selectedImportanceId)?.color ||
-                          '#6B7280',
-                      }}
-                    />
-                    <span className="text-sm">
-                      {importances.find((i) => i.id === selectedImportanceId)?.name || '알 수 없음'}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-sm text-gray-500">없음</span>
-                )}
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {selectedImportanceId ? (
+                <>
+                  <span
+                    className="w-3 h-3 rounded-full"
+                    style={{
+                      backgroundColor:
+                        importances.find((i) => i.id === selectedImportanceId)?.color ||
+                        '#6B7280',
+                    }}
+                  />
+                  <span className="text-sm">
+                    {importances.find((i) => i.id === selectedImportanceId)?.name || '알 수 없음'}
+                  </span>
+                </>
+              ) : (
+                <span className="text-sm text-gray-500">없음</span>
+              )}
+            </div>
           </div>
 
           {/* Assignee and Due Date */}
@@ -408,18 +305,7 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
                 <User className="w-4 h-4 inline mr-1" />
                 담당자
               </label>
-              {isEditMode ? (
-                <input
-                  type="text"
-                  value={assigneeId}
-                  onChange={(e) => setAssigneeId(e.target.value)}
-                  placeholder="담당자 ID"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  disabled={isLoading}
-                />
-              ) : (
-                <p className="text-sm text-gray-600">{assigneeId || '없음'}</p>
-              )}
+              <p className="text-sm text-gray-600">{assigneeId || '없음'}</p>
             </div>
 
             <div>
@@ -427,19 +313,9 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
                 <Calendar className="w-4 h-4 inline mr-1" />
                 마감일
               </label>
-              {isEditMode ? (
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  disabled={isLoading}
-                />
-              ) : (
-                <p className="text-sm text-gray-600">
-                  {dueDate ? new Date(dueDate).toLocaleDateString('ko-KR') : '없음'}
-                </p>
-              )}
+              <p className="text-sm text-gray-600">
+                {dueDate ? new Date(dueDate).toLocaleDateString('ko-KR') : '없음'}
+              </p>
             </div>
           </div>
         </div>
@@ -493,32 +369,34 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
 
         {/* Actions */}
         <div className="flex gap-3 mt-6 pt-4 border-t border-gray-300">
-          {isEditMode ? (
-            <>
-              <button
-                onClick={() => setIsEditMode(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition"
-                disabled={isLoading}
-              >
-                취소
-              </button>
-              <button
-                onClick={handleSave}
-                className="flex-1 px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition disabled:opacity-50"
-                disabled={isLoading}
-              >
-                {isLoading ? '저장 중...' : '저장'}
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={handleDelete}
-              className="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition disabled:opacity-50"
-              disabled={isLoading}
-            >
-              보드 삭제
-            </button>
-          )}
+          <button
+            onClick={() => {
+              onEdit({
+                boardId,
+                projectId,
+                title,
+                content,
+                stageId: selectedStageId,
+                roleId: selectedRoleId,
+                importanceId: selectedImportanceId,
+                assigneeId,
+                dueDate,
+              });
+            }}
+            className="flex-1 px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
+            disabled={isLoading}
+          >
+            <Edit2 className="w-4 h-4" />
+            보드 수정
+          </button>
+          <button
+            onClick={handleDelete}
+            className="flex-1 px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
+            disabled={isLoading}
+          >
+            <Trash2 className="w-4 h-4" />
+            보드 삭제
+          </button>
         </div>
       </div>
     </div>

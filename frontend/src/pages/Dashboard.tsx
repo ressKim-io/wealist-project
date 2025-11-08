@@ -202,6 +202,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   const [showCreateBoard, setShowCreateBoard] = useState<boolean>(false);
   const [createBoardStageId, setCreateBoardStageId] = useState<string>('');
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
+  const [editBoardData, setEditBoardData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showManageModal, setShowManageModal] = useState<boolean>(false);
@@ -929,7 +930,11 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
         <CreateBoardModal
           projectId={selectedProject.id}
           stageId={createBoardStageId}
-          onClose={() => setShowCreateBoard(false)}
+          editData={editBoardData}
+          onClose={() => {
+            setShowCreateBoard(false);
+            setEditBoardData(null);
+          }}
           onBoardCreated={fetchBoards}
         />
       )}
@@ -940,6 +945,11 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
           onClose={() => setSelectedBoardId(null)}
           onBoardUpdated={fetchBoards}
           onBoardDeleted={fetchBoards}
+          onEdit={(boardData) => {
+            setEditBoardData(boardData);
+            setSelectedBoardId(null);
+            setShowCreateBoard(true);
+          }}
         />
       )}
 

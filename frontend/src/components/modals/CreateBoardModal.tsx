@@ -10,6 +10,7 @@ import {
   getProjectRoles,
   getProjectImportances,
   createBoard,
+  updateBoard,
   createStage,
   createRole,
   createImportance,
@@ -18,6 +19,17 @@ import {
 interface CreateBoardModalProps {
   projectId: string;
   stageId?: string; // 컬럼에서 열었을 때 미리 선택된 stageId
+  editData?: {
+    boardId: string;
+    projectId: string;
+    title: string;
+    content: string;
+    stageId: string;
+    roleId: string;
+    importanceId: string;
+    assigneeId: string;
+    dueDate: string;
+  } | null;
   onClose: () => void;
   onBoardCreated: () => void;
 }
@@ -25,6 +37,7 @@ interface CreateBoardModalProps {
 export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
   projectId,
   stageId: initialStageId,
+  editData,
   onClose,
   onBoardCreated,
 }) => {
@@ -32,13 +45,13 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
   const accessToken = localStorage.getItem('access_token') || '';
 
   // Form state
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [selectedStageId, setSelectedStageId] = useState(initialStageId || '');
-  const [selectedRoleId, setSelectedRoleId] = useState<string>('');
-  const [selectedImportanceId, setSelectedImportanceId] = useState<string>('');
-  const [assigneeId, setAssigneeId] = useState<string>('');
-  const [dueDate, setDueDate] = useState<string>('');
+  const [title, setTitle] = useState(editData?.title || '');
+  const [content, setContent] = useState(editData?.content || '');
+  const [selectedStageId, setSelectedStageId] = useState(editData?.stageId || initialStageId || '');
+  const [selectedRoleId, setSelectedRoleId] = useState<string>(editData?.roleId || '');
+  const [selectedImportanceId, setSelectedImportanceId] = useState<string>(editData?.importanceId || '');
+  const [assigneeId, setAssigneeId] = useState<string>(editData?.assigneeId || '');
+  const [dueDate, setDueDate] = useState<string>(editData?.dueDate || '');
 
   // Data state
   const [stages, setStages] = useState<CustomStageResponse[]>([]);
@@ -217,27 +230,33 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
     setError(null);
 
     try {
-      await createBoard(
-        {
-          projectId,
-          title: title.trim(),
-          content: content.trim() || undefined,
-          stageId: selectedStageId,
-          roleIds: [selectedRoleId],
-          importanceId: selectedImportanceId || undefined,
-          assigneeId: assigneeId || undefined,
-          dueDate: dueDate || undefined,
-        },
-        accessToken,
-      );
+      const boardData = {
+        projectId,
+        title: title.trim(),
+        content: content.trim() || undefined,
+        stageId: selectedStageId,
+        roleIds: [selectedRoleId],
+        importanceId: selectedImportanceId || undefined,
+        assigneeId: assigneeId || undefined,
+        dueDate: dueDate || undefined,
+      };
 
-      console.log('✅ 보드 생성 성공:', title);
+      if (editData) {
+        // 수정 모드
+        await updateBoard(editData.boardId, boardData, accessToken);
+        console.log('✅ 보드 수정 성공:', title);
+      } else {
+        // 생성 모드
+        await createBoard(boardData, accessToken);
+        console.log('✅ 보드 생성 성공:', title);
+      }
+
       onBoardCreated();
       onClose();
     } catch (err) {
       const error = err as Error;
-      console.error('❌ 보드 생성 실패:', error);
-      setError(error.message || '보드 생성에 실패했습니다.');
+      console.error(`❌ 보드 ${editData ? '수정' : '생성'} 실패:`, error);
+      setError(error.message || `보드 ${editData ? '수정' : '생성'}에 실패했습니다.`);
     } finally {
       setIsLoading(false);
     }
@@ -344,7 +363,7 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-4 sticky top-0 bg-white pb-2 border-b">
-          <h2 className="text-xl font-bold text-gray-800">새 보드 만들기</h2>
+          <h2 className="text-xl font-bold text-gray-800">{editData ? '보드 수정' : '새 보드 만들기'}</h2>
           <button
             onClick={onClose}
             className="p-2 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition"
@@ -695,7 +714,7 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
                 }`}
                 disabled={isLoading}
               >
-                {isLoading ? '생성 중...' : '보드 만들기'}
+                {isLoading ? (editData ? '수정 중...' : '생성 중...') : (editData ? '보드 수정' : '보드 만들기')}
               </button>
             </div>
           </form>
