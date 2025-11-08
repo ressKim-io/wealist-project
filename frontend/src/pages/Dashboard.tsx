@@ -923,6 +923,22 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                           </tr>
                         ));
                       })()}
+
+                      {/* Add Board Row */}
+                      <tr
+                        onClick={() => {
+                          setCreateBoardStageId('');
+                          setShowCreateBoard(true);
+                        }}
+                        className="border-t-2 border-gray-300 hover:bg-blue-50 cursor-pointer transition"
+                      >
+                        <td colSpan={6} className="px-4 py-4">
+                          <div className="flex items-center justify-center gap-2 text-blue-600 font-semibold">
+                            <Plus className="w-5 h-5" />
+                            <span>보드 추가</span>
+                          </div>
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
                   {columns.flatMap((col) => col.boards).length === 0 && (
