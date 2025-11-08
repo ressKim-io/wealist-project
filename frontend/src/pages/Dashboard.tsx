@@ -727,7 +727,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
               {currentLayout === 'table' ? (
                 // Table Layout
                 <div className="mt-4 overflow-x-auto">
-                  <table className={`w-full ${theme.colors.card} ${theme.effects.borderRadius} overflow-hidden`}>
+                  <table className={`w-full ${theme.colors.card} ${theme.effects.borderRadius} overflow-hidden shadow-md`}>
                     <thead className="bg-gray-100 border-b border-gray-200">
                       <tr>
                         {/* Title Column */}
