@@ -213,9 +213,11 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   const [currentView, setCurrentView] = useState<'stage' | 'role'>('stage');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterOption, setFilterOption] = useState<string>('all');
+  const [currentLayout, setCurrentLayout] = useState<'table' | 'board'>('board');
+  const [showCompleted, setShowCompleted] = useState<boolean>(false);
 
   // TODO: Implement search and filter logic
-  console.log('Current filters:', { currentView, searchQuery, filterOption });
+  console.log('Current filters:', { currentView, searchQuery, filterOption, currentLayout, showCompleted });
 
   // Ref
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -692,6 +694,10 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                 onFilterChange={setFilterOption}
                 onManageClick={() => setShowManageModal(true)}
                 currentView={currentView}
+                onLayoutChange={setCurrentLayout}
+                onShowCompletedChange={setShowCompleted}
+                currentLayout={currentLayout}
+                showCompleted={showCompleted}
               />
 
               {/* Boards */}
