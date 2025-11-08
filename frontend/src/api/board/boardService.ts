@@ -536,6 +536,7 @@ export interface BoardResponse {
   roles?: any[];
   importance?: any;
   assignee?: any;
+  assignees?: any[]; // 복수 담당자 지원
   author?: any;
   dueDate?: string;
   createdAt: string;
@@ -549,7 +550,8 @@ export interface CreateBoardRequest {
   stageId: string;
   roleIds: string[];
   importanceId?: string;
-  assigneeId?: string;
+  assigneeId?: string; // 단일 담당자 (하위 호환성)
+  assigneeIds?: string[]; // 복수 담당자
   dueDate?: string;
 }
 
