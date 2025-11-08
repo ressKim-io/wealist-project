@@ -15,6 +15,8 @@ import UserProfileModal from '../components/modals/UserProfileModal';
 import { UserProfile } from '../types';
 import { Board, BoardWithCustomFields } from '../types/board';
 import BoardDetailModal from '../components/modals/BoardDetailModal';
+import { CreateProjectModal } from '../components/modals/CreateProjectModal';
+import { CreateBoardModal } from '../components/modals/CreateBoardModal';
 import { getProjects, getBoards, ProjectResponse, BoardResponse } from '../api/board/boardService';
 
 interface Column {
@@ -149,6 +151,9 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
   const [showProjectSelector, setShowProjectSelector] = useState<boolean>(false);
   const [showUserProfile, setShowUserProfile] = useState<boolean>(false);
+  const [showCreateProject, setShowCreateProject] = useState<boolean>(false);
+  const [showCreateBoard, setShowCreateBoard] = useState<boolean>(false);
+  const [createBoardStageId, setCreateBoardStageId] = useState<string>('');
   const [selectedBoard, setSelectedBoard] = useState<BoardWithCustomFields | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -157,98 +162,100 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const projectSelectorRef = useRef<HTMLDivElement>(null);
 
-  // 1. 초기 로드: 프로젝트 목록 조회 (currentWorkspaceId 사용)
-  useEffect(() => {
-    const fetchProjects = async () => {
-      setIsLoading(true);
-      setError(null);
-      console.log(currentWorkspaceId);
-      try {
-        console.log(`[Dashboard] 프로젝트 로드 시작 (Workspace: ${currentWorkspaceId})`);
-        const fetchedProjects = await getProjects(currentWorkspaceId, accessToken);
-        console.log('✅ Projects loaded:', fetchedProjects);
+  // 1. 프로젝트 목록 조회 함수 (재사용 가능)
+  const fetchProjects = React.useCallback(async () => {
+    if (!currentWorkspaceId || !accessToken) return;
 
-        setProjects(fetchedProjects);
+    setIsLoading(true);
+    setError(null);
+    console.log(currentWorkspaceId);
+    try {
+      console.log(`[Dashboard] 프로젝트 로드 시작 (Workspace: ${currentWorkspaceId})`);
+      const fetchedProjects = await getProjects(currentWorkspaceId, accessToken);
+      console.log('✅ Projects loaded:', fetchedProjects);
 
-        if (fetchedProjects.length > 0) {
-          setSelectedProject(fetchedProjects[0]);
-        } else {
-          setSelectedProject(null);
-          setColumns([]);
-        }
-      } catch (err) {
-        const error = err as Error;
-        console.error('❌ 프로젝트 로드 실패:', error);
-        setError(`프로젝트 로드 실패: ${error.message}`);
-        setProjects([]);
+      setProjects(fetchedProjects);
+
+      if (fetchedProjects.length > 0) {
+        setSelectedProject(fetchedProjects[0]);
+      } else {
+        setSelectedProject(null);
         setColumns([]);
-      } finally {
-        setIsLoading(false);
       }
-    };
-
-    if (currentWorkspaceId && accessToken) {
-      fetchProjects();
+    } catch (err) {
+      const error = err as Error;
+      console.error('❌ 프로젝트 로드 실패:', error);
+      setError(`프로젝트 로드 실패: ${error.message}`);
+      setProjects([]);
+      setColumns([]);
+    } finally {
+      setIsLoading(false);
     }
   }, [currentWorkspaceId, accessToken]);
 
-  // 2. 프로젝트 선택 시 보드 로드 (용어 변경)
+  // 2. 초기 로드
   useEffect(() => {
-    const fetchBoards = async () => {
-      if (!selectedProject) {
-        setColumns([]);
-        return;
-      }
+    fetchProjects();
+  }, [fetchProjects]);
 
-      setIsLoading(true);
-      setError(null);
-      console.log(selectedProject);
-      try {
-        console.log(`[Dashboard] 보드 로드 시작 (Project: ${selectedProject.name})`);
-        const boardsResponse = await getBoards(selectedProject.id, accessToken);
-        console.log('✅ Boards loaded:', boardsResponse);
+  // 3. 보드 목록 조회 함수 (재사용 가능)
+  const fetchBoards = React.useCallback(async () => {
+    if (!selectedProject || !accessToken) {
+      setColumns([]);
+      return;
+    }
 
-        // Stage별로 보드를 그룹화
-        const stageMap = new Map<string, BoardResponse[]>();
+    setIsLoading(true);
+    setError(null);
+    console.log(selectedProject);
+    try {
+      console.log(`[Dashboard] 보드 로드 시작 (Project: ${selectedProject.name})`);
+      const boardsResponse = await getBoards(selectedProject.id, accessToken);
+      console.log('✅ Boards loaded:', boardsResponse);
 
-        boardsResponse.boards.forEach((board) => {
-          const stageName = board.stage?.name || 'To Do';
-          if (!stageMap.has(stageName)) {
-            stageMap.set(stageName, []);
-          }
-          stageMap.get(stageName)!.push(board);
-        });
+      // Stage별로 보드를 그룹화
+      const stageMap = new Map<string, BoardResponse[]>();
 
-        // Column 형식으로 변환
-        const mockColumns: Column[] = Array.from(stageMap).map(([stageName, boards]) => ({
-          id: stageName,
-          title: stageName,
-          boards: boards.map((b) => ({
-            id: b.id,
-            title: b.title,
-            assignee_id: b.assignee?.userId || '',
-            status: stageName,
-            assignee: b.assignee?.name || 'Unassigned',
-            customFieldValues: {
-              'cf-stage': b.stage?.name || stageName,
-              'cf-importance': b.importance?.name || 'Normal',
-            },
-          })),
-        }));
+      boardsResponse.boards.forEach((board) => {
+        const stageName = board.stage?.name || 'To Do';
+        if (!stageMap.has(stageName)) {
+          stageMap.set(stageName, []);
+        }
+        stageMap.get(stageName)!.push(board);
+      });
 
-        setColumns(mockColumns);
-      } catch (err) {
-        const error = err as Error;
-        console.error('❌ 보드 로드 실패:', error);
-        setError(`보드 로드 실패: ${error.message}`);
-        setColumns([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      // Column 형식으로 변환
+      const mockColumns: Column[] = Array.from(stageMap).map(([stageName, boards]) => ({
+        id: stageName,
+        title: stageName,
+        boards: boards.map((b) => ({
+          id: b.id,
+          title: b.title,
+          assignee_id: b.assignee?.userId || '',
+          status: stageName,
+          assignee: b.assignee?.name || 'Unassigned',
+          customFieldValues: {
+            'cf-stage': b.stage?.name || stageName,
+            'cf-importance': b.importance?.name || 'Normal',
+          },
+        })),
+      }));
 
-    fetchBoards();
+      setColumns(mockColumns);
+    } catch (err) {
+      const error = err as Error;
+      console.error('❌ 보드 로드 실패:', error);
+      setError(`보드 로드 실패: ${error.message}`);
+      setColumns([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, [selectedProject, accessToken]);
+
+  // 4. 프로젝트 선택 시 보드 로드
+  useEffect(() => {
+    fetchBoards();
+  }, [fetchBoards]);
 
   // 2. 드래그 앤 드롭 (용어 변경)
   const [draggedBoard, setDraggedBoard] = useState<BoardWithCustomFields | null>(null);
@@ -445,7 +452,13 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                   )}
                 </div>
                 <div className="pt-2 pb-2 border-t">
-                  <button className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 text-blue-500 hover:bg-gray-100 rounded-b-lg transition">
+                  <button
+                    onClick={() => {
+                      setShowCreateProject(true);
+                      setShowProjectSelector(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 text-blue-500 hover:bg-gray-100 rounded-b-lg transition"
+                  >
                     <Plus className="w-4 h-4" /> 새 프로젝트
                   </button>
                 </div>
@@ -541,15 +554,10 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                       ))}
                       <button
                         className={`relative w-full py-3 sm:py-4 ${theme.effects.cardBorderWidth} border-dashed ${theme.colors.border} ${theme.colors.card} hover:bg-gray-100 transition flex items-center justify-center gap-2 ${theme.font.size.xs} ${theme.effects.borderRadius}`}
-                        onClick={() =>
-                          setSelectedBoard({
-                            id: '',
-                            title: '',
-                            assignee_id: '',
-                            status: 'NEW',
-                            assignee: '',
-                          })
-                        }
+                        onClick={() => {
+                          setCreateBoardStageId('');
+                          setShowCreateBoard(true);
+                        }}
                       >
                         <Plus className="w-3 h-3 sm:w-4 sm:h-4" style={{ strokeWidth: 3 }} />
                         보드 추가
@@ -619,6 +627,23 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
       {showUserProfile && userProfile && (
         <UserProfileModal user={userProfile} onClose={() => setShowUserProfile(false)} />
+      )}
+
+      {showCreateProject && (
+        <CreateProjectModal
+          workspaceId={currentWorkspaceId}
+          onClose={() => setShowCreateProject(false)}
+          onProjectCreated={fetchProjects}
+        />
+      )}
+
+      {showCreateBoard && selectedProject && (
+        <CreateBoardModal
+          projectId={selectedProject.id}
+          stageId={createBoardStageId}
+          onClose={() => setShowCreateBoard(false)}
+          onBoardCreated={fetchBoards}
+        />
       )}
 
       {selectedBoard && (
