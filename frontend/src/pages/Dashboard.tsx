@@ -767,8 +767,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                             {/* Drop indicator line - shows where the dragged board will be inserted */}
                             {dragOverBoardId === board.id &&
                               draggedBoard &&
-                              draggedBoard.id !== board.id &&
-                              draggedFromColumn === column.id && (
+                              draggedBoard.id !== board.id && (
                                 <div className="absolute -top-2 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 z-10"></div>
                               )}
                             <div
@@ -804,11 +803,11 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                           </div>
                         ))}
 
-                        {/* Drop indicator for cross-column drag - shows at bottom of target column */}
+                        {/* Drop indicator for empty column or below all boards */}
                         {dragOverColumn === column.id &&
-                          draggedFromColumn !== column.id &&
                           draggedBoard &&
-                          !draggedColumn && (
+                          !draggedColumn &&
+                          !dragOverBoardId && (
                             <div className="relative py-2">
                               <div className="h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50"></div>
                             </div>
@@ -819,6 +818,14 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                           onClick={() => {
                             setCreateBoardStageId(column.id);
                             setShowCreateBoard(true);
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (draggedBoard && !draggedColumn) {
+                              setDragOverColumn(column.id);
+                              setDragOverBoardId(null);
+                            }
                           }}
                         >
                           <Plus className="w-3 h-3 sm:w-4 sm:h-4" style={{ strokeWidth: 3 }} />
