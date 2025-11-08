@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, ChevronDown, Eye, Table, LayoutGrid, Plus } from 'lucide-react';
+import { Search, ChevronDown, Eye, Table, LayoutGrid, Plus, Settings } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface FilterBarProps {
@@ -88,7 +88,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         >
           <Eye className="w-4 h-4" />
           <span className="text-sm font-medium">보기</span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showViewModal ? 'rotate-180' : ''}`} />
+          <ChevronDown
+            className={`w-4 h-4 transition-transform ${showViewModal ? 'rotate-180' : ''}`}
+          />
         </button>
         {showViewModal && (
           <div
@@ -108,7 +110,11 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  <Table className={`w-6 h-6 ${currentLayout === 'table' ? 'text-blue-600' : 'text-gray-600'}`} />
+                  <Table
+                    className={`w-6 h-6 ${
+                      currentLayout === 'table' ? 'text-blue-600' : 'text-gray-600'
+                    }`}
+                  />
                   <span className="text-sm font-medium">표</span>
                 </button>
                 <button
@@ -121,7 +127,11 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  <LayoutGrid className={`w-6 h-6 ${currentLayout === 'board' ? 'text-blue-600' : 'text-gray-600'}`} />
+                  <LayoutGrid
+                    className={`w-6 h-6 ${
+                      currentLayout === 'board' ? 'text-blue-600' : 'text-gray-600'
+                    }`}
+                  />
                   <span className="text-sm font-medium">보드</span>
                 </button>
               </div>
@@ -168,7 +178,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </button>
         {showFilterDropdown && (
           <div
-            className={`absolute top-full mt-2 right-0 w-64 ${theme.colors.card} ${theme.effects.cardBorderWidth} ${theme.colors.border} ${theme.effects.borderRadius} shadow-lg z-10`}
+            className={`absolute top-full mt-2 left-0 w-64 ${theme.colors.card} ${theme.effects.cardBorderWidth} ${theme.colors.border} ${theme.effects.borderRadius} shadow-lg z-10`}
           >
             <div className="p-3 max-h-80 overflow-y-auto">
               <h3 className="text-xs text-gray-400 mb-2 px-1 font-semibold">
@@ -194,9 +204,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   console.log('커스텀 필터 클릭');
                   setShowFilterDropdown(false);
                 }}
-                className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 text-blue-500 hover:bg-gray-100 ${theme.effects.borderRadius} transition`}
+                className={`w-full px-6 py-2 text-left text-sm flex items-center gap-2 text-blue-500 hover:bg-gray-100 ${theme.effects.borderRadius} transition`}
               >
-                <Plus className="w-4 h-4" /> 커스텀 필터
+                <Settings className="w-4 h-4" />
+                커스텀 필터 관리
               </button>
             </div>
           </div>
