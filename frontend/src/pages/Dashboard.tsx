@@ -13,7 +13,6 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import UserProfileModal from '../components/modals/UserProfileModal';
 import { UserProfile } from '../types';
-import { BoardDetailModal } from '../components/modals/BoardDetailModal';
 import { ProjectModal } from '../components/modals/ProjectModal';
 import { CreateBoardModal } from '../components/modals/CreateBoardModal';
 import { CustomFieldManageModal } from '../components/modals/CustomFieldManageModal';
@@ -28,6 +27,7 @@ import {
 } from '../api/board/boardService';
 import { getDefaultColorByIndex } from '../constants/colors';
 import { WorkspaceMember, getWorkspaceMembers } from '../api/user/userService';
+import { BoardDetailModal } from '../components/modals/BoardDetailModal';
 
 interface Column {
   id: string;
@@ -921,30 +921,15 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
         />
       )}
 
-      {selectedBoardId && selectedProject && (() => {
-        // 선택된 보드 찾기
-        const selectedBoard = columns.flatMap(col => col.tasks).find(board => board.id === selectedBoardId);
-        if (!selectedBoard) return null;
-
-        return (
-          <BoardDetailModal
-            boardId={selectedBoardId}
-            projectId={selectedProject.id}
-            initialData={{
-              title: selectedBoard.title,
-              content: selectedBoard.content || '',
-              stageId: selectedBoard.stage?.id || '',
-              roleIds: selectedBoard.roles?.map(r => r.id) || [],
-              importanceId: selectedBoard.importance?.id || '',
-              assigneeId: selectedBoard.assignee?.userId || '',
-              dueDate: selectedBoard.dueDate || '',
-            }}
-            onClose={() => setSelectedBoardId(null)}
-            onBoardUpdated={fetchBoards}
-            onBoardDeleted={fetchBoards}
-          />
-        );
-      })()}
+      {selectedBoardId && selectedProject && (
+        <BoardDetailModal
+          boardId={selectedBoardId}
+          projectId={selectedProject.id}
+          onClose={() => setSelectedBoardId(null)}
+          onBoardUpdated={fetchBoards}
+          onBoardDeleted={fetchBoards}
+        />
+      )}
 
       {/* Custom Field Manage Modal */}
       {showManageModal && selectedProject && (

@@ -28,7 +28,7 @@ import {
 interface BoardDetailModalProps {
   boardId: string;
   projectId: string;
-  initialData: {
+  initialData?: {
     title: string;
     content?: string;
     stageId: string;
@@ -45,7 +45,7 @@ interface BoardDetailModalProps {
 export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
   boardId,
   projectId,
-  initialData,
+
   onClose,
   onBoardUpdated,
   onBoardDeleted,
@@ -57,15 +57,15 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
   const [isEditMode, setIsEditMode] = useState(false);
 
   // Form state
-  const [title, setTitle] = useState(initialData.title);
-  const [content, setContent] = useState(initialData.content || '');
-  const [selectedStageId, setSelectedStageId] = useState(initialData.stageId);
-  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>(initialData.roleIds);
-  const [selectedImportanceId, setSelectedImportanceId] = useState<string>(
-    initialData.importanceId || '',
-  );
-  const [assigneeId, setAssigneeId] = useState<string>(initialData.assigneeId || '');
-  const [dueDate, setDueDate] = useState<string>(initialData.dueDate || '');
+  // const [title, setTitle] = useState(initialData.title);
+  // const [content, setContent] = useState(initialData.content || '');
+  // const [selectedStageId, setSelectedStageId] = useState(initialData.stageId);
+  // const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>(initialData.roleIds);
+  // const [selectedImportanceId, setSelectedImportanceId] = useState<string>(
+  //   initialData.importanceId || '',
+  // );
+  // const [assigneeId, setAssigneeId] = useState<string>(initialData.assigneeId || '');
+  // const [dueDate, setDueDate] = useState<string>(initialData.dueDate || '');
 
   // Data state
   const [stages, setStages] = useState<CustomStageResponse[]>([]);
@@ -107,39 +107,36 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
   }, [projectId, accessToken]);
 
   const handleSave = async () => {
-    if (!title.trim()) {
-      setError('보드 제목은 필수입니다.');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      await updateBoard(
-        boardId,
-        {
-          title: title.trim(),
-          content: content.trim() || undefined,
-          stageId: selectedStageId,
-          roleIds: selectedRoleIds,
-          importanceId: selectedImportanceId || undefined,
-          assigneeId: assigneeId || undefined,
-          dueDate: dueDate || undefined,
-        },
-        accessToken,
-      );
-
-      console.log('✅ 보드 수정 성공:', title);
-      setIsEditMode(false);
-      onBoardUpdated();
-    } catch (err) {
-      const error = err as Error;
-      console.error('❌ 보드 수정 실패:', error);
-      setError(error.message || '보드 수정에 실패했습니다.');
-    } finally {
-      setIsLoading(false);
-    }
+    // if (!title.trim()) {
+    //   setError('보드 제목은 필수입니다.');
+    //   return;
+    // }
+    // setIsLoading(true);
+    // setError(null);
+    // try {
+    //   await updateBoard(
+    //     boardId,
+    //     {
+    //       title: title.trim(),
+    //       content: content.trim() || undefined,
+    //       stageId: selectedStageId,
+    //       roleIds: selectedRoleIds,
+    //       importanceId: selectedImportanceId || undefined,
+    //       assigneeId: assigneeId || undefined,
+    //       dueDate: dueDate || undefined,
+    //     },
+    //     accessToken,
+    //   );
+    //   console.log('✅ 보드 수정 성공:', title);
+    //   setIsEditMode(false);
+    //   onBoardUpdated();
+    // } catch (err) {
+    //   const error = err as Error;
+    //   console.error('❌ 보드 수정 실패:', error);
+    //   setError(error.message || '보드 수정에 실패했습니다.');
+    // } finally {
+    //   setIsLoading(false);
+    // }
   };
 
   const handleDelete = async () => {
@@ -185,7 +182,7 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between mb-4 pb-4 border-b border-gray-200">
+        {/* <div className="flex items-start justify-between mb-4 pb-4 border-b border-gray-200">
           <div className="flex-1 pr-4">
             {isEditMode ? (
               <input
@@ -215,7 +212,7 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
               <X className="w-5 h-5" />
             </button>
           </div>
-        </div>
+        </div> */}
 
         {/* Error Message */}
         {error && (
@@ -227,7 +224,7 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
         {/* Content */}
         <div className="space-y-4 mb-6">
           {/* Description */}
-          <div>
+          {/* <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">설명</label>
             {isEditMode ? (
               <textarea
@@ -243,10 +240,10 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
                 {content || '설명이 없습니다.'}
               </p>
             )}
-          </div>
+          </div> */}
 
           {/* Stage */}
-          <div>
+          {/* <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               <CheckSquare className="w-4 h-4 inline mr-1" />
               진행 단계
@@ -269,7 +266,8 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
                 <span
                   className="w-3 h-3 rounded-full"
                   style={{
-                    backgroundColor: stages.find((s) => s.id === selectedStageId)?.color || '#6B7280',
+                    backgroundColor:
+                      stages.find((s) => s.id === selectedStageId)?.color || '#6B7280',
                   }}
                 />
                 <span className="text-sm">
@@ -277,10 +275,10 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
                 </span>
               </div>
             )}
-          </div>
+          </div> */}
 
           {/* Roles */}
-          <div>
+          {/* <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               <Tag className="w-4 h-4 inline mr-1" />
               역할
@@ -303,10 +301,10 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
                 );
               })}
             </div>
-          </div>
+          </div> */}
 
           {/* Importance */}
-          <div>
+          {/* <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               <AlertCircle className="w-4 h-4 inline mr-1" />
               중요도
@@ -347,10 +345,10 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
                 )}
               </div>
             )}
-          </div>
+          </div> */}
 
           {/* Assignee and Due Date */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 <User className="w-4 h-4 inline mr-1" />
@@ -389,7 +387,7 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
                 </p>
               )}
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Comments Section */}
@@ -401,10 +399,7 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
 
           <div className="space-y-3 mb-4 max-h-40 overflow-y-auto">
             {comments.map((comment) => (
-              <div
-                key={comment.id}
-                className="p-3 bg-gray-100 border border-gray-200 rounded-lg"
-              >
+              <div key={comment.id} className="p-3 bg-gray-100 border border-gray-200 rounded-lg">
                 <div className="flex items-start gap-2">
                   <div className="w-6 h-6 bg-blue-500 flex items-center justify-center text-white text-xs font-bold rounded-full flex-shrink-0">
                     {comment.author[0]}
