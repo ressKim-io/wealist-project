@@ -601,7 +601,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
             left: sidebarWidth,
           }}
         >
-          <div className="flex items-center gap-2 relative">
+          <div className="flex items-center gap-1 relative">
             <button
               onClick={() => setShowProjectSelector(!showProjectSelector)}
               className={`flex items-center gap-2 font-bold text-xl ${theme.colors.text} hover:opacity-80 transition`}
@@ -614,6 +614,16 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                 style={{ strokeWidth: 2.5 }}
               />
             </button>
+
+            {canAccessSettings && selectedProject && (
+              <button
+                onClick={() => setShowProjectSettings(true)}
+                className={`p-2 rounded-lg transition ${theme.colors.text} hover:bg-gray-100`}
+                title="프로젝트 설정"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+            )}
 
             {showProjectSelector && (
               <div
@@ -659,16 +669,6 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
               </div>
             )}
           </div>
-          {canAccessSettings && selectedProject && (
-            <button
-              onClick={() => setShowProjectSettings(true)}
-              className={`flex items-center gap-1 p-2 rounded-lg transition ${theme.colors.secondary} ${theme.colors.text} hover:bg-gray-100 font-semibold text-sm`}
-              title="프로젝트 설정"
-            >
-              <Settings className="w-4 h-4" />
-              설정
-            </button>
-          )}
           {selectedProject && (
             <button
               className={`flex items-center gap-2 p-1 rounded-lg transition ${
