@@ -39,7 +39,7 @@ interface BoardDetailModalProps {
     stageId: string;
     roleId: string;
     importanceId: string;
-    assigneeId: string;
+    assigneeIds: string[];
     dueDate: string;
   }) => void;
 }
@@ -61,7 +61,7 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
   const [selectedStageId, setSelectedStageId] = useState('');
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
   const [selectedImportanceId, setSelectedImportanceId] = useState<string>('');
-  const [assigneeId, setAssigneeId] = useState<string>('');
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState<string>('');
 
   // Data state
@@ -94,7 +94,13 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
         // roles가 배열이므로 첫 번째 역할만 선택 (단일 선택으로 변경)
         setSelectedRoleId(boardData.roles?.[0]?.id || '');
         setSelectedImportanceId(boardData.importance?.id || '');
-        setAssigneeId(boardData.assignee?.userId || '');
+        // assignees가 배열이면 userId 추출, 단일 객체면 변환
+        const assignees = Array.isArray(boardData.assignees)
+          ? boardData.assignees.map((a: any) => a.userId).filter(Boolean)
+          : boardData.assignee?.userId
+          ? [boardData.assignee.userId]
+          : [];
+        setAssigneeIds(assignees);
         setDueDate(boardData.dueDate || '');
 
         console.log('✅ 보드 데이터 로드 성공:', boardData);
@@ -308,7 +314,20 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
                 <User className="w-4 h-4 inline mr-1" />
                 담당자
               </label>
-              <p className="text-sm text-gray-600">{assigneeId || '없음'}</p>
+              {assigneeIds.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {assigneeIds.map((userId) => (
+                    <span
+                      key={userId}
+                      className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
+                    >
+                      {userId}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600">없음</p>
+              )}
             </div>
 
             <div>
@@ -382,7 +401,7 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
                 stageId: selectedStageId,
                 roleId: selectedRoleId,
                 importanceId: selectedImportanceId,
-                assigneeId,
+                assigneeIds,
                 dueDate,
               });
             }}
