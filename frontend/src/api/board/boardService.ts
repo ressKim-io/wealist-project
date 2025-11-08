@@ -73,6 +73,287 @@ let MOCK_PROJECTS: ProjectResponse[] = [
   },
 ];
 
+// 목업: Stage 데이터
+const MOCK_STAGES: CustomStageResponse[] = [
+  {
+    id: 'stage-none',
+    projectId: 'project-1',
+    name: '없음',
+    color: '#94A3B8',
+    displayOrder: 0,
+    isSystemDefault: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'stage-waiting',
+    projectId: 'project-1',
+    name: '대기',
+    color: '#F59E0B',
+    displayOrder: 1,
+    isSystemDefault: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'stage-progress',
+    projectId: 'project-1',
+    name: '진행중',
+    color: '#3B82F6',
+    displayOrder: 2,
+    isSystemDefault: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'stage-done',
+    projectId: 'project-1',
+    name: '완료',
+    color: '#10B981',
+    displayOrder: 3,
+    isSystemDefault: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+];
+
+// 목업: Role 데이터
+const MOCK_ROLES: CustomRoleResponse[] = [
+  {
+    id: 'role-none',
+    projectId: 'project-1',
+    name: '없음',
+    color: '#94A3B8',
+    displayOrder: 0,
+    isSystemDefault: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'role-frontend',
+    projectId: 'project-1',
+    name: '프론트엔드',
+    color: '#8B5CF6',
+    displayOrder: 1,
+    isSystemDefault: false,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'role-backend',
+    projectId: 'project-1',
+    name: '백엔드',
+    color: '#EC4899',
+    displayOrder: 2,
+    isSystemDefault: false,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'role-design',
+    projectId: 'project-1',
+    name: '디자인',
+    color: '#F59E0B',
+    displayOrder: 3,
+    isSystemDefault: false,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+];
+
+// 목업: Importance 데이터
+const MOCK_IMPORTANCES: CustomImportanceResponse[] = [
+  {
+    id: 'importance-none',
+    projectId: 'project-1',
+    name: '없음',
+    color: '#94A3B8',
+    displayOrder: 0,
+    isSystemDefault: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'importance-low',
+    projectId: 'project-1',
+    name: '낮음',
+    color: '#10B981',
+    displayOrder: 1,
+    isSystemDefault: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'importance-medium',
+    projectId: 'project-1',
+    name: '보통',
+    color: '#3B82F6',
+    displayOrder: 2,
+    isSystemDefault: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'importance-high',
+    projectId: 'project-1',
+    name: '높음',
+    color: '#F59E0B',
+    displayOrder: 3,
+    isSystemDefault: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'importance-urgent',
+    projectId: 'project-1',
+    name: '긴급',
+    color: '#EF4444',
+    displayOrder: 4,
+    isSystemDefault: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+];
+
+// 목업: Board(카드) 데이터
+const MOCK_BOARDS: BoardResponse[] = [
+  {
+    id: 'board-1',
+    projectId: 'project-1',
+    title: '로그인 페이지 구현',
+    content: 'JWT 인증 방식으로 로그인/로그아웃 기능 구현',
+    stage: MOCK_STAGES.find((s) => s.name === '진행중'),
+    roles: [MOCK_ROLES.find((r) => r.name === '프론트엔드')],
+    importance: MOCK_IMPORTANCES.find((i) => i.name === '높음'),
+    assignee: {
+      userId: 'user-123',
+      name: '김개발',
+      email: 'dev.kim@orangecloud.com',
+      isActive: true,
+    },
+    author: {
+      userId: 'user-123',
+      name: '김개발',
+      email: 'dev.kim@orangecloud.com',
+      isActive: true,
+    },
+    dueDate: '2024-02-15T00:00:00Z',
+    createdAt: '2024-01-20T00:00:00Z',
+    updatedAt: '2024-01-25T00:00:00Z',
+  },
+  {
+    id: 'board-2',
+    projectId: 'project-1',
+    title: 'API 엔드포인트 설계',
+    content: 'RESTful API 설계 및 Swagger 문서 작성',
+    stage: MOCK_STAGES.find((s) => s.name === '완료'),
+    roles: [MOCK_ROLES.find((r) => r.name === '백엔드')],
+    importance: MOCK_IMPORTANCES.find((i) => i.name === '높음'),
+    assignee: {
+      userId: 'user-456',
+      name: '이디자인',
+      email: 'design.lee@orangecloud.com',
+      isActive: true,
+    },
+    author: {
+      userId: 'user-456',
+      name: '이디자인',
+      email: 'design.lee@orangecloud.com',
+      isActive: true,
+    },
+    createdAt: '2024-01-15T00:00:00Z',
+    updatedAt: '2024-01-22T00:00:00Z',
+  },
+  {
+    id: 'board-3',
+    projectId: 'project-1',
+    title: 'UI 컴포넌트 디자인',
+    content: '버튼, 인풋, 모달 등 기본 컴포넌트 디자인',
+    stage: MOCK_STAGES.find((s) => s.name === '대기'),
+    roles: [MOCK_ROLES.find((r) => r.name === '디자인')],
+    importance: MOCK_IMPORTANCES.find((i) => i.name === '보통'),
+    assignee: {
+      userId: 'user-789',
+      name: '박프론트',
+      email: 'front.park@orangecloud.com',
+      isActive: true,
+    },
+    author: {
+      userId: 'user-123',
+      name: '김개발',
+      email: 'dev.kim@orangecloud.com',
+      isActive: true,
+    },
+    dueDate: '2024-02-20T00:00:00Z',
+    createdAt: '2024-01-18T00:00:00Z',
+    updatedAt: '2024-01-18T00:00:00Z',
+  },
+  {
+    id: 'board-4',
+    projectId: 'project-1',
+    title: '데이터베이스 스키마 설계',
+    content: 'PostgreSQL 테이블 구조 및 관계 정의',
+    stage: MOCK_STAGES.find((s) => s.name === '완료'),
+    roles: [MOCK_ROLES.find((r) => r.name === '백엔드')],
+    importance: MOCK_IMPORTANCES.find((i) => i.name === '긴급'),
+    assignee: {
+      userId: 'user-456',
+      name: '이디자인',
+      email: 'design.lee@orangecloud.com',
+      isActive: true,
+    },
+    author: {
+      userId: 'user-456',
+      name: '이디자인',
+      email: 'design.lee@orangecloud.com',
+      isActive: true,
+    },
+    createdAt: '2024-01-10T00:00:00Z',
+    updatedAt: '2024-01-20T00:00:00Z',
+  },
+  {
+    id: 'board-5',
+    projectId: 'project-1',
+    title: 'CI/CD 파이프라인 구축',
+    content: 'GitHub Actions를 이용한 자동 배포 설정',
+    stage: MOCK_STAGES.find((s) => s.name === '진행중'),
+    roles: [MOCK_ROLES.find((r) => r.name === '백엔드')],
+    importance: MOCK_IMPORTANCES.find((i) => i.name === '보통'),
+    assignee: {
+      userId: 'user-202',
+      name: '최데브옵스',
+      email: 'devops.choi@orangecloud.com',
+      isActive: true,
+    },
+    author: {
+      userId: 'user-202',
+      name: '최데브옵스',
+      email: 'devops.choi@orangecloud.com',
+      isActive: true,
+    },
+    dueDate: '2024-02-10T00:00:00Z',
+    createdAt: '2024-01-12T00:00:00Z',
+    updatedAt: '2024-01-26T00:00:00Z',
+  },
+  {
+    id: 'board-6',
+    projectId: 'project-1',
+    title: '사용자 피드백 수집',
+    content: '베타 테스트 사용자 의견 정리 및 분석',
+    stage: MOCK_STAGES.find((s) => s.name === '대기'),
+    roles: [MOCK_ROLES.find((r) => r.name === '디자인')],
+    importance: MOCK_IMPORTANCES.find((i) => i.name === '낮음'),
+    author: {
+      userId: 'user-789',
+      name: '박프론트',
+      email: 'front.park@orangecloud.com',
+      isActive: true,
+    },
+    createdAt: '2024-01-22T00:00:00Z',
+    updatedAt: '2024-01-22T00:00:00Z',
+  },
+];
+
 export interface CreateProjectRequest {
   name: string;
   description?: string;
@@ -300,6 +581,39 @@ export const getBoards = async (
     limit?: number;
   },
 ): Promise<PaginatedBoardsResponse> => {
+  if (USE_MOCK_DATA) {
+    console.log('[MOCK] getBoards 호출:', projectId, filters);
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        let filtered = MOCK_BOARDS.filter((b) => b.projectId === projectId);
+
+        // 필터 적용
+        if (filters?.stageId) {
+          filtered = filtered.filter((b) => b.stage?.id === filters.stageId);
+        }
+        if (filters?.roleId) {
+          filtered = filtered.filter((b) => b.roles?.some((r) => r?.id === filters.roleId));
+        }
+        if (filters?.importanceId) {
+          filtered = filtered.filter((b) => b.importance?.id === filters.importanceId);
+        }
+        if (filters?.assigneeId) {
+          filtered = filtered.filter((b) => b.assignee?.userId === filters.assigneeId);
+        }
+        if (filters?.authorId) {
+          filtered = filtered.filter((b) => b.author?.userId === filters.authorId);
+        }
+
+        resolve({
+          boards: filtered,
+          total: filtered.length,
+          page: filters?.page || 1,
+          limit: filters?.limit || 20,
+        });
+      }, 300);
+    });
+  }
+
   try {
     const params = { projectId, ...filters };
     const response = await boardService.get('/api/boards', {
@@ -445,6 +759,16 @@ export const getProjectStages = async (
   projectId: string,
   token: string,
 ): Promise<CustomStageResponse[]> => {
+  if (USE_MOCK_DATA) {
+    console.log('[MOCK] getProjectStages 호출:', projectId);
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const filtered = MOCK_STAGES.filter((s) => s.projectId === projectId);
+        resolve(filtered);
+      }, 200);
+    });
+  }
+
   try {
     const response = await boardService.get(`/api/custom-fields/projects/${projectId}/stages`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -467,6 +791,16 @@ export const getProjectRoles = async (
   projectId: string,
   token: string,
 ): Promise<CustomRoleResponse[]> => {
+  if (USE_MOCK_DATA) {
+    console.log('[MOCK] getProjectRoles 호출:', projectId);
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const filtered = MOCK_ROLES.filter((r) => r.projectId === projectId);
+        resolve(filtered);
+      }, 200);
+    });
+  }
+
   try {
     const response = await boardService.get(`/api/custom-fields/projects/${projectId}/roles`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -489,6 +823,16 @@ export const getProjectImportances = async (
   projectId: string,
   token: string,
 ): Promise<CustomImportanceResponse[]> => {
+  if (USE_MOCK_DATA) {
+    console.log('[MOCK] getProjectImportances 호출:', projectId);
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const filtered = MOCK_IMPORTANCES.filter((i) => i.projectId === projectId);
+        resolve(filtered);
+      }, 200);
+    });
+  }
+
   try {
     const response = await boardService.get(`/api/custom-fields/projects/${projectId}/importance`, {
       headers: { Authorization: `Bearer ${token}` },
