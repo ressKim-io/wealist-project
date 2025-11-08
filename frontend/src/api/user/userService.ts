@@ -67,6 +67,7 @@ export interface WorkspaceMember {
   name: string;
   email: string;
   role: WorkspaceMemberRole;
+  profileImageUrl?: string | null;
   joinedAt: string;
 }
 
@@ -192,6 +193,7 @@ let MOCK_WORKSPACE_MEMBERS: Record<string, WorkspaceMember[]> = {
       name: '김개발',
       email: 'dev.kim@orangecloud.com',
       role: 'OWNER',
+      profileImageUrl: 'https://i.pravatar.cc/150?img=12',
       joinedAt: '2024-01-01T00:00:00Z',
     },
     {
@@ -199,6 +201,7 @@ let MOCK_WORKSPACE_MEMBERS: Record<string, WorkspaceMember[]> = {
       name: '이디자인',
       email: 'design.lee@orangecloud.com',
       role: 'ADMIN',
+      profileImageUrl: 'https://i.pravatar.cc/150?img=5',
       joinedAt: '2024-01-05T00:00:00Z',
     },
     {
@@ -206,6 +209,7 @@ let MOCK_WORKSPACE_MEMBERS: Record<string, WorkspaceMember[]> = {
       name: '박프론트',
       email: 'frontend.park@orangecloud.com',
       role: 'MEMBER',
+      profileImageUrl: null,
       joinedAt: '2024-01-10T00:00:00Z',
     },
     {
@@ -213,6 +217,7 @@ let MOCK_WORKSPACE_MEMBERS: Record<string, WorkspaceMember[]> = {
       name: '정백엔드',
       email: 'backend.jung@orangecloud.com',
       role: 'MEMBER',
+      profileImageUrl: 'https://i.pravatar.cc/150?img=33',
       joinedAt: '2024-01-12T00:00:00Z',
     },
     {
@@ -220,6 +225,7 @@ let MOCK_WORKSPACE_MEMBERS: Record<string, WorkspaceMember[]> = {
       name: '최데브옵스',
       email: 'devops.choi@orangecloud.com',
       role: 'MEMBER',
+      profileImageUrl: null,
       joinedAt: '2024-01-15T00:00:00Z',
     },
   ],

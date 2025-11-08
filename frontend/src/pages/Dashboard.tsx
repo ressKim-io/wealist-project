@@ -31,6 +31,7 @@ import {
   CustomStageResponse,
 } from '../api/board/boardService';
 import { getDefaultColorByIndex } from '../constants/colors';
+import { WorkspaceMember, getWorkspaceMembers } from '../api/user/userService';
 
 interface Column {
   id: string;
@@ -45,29 +46,50 @@ interface MainDashboardProps {
 }
 
 // =============================================================================
-// AvatarStack (정상)
+// AvatarStack (워크스페이스 회원)
 // =============================================================================
-const AvatarStack: React.FC = () => {
-  const mockHeaderAvatars = ['김', '박', '이', '최'];
+interface AvatarStackProps {
+  members: WorkspaceMember[];
+}
+
+const AvatarStack: React.FC<AvatarStackProps> = ({ members }) => {
+  const displayCount = 3;
+  const displayMembers = members.slice(0, displayCount);
+  const remainingCount = members.length - displayCount;
+
+  const getColorByIndex = (index: number) => {
+    const colors = ['bg-indigo-500', 'bg-pink-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500'];
+    return colors[index % colors.length];
+  };
+
   return (
     <div className="flex -space-x-1.5 p-1 pr-0 overflow-hidden">
-      {mockHeaderAvatars.slice(0, 3).map((initial, index) => (
+      {displayMembers.map((member, index) => (
         <div
-          key={index}
-          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-white text-white ${
-            index === 0 ? 'bg-indigo-500' : index === 1 ? 'bg-pink-500' : 'bg-green-500'
-          }`}
-          style={{ zIndex: mockHeaderAvatars.length - index }}
+          key={member.userId}
+          className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-white overflow-hidden"
+          style={{ zIndex: members.length - index }}
+          title={`${member.name} (${member.role})`}
         >
-          {initial}
+          {member.profileImageUrl ? (
+            <img
+              src={member.profileImageUrl}
+              alt={member.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className={`w-full h-full flex items-center justify-center text-white ${getColorByIndex(index)}`}>
+              {member.name[0]}
+            </div>
+          )}
         </div>
       ))}
-      {mockHeaderAvatars.length > 3 && (
+      {remainingCount > 0 && (
         <div
-          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-white bg-gray-400 text-white`}
+          className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-white bg-gray-400 text-white"
           style={{ zIndex: 0 }}
         >
-          +{mockHeaderAvatars.length - 3}
+          +{remainingCount}
         </div>
       )}
     </div>
@@ -154,6 +176,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   const [projects, setProjects] = useState<ProjectResponse[]>([]);
   const [columns, setColumns] = useState<Column[]>([]);
   const [selectedProject, setSelectedProject] = useState<ProjectResponse | null>(null);
+  const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>([]);
 
   const [userProfile, _setUserProfile] = useState<UserProfile>({
     name: 'User',
@@ -217,12 +240,29 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     }
   }, [currentWorkspaceId, accessToken]);
 
-  // 2. 초기 로드
+  // 2. 워크스페이스 회원 조회 함수
+  const fetchWorkspaceMembers = React.useCallback(async () => {
+    if (!currentWorkspaceId || !accessToken) return;
+
+    try {
+      console.log(`[Dashboard] 워크스페이스 회원 로드 시작 (Workspace: ${currentWorkspaceId})`);
+      const members = await getWorkspaceMembers(currentWorkspaceId, accessToken);
+      console.log('✅ Workspace members loaded:', members);
+      setWorkspaceMembers(members);
+    } catch (err) {
+      const error = err as Error;
+      console.error('❌ 워크스페이스 회원 로드 실패:', error);
+      setWorkspaceMembers([]);
+    }
+  }, [currentWorkspaceId, accessToken]);
+
+  // 3. 초기 로드
   useEffect(() => {
     fetchProjects();
-  }, [fetchProjects]);
+    fetchWorkspaceMembers();
+  }, [fetchProjects, fetchWorkspaceMembers]);
 
-  // 3. 보드 목록 조회 함수 (재사용 가능)
+  // 4. 보드 목록 조회 함수 (재사용 가능)
   const fetchBoards = React.useCallback(async () => {
     if (!selectedProject || !accessToken) {
       setColumns([]);
@@ -640,7 +680,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
               }`}
               title="조직원"
             >
-              <AvatarStack />
+              <AvatarStack members={workspaceMembers} />
             </button>
           )}
         </header>
