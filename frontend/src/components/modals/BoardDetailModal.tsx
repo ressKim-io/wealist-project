@@ -232,42 +232,45 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
             </p>
           </div>
 
-          {/* Stage */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              <CheckSquare className="w-4 h-4 inline mr-1" />
-              진행 단계
-            </label>
-            <div className="flex items-center gap-2">
-              <span
-                className="w-3 h-3 rounded-full"
-                style={{
-                  backgroundColor:
-                    stages.find((s) => s.id === selectedStageId)?.color || '#6B7280',
-                }}
-              />
-              <span className="text-sm">
-                {stages.find((s) => s.id === selectedStageId)?.name || '알 수 없음'}
-              </span>
+          {/* Stage and Role - 2 columns */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Stage */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <CheckSquare className="w-4 h-4 inline mr-1" />
+                진행 단계
+              </label>
+              <div className="flex items-center gap-2">
+                <span
+                  className="w-3 h-3 rounded-full"
+                  style={{
+                    backgroundColor:
+                      stages.find((s) => s.id === selectedStageId)?.color || '#6B7280',
+                  }}
+                />
+                <span className="text-sm">
+                  {stages.find((s) => s.id === selectedStageId)?.name || '알 수 없음'}
+                </span>
+              </div>
             </div>
-          </div>
 
-          {/* Role (단일 선택) */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              <Tag className="w-4 h-4 inline mr-1" />
-              역할
-            </label>
-            <div className="flex items-center gap-2">
-              <span
-                className="w-3 h-3 rounded-full"
-                style={{
-                  backgroundColor: roles.find((r) => r.id === selectedRoleId)?.color || '#6B7280',
-                }}
-              />
-              <span className="text-sm">
-                {roles.find((r) => r.id === selectedRoleId)?.name || '알 수 없음'}
-              </span>
+            {/* Role (단일 선택) */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <Tag className="w-4 h-4 inline mr-1" />
+                역할
+              </label>
+              <div className="flex items-center gap-2">
+                <span
+                  className="w-3 h-3 rounded-full"
+                  style={{
+                    backgroundColor: roles.find((r) => r.id === selectedRoleId)?.color || '#6B7280',
+                  }}
+                />
+                <span className="text-sm">
+                  {roles.find((r) => r.id === selectedRoleId)?.name || '알 수 없음'}
+                </span>
+              </div>
             </div>
           </div>
 
