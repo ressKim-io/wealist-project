@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, ChevronDown, Eye, Table, LayoutGrid } from 'lucide-react';
+import { Search, ChevronDown, Eye, Table, LayoutGrid, Plus } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface FilterBarProps {
@@ -59,7 +59,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     { value: 'high', label: '중요도 높음' },
     { value: 'urgent', label: '긴급' },
     { value: 'hideCompleted', label: '완료된 것 숨기기' },
-    { value: 'custom', label: '커스텀 필터' },
   ];
 
   return (
@@ -169,19 +168,37 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </button>
         {showFilterDropdown && (
           <div
-            className={`absolute top-full mt-2 right-0 w-56 ${theme.colors.card} border ${theme.colors.border} rounded-md shadow-lg z-10`}
+            className={`absolute top-full mt-2 right-0 w-64 ${theme.colors.card} ${theme.effects.cardBorderWidth} ${theme.colors.border} ${theme.effects.borderRadius} shadow-lg z-10`}
           >
-            {filterOptions.map((option) => (
+            <div className="p-3 max-h-80 overflow-y-auto">
+              <h3 className="text-xs text-gray-400 mb-2 px-1 font-semibold">
+                필터 ({filterOptions.length})
+              </h3>
+              {filterOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => handleFilterChange(option.value)}
+                  className={`w-full px-3 py-2 text-left text-sm rounded transition truncate ${
+                    selectedFilter === option.value
+                      ? 'bg-blue-100 text-blue-700 font-semibold'
+                      : 'hover:bg-gray-100 text-gray-800'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <div className="pt-2 pb-2 border-t">
               <button
-                key={option.value}
-                onClick={() => handleFilterChange(option.value)}
-                className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors ${
-                  selectedFilter === option.value ? 'bg-blue-50 text-blue-600 font-medium' : ''
-                }`}
+                onClick={() => {
+                  console.log('커스텀 필터 클릭');
+                  setShowFilterDropdown(false);
+                }}
+                className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 text-blue-500 hover:bg-gray-100 ${theme.effects.borderRadius} transition`}
               >
-                {option.label}
+                <Plus className="w-4 h-4" /> 커스텀 필터
               </button>
-            ))}
+            </div>
           </div>
         )}
       </div>
