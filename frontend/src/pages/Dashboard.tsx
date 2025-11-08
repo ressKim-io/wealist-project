@@ -416,6 +416,16 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
         return { ...col, boards: col.boards.filter((t) => t.id !== draggedBoard.id) };
       }
       if (col.id === targetColumnId) {
+        // Insert at the position indicated by dragOverBoardId
+        if (dragOverBoardId) {
+          const targetIndex = col.boards.findIndex((b) => b.id === dragOverBoardId);
+          if (targetIndex !== -1) {
+            const newBoards = [...col.boards];
+            newBoards.splice(targetIndex, 0, updatedBoard);
+            return { ...col, boards: newBoards };
+          }
+        }
+        // If no dragOverBoardId, add to the end
         return { ...col, boards: [...col.boards, updatedBoard] };
       }
       return col;
