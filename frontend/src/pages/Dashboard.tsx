@@ -21,6 +21,7 @@ import {
   getProjects,
   getBoards,
   getProjectStages,
+  updateBoard,
   ProjectResponse,
   BoardResponse,
   CustomStageResponse,
@@ -290,7 +291,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     e.preventDefault();
   };
 
-  const handleDrop = (targetColumnId: string): void => {
+  const handleDrop = async (targetColumnId: string): Promise<void> => {
     if (!draggedBoard || !draggedFromColumn || draggedFromColumn === targetColumnId) return;
 
     const updatedBoard: BoardWithCustomFields = {
@@ -298,6 +299,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       status: targetColumnId,
     };
 
+    // Optimistic UI update
     const newColumns = columns.map((col) => {
       if (col.id === draggedFromColumn) {
         return { ...col, boards: col.boards.filter((t) => t.id !== draggedBoard.id) };
@@ -309,10 +311,30 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     });
 
     setColumns(newColumns);
+    const boardToUpdate = draggedBoard;
     setDraggedBoard(null);
     setDraggedFromColumn(null);
 
-    console.log(`[Mock] Board ${draggedBoard.id} 상태를 ${targetColumnId}(으)로 변경`);
+    // Persist to backend
+    try {
+      await updateBoard(
+        boardToUpdate.id,
+        {
+          title: boardToUpdate.title,
+          content: boardToUpdate.content,
+          stageId: targetColumnId,
+          roleIds: boardToUpdate.roles?.map((r) => r.id) || [],
+          importanceId: boardToUpdate.importance?.id,
+        },
+        accessToken,
+      );
+      console.log(`✅ Board ${boardToUpdate.id} Stage 변경 성공: ${targetColumnId}`);
+    } catch (error) {
+      console.error('❌ Board Stage 변경 실패:', error);
+      // Revert on error
+      setColumns(columns);
+      alert('보드 이동에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   const columnColors = ['bg-blue-500', 'bg-yellow-500', 'bg-purple-500'];
