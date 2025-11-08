@@ -273,16 +273,14 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
           className={`relative ${theme.colors.card} ${theme.effects.borderWidth} ${theme.colors.border} ${theme.effects.borderRadius} shadow-xl`}
         >
           {/* 헤더 */}
-          <div
-            className={`flex items-center justify-between p-6 pb-4 ${theme.effects.borderWidth} ${theme.colors.border} border-t-0 border-l-0 border-r-0`}
-          >
+          <div className="flex items-center justify-between p-4 pb-3">
             <h2 className={`${theme.font.size.base} font-bold text-gray-800`}>사용자 프로필 설정</h2>
             <button
               onClick={handleClose}
-              className="bg-red-500 p-2 hover:bg-red-600 rounded-lg transition"
+              className="p-2 hover:bg-gray-100 rounded-lg transition"
               title="닫기"
             >
-              <X className="w-4 h-4 text-white" />
+              <X className="w-4 h-4 text-gray-600" />
             </button>
           </div>
 
@@ -321,28 +319,26 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
               </div>
             )}
 
-            {/* 워크스페이스 선택 */}
-            {activeTab === 'workspace' && (
-              <div>
-                <label className={`block ${theme.font.size.xs} mb-2 text-gray-500 font-medium`}>
-                  워크스페이스 선택:
-                </label>
-                <select
-                  value={selectedWorkspaceId}
-                  onChange={(e) => handleWorkspaceChange(e.target.value)}
-                  className={`w-full px-3 py-2 ${theme.effects.cardBorderWidth} ${theme.colors.border} ${theme.colors.card} ${theme.font.size.xs} ${theme.effects.borderRadius} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                >
-                  {workspaces.map((workspace) => (
-                    <option key={workspace.id} value={workspace.id}>
-                      {workspace.name}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-gray-500">
-                  워크스페이스마다 다른 프로필을 설정할 수 있습니다
-                </p>
-              </div>
-            )}
+            {/* 워크스페이스 선택 - 탭 전환 시 높이 유지를 위해 항상 렌더링 */}
+            <div className={activeTab === 'default' ? 'invisible pointer-events-none' : ''}>
+              <label className={`block ${theme.font.size.xs} mb-2 text-gray-500 font-medium`}>
+                워크스페이스 선택:
+              </label>
+              <select
+                value={selectedWorkspaceId}
+                onChange={(e) => handleWorkspaceChange(e.target.value)}
+                className={`w-full px-3 py-2 ${theme.effects.cardBorderWidth} ${theme.colors.border} ${theme.colors.card} ${theme.font.size.xs} ${theme.effects.borderRadius} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              >
+                {workspaces.map((workspace) => (
+                  <option key={workspace.id} value={workspace.id}>
+                    {workspace.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                워크스페이스마다 다른 프로필을 설정할 수 있습니다
+              </p>
+            </div>
 
             {/* 프로필 이미지 */}
             <div className="flex flex-col items-center mb-4">
