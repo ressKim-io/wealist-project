@@ -17,6 +17,7 @@ import { BoardDetailModal } from '../components/modals/BoardDetailModal';
 import { CreateProjectModal } from '../components/modals/CreateProjectModal';
 import { CreateBoardModal } from '../components/modals/CreateBoardModal';
 import { CustomFieldManageModal } from '../components/modals/CustomFieldManageModal';
+import { ProjectManageModal } from '../components/modals/ProjectManageModal';
 import { FilterBar } from '../components/FilterBar';
 import {
   getProjects,
@@ -171,6 +172,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showManageModal, setShowManageModal] = useState<boolean>(false);
+  const [showProjectSettings, setShowProjectSettings] = useState<boolean>(false);
 
   // Filter/View 상태
   const [currentView, setCurrentView] = useState<'stage' | 'role'>('stage');
@@ -621,11 +623,11 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
               </div>
             )}
           </div>
-          {canAccessSettings && (
+          {canAccessSettings && selectedProject && (
             <button
-              // onClick={() => setIsSettingsModalOpen(true)}
+              onClick={() => setShowProjectSettings(true)}
               className={`flex items-center gap-1 p-2 rounded-lg transition ${theme.colors.secondary} ${theme.colors.text} hover:bg-gray-100 font-semibold text-sm`}
-              title="조직 설정 및 멤버 관리"
+              title="프로젝트 설정"
             >
               <Settings className="w-4 h-4" />
               설정
@@ -896,6 +898,16 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
           projectId={selectedProject.id}
           onClose={() => setShowManageModal(false)}
           onFieldsUpdated={fetchBoards}
+        />
+      )}
+
+      {/* Project Settings Modal */}
+      {showProjectSettings && selectedProject && (
+        <ProjectManageModal
+          mode="PROJECT"
+          targetName={selectedProject.name}
+          role={currentRole.current}
+          onClose={() => setShowProjectSettings(false)}
         />
       )}
     </div>
