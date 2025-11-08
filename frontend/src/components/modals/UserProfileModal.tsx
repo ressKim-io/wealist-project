@@ -1,6 +1,7 @@
 import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { X, Camera, MessageSquare } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { UserProfile } from '../../types';
 import { getMyProfile, updateMyProfile } from '../../api/user/userService';
 
@@ -11,6 +12,7 @@ interface UserProfileModalProps {
 
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) => {
   const { theme } = useTheme();
+  const { token } = useAuth();
 
   // Ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -29,10 +31,11 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
   // 💡 모달이 열릴 때 최신 프로필 데이터 fetch
   useEffect(() => {
     const fetchProfile = async () => {
+      console.log('[Profile Fetch] 사용자 프로필 정보를 불러오는 중...');
       try {
         setLoading(true);
         setError(null);
-        const token = localStorage.getItem('accessToken');
+        console.log('[Token]', token);
         if (!token) {
           setError('인증 토큰이 없습니다. 다시 로그인해주세요.');
           return;
@@ -50,7 +53,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
     };
 
     fetchProfile();
-  }, []);
+  }, [token]);
 
   // --- 프로필 사진 변경 로직 ---
 
@@ -88,7 +91,6 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
     try {
       setLoading(true);
       setError(null);
-      const token = localStorage.getItem('accessToken');
       if (!token) {
         setError('인증 토큰이 없습니다. 다시 로그인해주세요.');
         return;
