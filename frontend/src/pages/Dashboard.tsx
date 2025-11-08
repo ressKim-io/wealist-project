@@ -17,7 +17,14 @@ import { Board, BoardWithCustomFields } from '../types/board';
 import BoardDetailModal from '../components/modals/BoardDetailModal';
 import { CreateProjectModal } from '../components/modals/CreateProjectModal';
 import { CreateBoardModal } from '../components/modals/CreateBoardModal';
-import { getProjects, getBoards, ProjectResponse, BoardResponse } from '../api/board/boardService';
+import {
+  getProjects,
+  getBoards,
+  getProjectStages,
+  ProjectResponse,
+  BoardResponse,
+  CustomStageResponse,
+} from '../api/board/boardService';
 
 interface Column {
   id: string;
@@ -210,32 +217,45 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     console.log(selectedProject);
     try {
       console.log(`[Dashboard] 보드 로드 시작 (Project: ${selectedProject.name})`);
+
+      // 1. 프로젝트의 모든 Stages 조회
+      const stages = await getProjectStages(selectedProject.id, accessToken);
+      console.log('✅ Stages loaded:', stages);
+
+      // 2. 보드 조회
       const boardsResponse = await getBoards(selectedProject.id, accessToken);
       console.log('✅ Boards loaded:', boardsResponse);
 
-      // Stage별로 보드를 그룹화
-      const stageMap = new Map<string, BoardResponse[]>();
-
-      boardsResponse.boards.forEach((board) => {
-        const stageName = board.stage?.name || 'To Do';
-        if (!stageMap.has(stageName)) {
-          stageMap.set(stageName, []);
-        }
-        stageMap.get(stageName)!.push(board);
+      // 3. Stage별로 빈 컬럼 먼저 생성
+      const stageMap = new Map<string, { stage: CustomStageResponse; boards: BoardResponse[] }>();
+      stages.forEach((stage) => {
+        stageMap.set(stage.id, { stage, boards: [] });
       });
 
-      // Column 형식으로 변환
-      const mockColumns: Column[] = Array.from(stageMap).map(([stageName, boards]) => ({
-        id: stageName,
-        title: stageName,
+      // 4. 보드를 해당 Stage 컬럼에 추가
+      boardsResponse.boards.forEach((board) => {
+        const stageId = board.stage?.id;
+        if (stageId && stageMap.has(stageId)) {
+          stageMap.get(stageId)!.boards.push(board);
+        }
+      });
+
+      // 5. Column 형식으로 변환 (displayOrder 순서대로)
+      const sortedStages = Array.from(stageMap.values()).sort(
+        (a, b) => a.stage.displayOrder - b.stage.displayOrder,
+      );
+
+      const mockColumns: Column[] = sortedStages.map(({ stage, boards }) => ({
+        id: stage.id,
+        title: stage.name,
         boards: boards.map((b) => ({
           id: b.id,
           title: b.title,
           assignee_id: b.assignee?.userId || '',
-          status: stageName,
+          status: stage.name,
           assignee: b.assignee?.name || 'Unassigned',
           customFieldValues: {
-            'cf-stage': b.stage?.name || stageName,
+            'cf-stage': b.stage?.name || stage.name,
             'cf-importance': b.importance?.name || 'Normal',
           },
         })),
@@ -555,7 +575,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                       <button
                         className={`relative w-full py-3 sm:py-4 ${theme.effects.cardBorderWidth} border-dashed ${theme.colors.border} ${theme.colors.card} hover:bg-gray-100 transition flex items-center justify-center gap-2 ${theme.font.size.xs} ${theme.effects.borderRadius}`}
                         onClick={() => {
-                          setCreateBoardStageId('');
+                          setCreateBoardStageId(column.id);
                           setShowCreateBoard(true);
                         }}
                       >
