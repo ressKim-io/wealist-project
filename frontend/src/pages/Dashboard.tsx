@@ -22,9 +22,6 @@ import {
   getProjects,
   getBoards,
   getProjectStages,
-  updateBoard,
-  updateStageColumnOrder,
-  updateStageBoardOrder,
   ProjectResponse,
   BoardResponse,
   CustomStageResponse,
@@ -404,17 +401,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       setDraggedFromColumn(null);
       setDragOverBoardId(null);
 
-      // Persist to backend
-      try {
-        const boardIds = newBoards.map((b) => b.id);
-        await updateStageBoardOrder(selectedProject.id, targetColumnId, boardIds, accessToken);
-        console.log(`✅ Stage 내 Board 순서 변경 성공`);
-      } catch (error) {
-        console.error('❌ Stage 내 Board 순서 변경 실패:', error);
-        // Revert on error
-        setColumns(columns);
-        alert('보드 순서 변경에 실패했습니다. 다시 시도해주세요.');
-      }
+      console.log(`✅ Stage 내 Board 순서 변경 (로컬)`);
       return;
     }
 
@@ -435,31 +422,11 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     });
 
     setColumns(newColumns);
-    const boardToUpdate = draggedBoard;
     setDraggedBoard(null);
     setDraggedFromColumn(null);
     setDragOverBoardId(null);
 
-    // Persist to backend
-    try {
-      await updateBoard(
-        boardToUpdate.id,
-        {
-          title: boardToUpdate.title,
-          content: boardToUpdate.content,
-          stageId: targetColumnId,
-          roleIds: boardToUpdate.roles?.map((r) => r.id) || [],
-          importanceId: boardToUpdate.importance?.id,
-        },
-        accessToken,
-      );
-      console.log(`✅ Board ${boardToUpdate.id} Stage 변경 성공: ${targetColumnId}`);
-    } catch (error) {
-      console.error('❌ Board Stage 변경 실패:', error);
-      // Revert on error
-      setColumns(columns);
-      alert('보드 이동에 실패했습니다. 다시 시도해주세요.');
-    }
+    console.log(`✅ Board ${draggedBoard.id} Stage 변경 (로컬): ${targetColumnId}`);
   };
 
   // Column drag handlers
@@ -493,19 +460,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     setColumns(newColumns);
     setDraggedColumn(null);
 
-    // Persist to backend
-    if (!selectedProject) return;
-
-    try {
-      const stageIds = newColumns.map((col) => col.id);
-      await updateStageColumnOrder(selectedProject.id, stageIds, accessToken);
-      console.log(`✅ Stage 컬럼 순서 변경 성공`);
-    } catch (error) {
-      console.error('❌ Stage 컬럼 순서 변경 실패:', error);
-      // Revert on error
-      setColumns(columns);
-      alert('컬럼 순서 변경에 실패했습니다. 다시 시도해주세요.');
-    }
+    console.log(`✅ Stage 컬럼 순서 변경 (로컬)`);
   };
 
   // 외부 클릭 감지 (동일)
@@ -737,6 +692,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                 {columns.map((column, idx) => (
                   <div
                     key={column.id}
+                    draggable
+                    onDragStart={() => handleColumnDragStart(column)}
                     onDragOver={(e) => {
                       handleDragOver(e);
                       handleColumnDragOver(e);
@@ -756,24 +713,22 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                         handleDrop(column.id);
                       }
                     }}
-                    className={`w-full lg:w-80 lg:flex-shrink-0 relative transition-all ${
-                      draggedColumn?.id === column.id ? 'opacity-80 scale-95' : 'opacity-100'
+                    className={`w-full lg:w-80 lg:flex-shrink-0 relative transition-all cursor-move ${
+                      draggedColumn?.id === column.id
+                        ? 'opacity-50 scale-95 shadow-2xl rotate-2'
+                        : 'opacity-100'
                     }`}
                   >
                     <div
                       className={`relative ${theme.effects.cardBorderWidth} ${
                         dragOverColumn === column.id && draggedFromColumn !== column.id
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          ? 'border-blue-500 border-2 bg-blue-50 dark:bg-blue-900/20 shadow-lg'
                           : theme.colors.border
                       } p-3 sm:p-4 ${theme.colors.card} ${
                         theme.effects.borderRadius
                       } transition-all duration-200`}
                     >
-                      <div
-                        draggable
-                        onDragStart={() => handleColumnDragStart(column)}
-                        className={`flex items-center justify-between pb-2 cursor-move`}
-                      >
+                      <div className={`flex items-center justify-between pb-2`}>
                         <h3
                           className={`font-bold ${theme.colors.text} flex items-center gap-2 ${theme.font.size.xs}`}
                         >
@@ -799,33 +754,39 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                             className="relative"
                             onDragOver={(e) => {
                               e.preventDefault();
-                              setDragOverBoardId(board.id);
+                              e.stopPropagation();
+                              if (draggedBoard && draggedBoard.id !== board.id) {
+                                setDragOverBoardId(board.id);
+                              }
                             }}
-                            onDragLeave={() => {
+                            onDragLeave={(e) => {
+                              e.stopPropagation();
                               setDragOverBoardId(null);
                             }}
                           >
                             {/* Drop indicator line - shows where the dragged board will be inserted */}
                             {dragOverBoardId === board.id &&
                               draggedBoard &&
-                              draggedBoard.id !== board.id && (
-                                <div className="absolute -top-1 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 z-10 animate-pulse"></div>
+                              draggedBoard.id !== board.id &&
+                              draggedFromColumn === column.id && (
+                                <div className="absolute -top-2 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 z-10"></div>
                               )}
                             <div
                               draggable
-                              onDragStart={() => handleDragStart(board, column.id)}
+                              onDragStart={(e) => {
+                                e.stopPropagation();
+                                handleDragStart(board, column.id);
+                              }}
                               onClick={() => setSelectedBoardId(board.id)}
                               className={`relative ${theme.colors.card} p-3 sm:p-4 ${
                                 theme.effects.cardBorderWidth
                               } ${
-                                dragOverBoardId === board.id && draggedBoard?.id !== board.id
-                                  ? 'border-blue-500 mt-3'
-                                  : theme.colors.border
+                                theme.colors.border
                               } hover:border-blue-500 transition-all cursor-pointer ${
                                 theme.effects.borderRadius
                               } ${
                                 draggedBoard?.id === board.id
-                                  ? 'opacity-80 scale-95'
+                                  ? 'opacity-50 scale-95 shadow-2xl rotate-1'
                                   : 'opacity-100'
                               }`}
                             >
@@ -846,11 +807,13 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                         {/* Drop indicator for cross-column drag - shows at bottom of target column */}
                         {dragOverColumn === column.id &&
                           draggedFromColumn !== column.id &&
-                          draggedBoard && (
-                            <div className="relative py-4">
-                              <div className="absolute top-2 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 z-10 animate-pulse"></div>
-                              <div className="text-center text-blue-500 text-xs font-semibold pt-4">
-                                여기에 추가됩니다
+                          draggedBoard &&
+                          !draggedColumn && (
+                            <div className="relative py-4 px-2">
+                              <div className="h-16 border-2 border-dashed border-blue-500 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                                <div className="text-center text-blue-600 text-xs font-semibold">
+                                  ⬇️ 여기에 추가됩니다
+                                </div>
                               </div>
                             </div>
                           )}
