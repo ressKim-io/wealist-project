@@ -14,7 +14,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import UserProfileModal from '../components/modals/UserProfileModal';
 import { UserProfile } from '../types';
 import { BoardDetailModal } from '../components/modals/BoardDetailModal';
-import { CreateProjectModal } from '../components/modals/CreateProjectModal';
+import { ProjectModal } from '../components/modals/ProjectModal';
 import { CreateBoardModal } from '../components/modals/CreateBoardModal';
 import { CustomFieldManageModal } from '../components/modals/CustomFieldManageModal';
 import { FilterBar } from '../components/FilterBar';
@@ -864,10 +864,10 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       )}
 
       {showCreateProject && (
-        <CreateProjectModal
+        <ProjectModal
           workspaceId={currentWorkspaceId}
           onClose={() => setShowCreateProject(false)}
-          onProjectCreated={fetchProjects}
+          onProjectSaved={fetchProjects}
         />
       )}
 
@@ -896,6 +896,16 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
           projectId={selectedProject.id}
           onClose={() => setShowManageModal(false)}
           onFieldsUpdated={fetchBoards}
+        />
+      )}
+
+      {/* Project Settings Modal */}
+      {showProjectSettings && selectedProject && (
+        <ProjectModal
+          workspaceId={currentWorkspaceId}
+          project={selectedProject}
+          onClose={() => setShowProjectSettings(false)}
+          onProjectSaved={fetchProjects}
         />
       )}
     </div>

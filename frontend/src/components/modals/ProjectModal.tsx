@@ -1,23 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
-interface CreateProjectModalProps {
+interface ProjectData {
+  id: string;
+  name: string;
+  description?: string;
   workspaceId: string;
-  onClose: () => void;
-  onProjectCreated: () => void;
+  ownerId: string;
+  ownerName: string;
+  ownerEmail: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
+interface ProjectModalProps {
+  workspaceId: string;
+  project?: ProjectData; // 편집 모드일 때만 전달
+  onClose: () => void;
+  onProjectSaved: () => void; // 생성 또는 수정 후 호출
+}
+
+export const ProjectModal: React.FC<ProjectModalProps> = ({
   workspaceId,
+  project,
   onClose,
-  onProjectCreated,
+  onProjectSaved,
 }) => {
   const { theme } = useTheme();
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+  const isEditMode = !!project;
+
+  const [name, setName] = useState(project?.name || '');
+  const [description, setDescription] = useState(project?.description || '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // project prop이 변경되면 폼 리셋
+  useEffect(() => {
+    if (project) {
+      setName(project.name);
+      setDescription(project.description || '');
+    } else {
+      setName('');
+      setDescription('');
+    }
+    setError(null);
+  }, [project]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,24 +60,45 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
     try {
       const accessToken = localStorage.getItem('access_token') || '';
-      const { createProject } = await import('../../api/board/boardService');
 
-      await createProject(
-        {
-          workspaceId,
-          name: name.trim(),
-          description: description.trim() || undefined,
-        },
-        accessToken,
-      );
+      if (isEditMode) {
+        // 편집 모드
+        const { updateProject } = await import('../../api/board/boardService');
+        await updateProject(
+          project.id,
+          {
+            name: name.trim(),
+            description: description.trim() || undefined,
+          },
+          accessToken,
+        );
+        console.log('✅ 프로젝트 수정 성공:', name);
+      } else {
+        // 생성 모드
+        const { createProject } = await import('../../api/board/boardService');
+        await createProject(
+          {
+            workspaceId,
+            name: name.trim(),
+            description: description.trim() || undefined,
+          },
+          accessToken,
+        );
+        console.log('✅ 프로젝트 생성 성공:', name);
+      }
 
-      console.log('✅ 프로젝트 생성 성공:', name);
-      onProjectCreated();
+      onProjectSaved();
       onClose();
     } catch (err) {
       const error = err as Error;
-      console.error('❌ 프로젝트 생성 실패:', error);
-      setError(error.message || '프로젝트 생성에 실패했습니다.');
+      console.error(
+        isEditMode ? '❌ 프로젝트 수정 실패:' : '❌ 프로젝트 생성 실패:',
+        error,
+      );
+      setError(
+        error.message ||
+          (isEditMode ? '프로젝트 수정에 실패했습니다.' : '프로젝트 생성에 실패했습니다.'),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -66,7 +115,9 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-800">새 프로젝트 만들기</h2>
+          <h2 className="text-xl font-bold text-gray-800">
+            {isEditMode ? '프로젝트 설정' : '새 프로젝트 만들기'}
+          </h2>
           <button
             onClick={onClose}
             className="p-2 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition"
@@ -74,6 +125,16 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Project Owner Info (편집 모드일 때만 표시) */}
+        {isEditMode && project && (
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <div className="text-xs text-gray-500 mb-1">프로젝트 소유자</div>
+            <div className="text-sm font-medium text-gray-700">
+              {project.ownerName} ({project.ownerEmail})
+            </div>
+          </div>
+        )}
 
         {/* Error Message */}
         {error && (
@@ -96,6 +157,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               disabled={isLoading}
               maxLength={100}
+              autoFocus
             />
           </div>
 
@@ -114,6 +176,14 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
             />
           </div>
 
+          {/* Timestamps (편집 모드일 때만 표시) */}
+          {isEditMode && project && (
+            <div className="text-xs text-gray-500 space-y-1">
+              <div>생성일: {new Date(project.createdAt).toLocaleString('ko-KR')}</div>
+              <div>수정일: {new Date(project.updatedAt).toLocaleString('ko-KR')}</div>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex gap-3 pt-2">
             <button
@@ -131,7 +201,13 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               }`}
               disabled={isLoading}
             >
-              {isLoading ? '생성 중...' : '프로젝트 만들기'}
+              {isLoading
+                ? isEditMode
+                  ? '저장 중...'
+                  : '생성 중...'
+                : isEditMode
+                  ? '저장'
+                  : '프로젝트 만들기'}
             </button>
           </div>
         </form>
