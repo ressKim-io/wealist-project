@@ -27,10 +27,12 @@ import {
   BoardResponse,
   CustomStageResponse,
 } from '../api/board/boardService';
+import { getDefaultColorByIndex } from '../constants/colors';
 
 interface Column {
   id: string;
   title: string;
+  color?: string; // hex color from API
   boards: BoardResponse[];
 }
 
@@ -250,6 +252,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       const columns: Column[] = sortedStages.map(({ stage, boards }) => ({
         id: stage.id,
         title: stage.name,
+        color: stage.color, // Store the color from API
         boards: boards,
       }));
 
@@ -438,8 +441,6 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       alert('컬럼 순서 변경에 실패했습니다. 다시 시도해주세요.');
     }
   };
-
-  const columnColors = ['bg-blue-500', 'bg-yellow-500', 'bg-purple-500'];
 
   // 외부 클릭 감지 (동일)
   useEffect(() => {
@@ -690,9 +691,11 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                         className={`font-bold ${theme.colors.text} flex items-center gap-2 ${theme.font.size.xs}`}
                       >
                         <span
-                          className={`w-3 h-3 sm:w-4 sm:h-4 ${
-                            columnColors[idx % columnColors.length]
-                          } ${theme.effects.cardBorderWidth} ${theme.colors.border}`}
+                          className={`w-3 h-3 sm:w-4 sm:h-4 ${theme.effects.cardBorderWidth} ${theme.colors.border}`}
+                          style={{
+                            backgroundColor:
+                              column.color || getDefaultColorByIndex(idx).hex,
+                          }}
                         ></span>
                         {column.title}
                         <span
