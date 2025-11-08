@@ -19,6 +19,7 @@ type BoardRepository interface {
 	CreateBoardRoles(boardID uuid.UUID, roleIDs []uuid.UUID) error
 	DeleteBoardRolesByBoard(boardID uuid.UUID) error
 	FindRolesByBoard(boardID uuid.UUID) ([]domain.BoardRole, error)
+	FindRolesByBoards(boardIDs []uuid.UUID) (map[uuid.UUID][]domain.BoardRole, error)
 	FindBoardsByRole(roleID uuid.UUID) ([]domain.Board, error)
 
 	// Phase 4 TODO implementation: Update boards when custom fields are deleted
@@ -133,6 +134,26 @@ func (r *boardRepository) FindRolesByBoard(boardID uuid.UUID) ([]domain.BoardRol
 		return nil, err
 	}
 	return roles, nil
+}
+
+// FindRolesByBoards fetches board roles for multiple boards in a single query
+func (r *boardRepository) FindRolesByBoards(boardIDs []uuid.UUID) (map[uuid.UUID][]domain.BoardRole, error) {
+	if len(boardIDs) == 0 {
+		return make(map[uuid.UUID][]domain.BoardRole), nil
+	}
+
+	var boardRoles []domain.BoardRole
+	if err := r.db.Where("board_id IN ?", boardIDs).Find(&boardRoles).Error; err != nil {
+		return nil, err
+	}
+
+	// Group by board_id
+	result := make(map[uuid.UUID][]domain.BoardRole)
+	for _, br := range boardRoles {
+		result[br.BoardID] = append(result[br.BoardID], br)
+	}
+
+	return result, nil
 }
 
 func (r *boardRepository) FindBoardsByRole(roleID uuid.UUID) ([]domain.Board, error) {

@@ -385,20 +385,29 @@ func (s *boardService) GetBoards(userID string, req *dto.GetBoardsRequest) (*dto
 	// 7. Batch fetch users
 	userMap := s.getUserInfoBatch(ctx, userIDs)
 
-	// 8. Fetch board roles for all boards and batch fetch role details
+	// 8. Batch fetch board roles for all boards
 	boardRolesMap := make(map[uuid.UUID][]*domain.CustomRole)
 	allRoleIDs := make([]uuid.UUID, 0)
 	boardToRoleIDs := make(map[uuid.UUID][]uuid.UUID)
 
+	// Collect all board IDs
+	boardIDs := make([]uuid.UUID, 0, len(boards))
 	for _, board := range boards {
-		boardRoles, _ := s.repo.FindRolesByBoard(board.ID)
+		boardIDs = append(boardIDs, board.ID)
+	}
+
+	// Batch fetch board roles (1 query instead of N)
+	boardRolesData, _ := s.repo.FindRolesByBoards(boardIDs)
+
+	// Process board roles
+	for boardID, boardRoles := range boardRolesData {
 		if len(boardRoles) > 0 {
 			roleIDs := make([]uuid.UUID, 0, len(boardRoles))
 			for _, kr := range boardRoles {
 				roleIDs = append(roleIDs, kr.CustomRoleID)
 				allRoleIDs = append(allRoleIDs, kr.CustomRoleID)
 			}
-			boardToRoleIDs[board.ID] = roleIDs
+			boardToRoleIDs[boardID] = roleIDs
 		}
 	}
 
