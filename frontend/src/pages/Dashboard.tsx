@@ -671,7 +671,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                     }
                   }}
                   className={`w-full lg:w-80 lg:flex-shrink-0 relative transition-all ${
-                    draggedColumn?.id === column.id ? 'opacity-50 scale-95' : 'opacity-100'
+                    draggedColumn?.id === column.id ? 'opacity-80 scale-95' : 'opacity-100'
                   }`}
                 >
                   <div
@@ -716,14 +716,22 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                             setDragOverBoardId(null);
                           }}
                         >
+                          {/* Drop indicator line - shows where the dragged board will be inserted */}
+                          {dragOverBoardId === board.id &&
+                            draggedBoard &&
+                            draggedBoard.id !== board.id && (
+                              <div className="absolute -top-1 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 z-10 animate-pulse"></div>
+                            )}
                           <div
                             draggable
                             onDragStart={() => handleDragStart(board, column.id)}
                             onClick={() => setSelectedBoardId(board.id)}
                             className={`relative ${theme.colors.card} p-3 sm:p-4 ${theme.effects.cardBorderWidth} ${
-                              dragOverBoardId === board.id ? 'border-blue-500' : theme.colors.border
+                              dragOverBoardId === board.id && draggedBoard?.id !== board.id
+                                ? 'border-blue-500 mt-3'
+                                : theme.colors.border
                             } hover:border-blue-500 transition-all cursor-pointer ${theme.effects.borderRadius} ${
-                              draggedBoard?.id === board.id ? 'opacity-50 scale-95' : 'opacity-100'
+                              draggedBoard?.id === board.id ? 'opacity-80 scale-95' : 'opacity-100'
                             }`}
                           >
                             <h3
