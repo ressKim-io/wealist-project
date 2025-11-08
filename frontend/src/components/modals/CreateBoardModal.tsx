@@ -58,8 +58,10 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
   const [newFieldColor, setNewFieldColor] = useState(CUSTOM_FIELD_COLORS[0].hex);
   const [newImportanceLevel, setNewImportanceLevel] = useState(1);
 
-  // Role dropdown state
+  // Dropdown states
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [showStageDropdown, setShowStageDropdown] = useState(false);
+  const [showImportanceDropdown, setShowImportanceDropdown] = useState(false);
 
   // 1. Custom Fields 조회
   useEffect(() => {
@@ -99,7 +101,7 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
     };
 
     fetchCustomFields();
-  }, [projectId, accessToken, selectedStageId]);
+  }, [projectId, accessToken]);
 
   // 1.1 드롭다운 외부 클릭 감지
   useEffect(() => {
@@ -109,16 +111,22 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
       if (!target.closest('.role-dropdown-container')) {
         setShowRoleDropdown(false);
       }
+      if (!target.closest('.stage-dropdown-container')) {
+        setShowStageDropdown(false);
+      }
+      if (!target.closest('.importance-dropdown-container')) {
+        setShowImportanceDropdown(false);
+      }
     };
 
-    if (showRoleDropdown) {
+    if (showRoleDropdown || showStageDropdown || showImportanceDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showRoleDropdown]);
+  }, [showRoleDropdown, showStageDropdown, showImportanceDropdown]);
 
   // 2. Role 토글 핸들러
   const toggleRole = (roleId: string) => {
@@ -412,30 +420,67 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
             </div>
 
             {/* Stage Selection */}
-            <div>
+            <div className="relative stage-dropdown-container">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 <CheckSquare className="w-4 h-4 inline mr-1" />
                 진행 단계 <span className="text-red-500">*</span>
               </label>
-              <select
-                value={selectedStageId}
-                onChange={(e) => {
-                  if (e.target.value === '__create_new__') {
-                    setShowCreateStage(true);
-                  } else {
-                    setSelectedStageId(e.target.value);
-                  }
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+              <button
+                type="button"
+                onClick={() => setShowStageDropdown(!showStageDropdown)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition text-sm text-left flex items-center justify-between"
                 disabled={isLoading}
               >
-                {stages.map((stage) => (
-                  <option key={stage.id} value={stage.id}>
-                    {stage.name}
-                  </option>
-                ))}
-                <option value="__create_new__">+ 새 진행 단계 추가</option>
-              </select>
+                <span className="flex items-center gap-2">
+                  {selectedStageId && stages.find((s) => s.id === selectedStageId) && (
+                    <>
+                      <span
+                        className="w-3 h-3 rounded-full"
+                        style={{
+                          backgroundColor:
+                            stages.find((s) => s.id === selectedStageId)?.color || '#6B7280',
+                        }}
+                      />
+                      {stages.find((s) => s.id === selectedStageId)?.name}
+                    </>
+                  )}
+                </span>
+                <CheckSquare className="w-4 h-4 text-gray-400" />
+              </button>
+              {/* 드롭다운 메뉴 */}
+              {showStageDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {stages.map((stage) => (
+                    <button
+                      key={stage.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedStageId(stage.id);
+                        setShowStageDropdown(false);
+                      }}
+                      className={`w-full px-3 py-2 text-left hover:bg-gray-100 transition text-sm flex items-center gap-2 ${
+                        selectedStageId === stage.id ? 'bg-blue-50' : ''
+                      }`}
+                    >
+                      <span
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: stage.color || '#6B7280' }}
+                      />
+                      {stage.name}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowStageDropdown(false);
+                      setShowCreateStage(true);
+                    }}
+                    className="w-full px-3 py-2 text-left hover:bg-blue-50 transition text-sm text-blue-600 font-medium border-t border-gray-200 flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />+ 새 진행 단계 추가
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Role Selection */}
@@ -521,32 +566,91 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
             </div>
 
             {/* Importance Selection */}
-            <div>
+            <div className="relative importance-dropdown-container">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 <AlertCircle className="w-4 h-4 inline mr-1" />
                 중요도 (선택)
               </label>
-              <select
-                value={selectedImportanceId}
-                onChange={(e) => {
-                  if (e.target.value === '__create_new__') {
-                    setShowCreateImportance(true);
-                  } else {
-                    setSelectedImportanceId(e.target.value);
-                  }
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+              <button
+                type="button"
+                onClick={() => setShowImportanceDropdown(!showImportanceDropdown)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition text-sm text-left flex items-center justify-between"
                 disabled={isLoading}
               >
-                <option value="">없음</option>
-                {importances.map((importance) => (
-                  <option key={importance.id} value={importance.id}>
-                    {importance.name}
-                    {'level' in importance ? ` (Lv.${importance.level})` : ''}
-                  </option>
-                ))}
-                <option value="__create_new__">+ 새 중요도 추가</option>
-              </select>
+                <span className="flex items-center gap-2">
+                  {selectedImportanceId ? (
+                    importances.find((i) => i.id === selectedImportanceId) && (
+                      <>
+                        <span
+                          className="w-3 h-3 rounded-full"
+                          style={{
+                            backgroundColor:
+                              importances.find((i) => i.id === selectedImportanceId)?.color ||
+                              '#6B7280',
+                          }}
+                        />
+                        {importances.find((i) => i.id === selectedImportanceId)?.name}
+                        {'level' in (importances.find((i) => i.id === selectedImportanceId) || {})
+                          ? ` (Lv.${(importances.find((i) => i.id === selectedImportanceId) as any).level})`
+                          : ''}
+                      </>
+                    )
+                  ) : (
+                    <span className="text-gray-500">없음</span>
+                  )}
+                </span>
+                <AlertCircle className="w-4 h-4 text-gray-400" />
+              </button>
+              {/* 드롭다운 메뉴 */}
+              {showImportanceDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedImportanceId('');
+                      setShowImportanceDropdown(false);
+                    }}
+                    className={`w-full px-3 py-2 text-left hover:bg-gray-100 transition text-sm flex items-center gap-2 ${
+                      selectedImportanceId === '' ? 'bg-blue-50' : ''
+                    }`}
+                  >
+                    <span className="w-3 h-3 rounded-full bg-gray-300" />
+                    없음
+                  </button>
+                  {importances.map((importance) => (
+                    <button
+                      key={importance.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedImportanceId(importance.id);
+                        setShowImportanceDropdown(false);
+                      }}
+                      className={`w-full px-3 py-2 text-left hover:bg-gray-100 transition text-sm flex items-center gap-2 ${
+                        selectedImportanceId === importance.id ? 'bg-blue-50' : ''
+                      }`}
+                    >
+                      <span
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: importance.color || '#6B7280' }}
+                      />
+                      {importance.name}
+                      {'level' in importance && (
+                        <span className="text-xs text-gray-500">Lv.{importance.level}</span>
+                      )}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowImportanceDropdown(false);
+                      setShowCreateImportance(true);
+                    }}
+                    className="w-full px-3 py-2 text-left hover:bg-blue-50 transition text-sm text-blue-600 font-medium border-t border-gray-200 flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />+ 새 중요도 추가
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Assignee and Due Date */}
