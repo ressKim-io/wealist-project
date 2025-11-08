@@ -274,6 +274,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   const [draggedFromColumn, setDraggedFromColumn] = useState<string | null>(null);
   const [draggedColumn, setDraggedColumn] = useState<Column | null>(null);
   const [dragOverBoardId, setDragOverBoardId] = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
   const handleDragStart = (board: BoardResponse, columnId: string): void => {
     setDraggedBoard(board);
@@ -286,6 +287,9 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
   const handleDrop = async (targetColumnId: string): Promise<void> => {
     if (!draggedBoard || !draggedFromColumn) return;
+
+    // Reset drag over state
+    setDragOverColumn(null);
 
     // Same column: reorder boards within column
     if (draggedFromColumn === targetColumnId) {
@@ -650,6 +654,14 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                   onDragOver={(e) => {
                     handleDragOver(e);
                     handleColumnDragOver(e);
+                    if (draggedBoard && !draggedColumn) {
+                      setDragOverColumn(column.id);
+                    }
+                  }}
+                  onDragLeave={() => {
+                    if (draggedBoard && !draggedColumn) {
+                      setDragOverColumn(null);
+                    }
                   }}
                   onDrop={() => {
                     if (draggedColumn) {
@@ -658,10 +670,16 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                       handleDrop(column.id);
                     }
                   }}
-                  className="w-full lg:w-80 lg:flex-shrink-0 relative"
+                  className={`w-full lg:w-80 lg:flex-shrink-0 relative transition-all ${
+                    draggedColumn?.id === column.id ? 'opacity-50 scale-95' : 'opacity-100'
+                  }`}
                 >
                   <div
-                    className={`relative ${theme.effects.cardBorderWidth} ${theme.colors.border} p-3 sm:p-4 ${theme.colors.card} ${theme.effects.borderRadius}`}
+                    className={`relative ${theme.effects.cardBorderWidth} ${
+                      dragOverColumn === column.id && draggedFromColumn !== column.id
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        : theme.colors.border
+                    } p-3 sm:p-4 ${theme.colors.card} ${theme.effects.borderRadius} transition-all duration-200`}
                   >
                     <div
                       draggable
@@ -704,7 +722,9 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                             onClick={() => setSelectedBoardId(board.id)}
                             className={`relative ${theme.colors.card} p-3 sm:p-4 ${theme.effects.cardBorderWidth} ${
                               dragOverBoardId === board.id ? 'border-blue-500' : theme.colors.border
-                            } hover:border-blue-500 transition cursor-pointer ${theme.effects.borderRadius}`}
+                            } hover:border-blue-500 transition-all cursor-pointer ${theme.effects.borderRadius} ${
+                              draggedBoard?.id === board.id ? 'opacity-50 scale-95' : 'opacity-100'
+                            }`}
                           >
                             <h3
                               className={`font-bold ${theme.colors.text} mb-2 sm:mb-3 ${theme.font.size.xs} break-words`}
