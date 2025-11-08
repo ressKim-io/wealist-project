@@ -9,7 +9,7 @@ import {
   getWorkspaces,
   createWorkspace,
 } from '../api/user/userService';
-import { Search, Plus, X, AlertCircle } from 'lucide-react';
+import { Search, Plus, X, AlertCircle, Settings } from 'lucide-react';
 
 // 2. Props 인터페이스 제거 (더 이상 App.tsx에서 props를 받지 않음)
 /*
@@ -34,7 +34,7 @@ const SelectWorkspacePage: React.FC = () => {
 
   // 5. localStorage에서 토큰 및 ID 직접 조회
   const accessToken = localStorage.getItem('access_token') || '';
-  // const userId = localStorage.getItem('user_id') || ''; // (필요한 경우 사용)
+  const userId = localStorage.getItem('user_id') || ''; // OWNER 확인용
 
   // 페이지 상태
   const [step, setStep] = useState<WorkspacePageStep>('list');
@@ -170,6 +170,13 @@ const SelectWorkspacePage: React.FC = () => {
     }
   };
 
+  // 워크스페이스 관리 페이지로 이동
+  const handleManageWorkspace = (workspace: WorkspaceResponse) => {
+    // TODO: 워크스페이스 관리 페이지 구현 후 실제 경로로 변경
+    alert(`워크스페이스 '${workspace.name}' 관리 기능은 준비 중입니다.`);
+    // navigate(`/workspaces/${workspace.id}/settings`);
+  };
+
   // 8. 폼 초기화 (동일)
   const resetCreateForm = () => {
     setNewWorkspaceName('');
@@ -239,11 +246,10 @@ const SelectWorkspacePage: React.FC = () => {
             >
               {availableWorkspaces.length > 0 ? (
                 availableWorkspaces.map((ws) => (
-                  <button
+                  <div
                     key={ws.id}
-                    onClick={() => handleSelectExistingWorkspace(ws)}
-                    disabled={isLoading}
-                    className={`w-full text-left p-4 hover:bg-blue-50 border-b border-gray-100 ${theme.colors.text} ${theme.font.size.sm} transition flex justify-between items-center last:border-b-0`}
+                    onClick={() => !isLoading && handleSelectExistingWorkspace(ws)}
+                    className={`w-full text-left p-4 hover:bg-blue-50 border-b border-gray-100 ${theme.colors.text} ${theme.font.size.sm} transition flex justify-between items-center last:border-b-0 ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                   >
                     <div>
                       <span className="font-semibold">{ws.name}</span>
@@ -251,12 +257,26 @@ const SelectWorkspacePage: React.FC = () => {
                         {ws.description}
                       </p>
                     </div>
-                    <span
-                      className={`${theme.colors.info} ${theme.font.size.xs} px-2 py-1 border border-blue-200 rounded`}
-                    >
-                      선택
-                    </span>
-                  </button>
+                    <div className="flex items-center gap-2">
+                      {ws.ownerId === userId && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleManageWorkspace(ws);
+                          }}
+                          className="p-2 hover:bg-gray-200 rounded-lg transition"
+                          title="워크스페이스 관리"
+                        >
+                          <Settings className="w-4 h-4 text-gray-600" />
+                        </button>
+                      )}
+                      <span
+                        className={`${theme.colors.info} ${theme.font.size.xs} px-2 py-1 border border-blue-200 rounded`}
+                      >
+                        선택
+                      </span>
+                    </div>
+                  </div>
                 ))
               ) : (
                 <p className={`p-4 text-center ${theme.colors.subText} ${theme.font.size.sm}`}>
