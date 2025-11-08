@@ -58,7 +58,6 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
 
   // Assignee search state
   const [assigneeSearch, setAssigneeSearch] = useState('');
-  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
 
   // Data state
   const [stages, setStages] = useState<CustomStageResponse[]>([]);
@@ -156,18 +155,18 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
         setShowImportanceDropdown(false);
       }
       if (!target.closest('.assignee-dropdown-container')) {
-        setShowAssigneeDropdown(false);
+        setAssigneeSearch(''); // 검색어 비우기
       }
     };
 
-    if (showRoleDropdown || showStageDropdown || showImportanceDropdown || showAssigneeDropdown) {
+    if (showRoleDropdown || showStageDropdown || showImportanceDropdown || assigneeSearch.trim()) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showRoleDropdown, showStageDropdown, showImportanceDropdown, showAssigneeDropdown]);
+  }, [showRoleDropdown, showStageDropdown, showImportanceDropdown, assigneeSearch]);
 
   // 2. Inline custom field creation handlers
   const handleCreateCustomField = async (type: 'stage' | 'role' | 'importance') => {
@@ -732,17 +731,15 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
                     value={assigneeSearch}
                     onChange={(e) => {
                       setAssigneeSearch(e.target.value);
-                      setShowAssigneeDropdown(true);
                     }}
-                    onFocus={() => setShowAssigneeDropdown(true)}
                     placeholder={selectedAssigneeIds.length === 0 ? "담당자 검색..." : ""}
                     className="flex-1 min-w-[120px] px-1 py-1 text-sm focus:outline-none"
                     disabled={isLoading}
                   />
                 </div>
 
-                {/* Dropdown - z-index higher than modal */}
-                {showAssigneeDropdown && (
+                {/* Dropdown - z-index higher than modal, only show when searching */}
+                {assigneeSearch.trim() && (
                   <div className="absolute z-[110] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                     {workspaceMembers
                       .filter((member) =>
