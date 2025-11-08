@@ -22,12 +22,14 @@ import {
   getBoard,
   deleteBoard,
 } from '../../api/board/boardService';
+import { WorkspaceMember, getWorkspaceMembers } from '../../api/user/userService';
 
 /**
  * BoardDetailModal - 보드 상세 보기 및 수정
  */
 interface BoardDetailModalProps {
   boardId: string;
+  workspaceId: string;
   onClose: () => void;
   onBoardUpdated: () => void;
   onBoardDeleted: () => void;
@@ -46,6 +48,7 @@ interface BoardDetailModalProps {
 
 export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
   boardId,
+  workspaceId,
   onClose,
   onBoardUpdated,
   onBoardDeleted,
@@ -68,6 +71,7 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
   const [stages, setStages] = useState<CustomStageResponse[]>([]);
   const [roles, setRoles] = useState<CustomRoleResponse[]>([]);
   const [importances, setImportances] = useState<CustomImportanceResponse[]>([]);
+  const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>([]);
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
@@ -141,6 +145,23 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
 
     fetchCustomFields();
   }, [projectId, accessToken]);
+
+  // 워크스페이스 멤버 조회
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        const members = await getWorkspaceMembers(workspaceId, accessToken);
+        setWorkspaceMembers(members);
+        console.log('✅ 워크스페이스 멤버 로드:', members.length);
+      } catch (err) {
+        console.error('❌ 워크스페이스 멤버 로드 실패:', err);
+      }
+    };
+
+    if (workspaceId) {
+      fetchMembers();
+    }
+  }, [workspaceId, accessToken]);
 
   const handleDelete = async () => {
     if (!confirm('정말로 이 보드를 삭제하시겠습니까?')) return;
@@ -316,14 +337,17 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
               </label>
               {assigneeIds.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
-                  {assigneeIds.map((userId) => (
-                    <span
-                      key={userId}
-                      className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
-                    >
-                      {userId}
-                    </span>
-                  ))}
+                  {assigneeIds.map((userId) => {
+                    const member = workspaceMembers.find((m) => m.userId === userId);
+                    return (
+                      <span
+                        key={userId}
+                        className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
+                      >
+                        {member?.name || userId}
+                      </span>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-sm text-gray-600">없음</p>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown, Eye, Table, LayoutGrid, Plus, Settings } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -32,6 +32,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
 
+  // Refs for outside click detection
+  const viewModalRef = useRef<HTMLDivElement>(null);
+  const filterDropdownRef = useRef<HTMLDivElement>(null);
+
   const handleSearchChange = (value: string) => {
     setSearchValue(value);
     onSearchChange(value);
@@ -61,6 +65,31 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     { value: 'hideCompleted', label: '완료된 것 숨기기' },
   ];
 
+  // 외부 클릭 감지
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+
+      // View modal 외부 클릭
+      if (viewModalRef.current && !viewModalRef.current.contains(target)) {
+        setShowViewModal(false);
+      }
+
+      // Filter dropdown 외부 클릭
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(target)) {
+        setShowFilterDropdown(false);
+      }
+    };
+
+    if (showViewModal || showFilterDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showViewModal, showFilterDropdown]);
+
   return (
     <div
       className={`flex items-center gap-3 p-4 ${theme.colors.card} border-b ${theme.colors.border}`}
@@ -78,7 +107,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       </div>
 
       {/* View Modal Button */}
-      <div className="relative">
+      <div className="relative" ref={viewModalRef}>
         <button
           onClick={() => {
             setShowViewModal(!showViewModal);
@@ -163,7 +192,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       </div>
 
       {/* Filter Dropdown */}
-      <div className="relative">
+      <div className="relative" ref={filterDropdownRef}>
         <button
           onClick={() => {
             setShowFilterDropdown(!showFilterDropdown);
