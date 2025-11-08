@@ -58,6 +58,9 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
   const [newFieldColor, setNewFieldColor] = useState(CUSTOM_FIELD_COLORS[0].hex);
   const [newImportanceLevel, setNewImportanceLevel] = useState(1);
 
+  // Role dropdown state
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+
   // 1. Custom Fields 조회
   useEffect(() => {
     const fetchCustomFields = async () => {
@@ -97,6 +100,25 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
 
     fetchCustomFields();
   }, [projectId, accessToken, selectedStageId]);
+
+  // 1.1 드롭다운 외부 클릭 감지
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      // 드롭다운 버튼이나 메뉴 내부 클릭이 아닌 경우 드롭다운 닫기
+      if (!target.closest('.role-dropdown-container')) {
+        setShowRoleDropdown(false);
+      }
+    };
+
+    if (showRoleDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showRoleDropdown]);
 
   // 2. Role 토글 핸들러
   const toggleRole = (roleId: string) => {
@@ -251,58 +273,70 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
     </div>
   );
 
-  // Helper: Inline Creation Form
-  const renderInlineCreationForm = (
-    type: 'stage' | 'role' | 'importance',
-    title: string,
-  ) => (
-    <div className="mt-3 p-4 border-2 border-dashed border-blue-300 rounded-lg bg-blue-50">
-      <h4 className="text-sm font-semibold text-gray-700 mb-3">새 {title} 추가</h4>
-      <div className="space-y-3">
-        <input
-          type="text"
-          value={newFieldName}
-          onChange={(e) => setNewFieldName(e.target.value)}
-          placeholder={`${title} 이름`}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          disabled={isLoading}
-          autoFocus
-        />
-        <div>
-          <label className="text-xs text-gray-600 block mb-1">색상 선택</label>
-          {renderColorPicker(newFieldColor, setNewFieldColor)}
-        </div>
-        {type === 'importance' && (
+  // Helper: Creation Modal (작은 모달로 표시)
+  const renderCreationModal = (type: 'stage' | 'role' | 'importance', title: string) => (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-[100]"
+      onClick={cancelInlineCreation}
+    >
+      <div
+        className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-bold text-gray-800 mb-4">새 {title} 추가</h3>
+        <div className="space-y-4">
           <div>
-            <label className="text-xs text-gray-600 block mb-1">중요도 레벨 (1-5)</label>
+            <label className="text-sm font-semibold text-gray-700 block mb-2">
+              {title} 이름 <span className="text-red-500">*</span>
+            </label>
             <input
-              type="number"
-              min="1"
-              max="5"
-              value={newImportanceLevel}
-              onChange={(e) => setNewImportanceLevel(parseInt(e.target.value))}
+              type="text"
+              value={newFieldName}
+              onChange={(e) => setNewFieldName(e.target.value)}
+              placeholder={`예: ${type === 'stage' ? '진행중' : type === 'role' ? '디자이너' : '매우 높음'}`}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               disabled={isLoading}
+              autoFocus
             />
           </div>
-        )}
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => handleCreateCustomField(type)}
-            className="flex-1 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-sm font-medium"
-            disabled={isLoading || !newFieldName.trim()}
-          >
-            추가
-          </button>
-          <button
-            type="button"
-            onClick={cancelInlineCreation}
-            className="flex-1 px-3 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition text-sm font-medium"
-            disabled={isLoading}
-          >
-            취소
-          </button>
+          <div>
+            <label className="text-sm font-semibold text-gray-700 block mb-2">색상 선택</label>
+            {renderColorPicker(newFieldColor, setNewFieldColor)}
+          </div>
+          {type === 'importance' && (
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-2">
+                중요도 레벨 (1-5)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="5"
+                value={newImportanceLevel}
+                onChange={(e) => setNewImportanceLevel(parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                disabled={isLoading}
+              />
+            </div>
+          )}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={cancelInlineCreation}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition"
+              disabled={isLoading}
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={() => handleCreateCustomField(type)}
+              className="flex-1 px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition"
+              disabled={isLoading || !newFieldName.trim()}
+            >
+              {isLoading ? '추가 중...' : '추가'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -383,84 +417,107 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
                 <CheckSquare className="w-4 h-4 inline mr-1" />
                 진행 단계 <span className="text-red-500">*</span>
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <select
+                value={selectedStageId}
+                onChange={(e) => {
+                  if (e.target.value === '__create_new__') {
+                    setShowCreateStage(true);
+                  } else {
+                    setSelectedStageId(e.target.value);
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                disabled={isLoading}
+              >
                 {stages.map((stage) => (
-                  <button
-                    key={stage.id}
-                    type="button"
-                    onClick={() => setSelectedStageId(stage.id)}
-                    className={`px-3 py-2 rounded-lg border-2 transition text-sm font-medium ${
-                      selectedStageId === stage.id
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                    }`}
-                    disabled={isLoading}
-                  >
-                    <span
-                      className="inline-block w-3 h-3 rounded-full mr-2"
-                      style={{ backgroundColor: stage.color || '#6B7280' }}
-                    />
+                  <option key={stage.id} value={stage.id}>
                     {stage.name}
-                  </button>
+                  </option>
                 ))}
-              </div>
-              {!showCreateStage && !showCreateRole && !showCreateImportance && (
-                <button
-                  type="button"
-                  onClick={() => setShowCreateStage(true)}
-                  className="mt-2 w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition text-sm flex items-center justify-center gap-1"
-                  disabled={isLoading}
-                >
-                  <Plus className="w-4 h-4" />
-                  새 진행 단계 추가
-                </button>
-              )}
-              {showCreateStage && renderInlineCreationForm('stage', '진행 단계')}
+                <option value="__create_new__">+ 새 진행 단계 추가</option>
+              </select>
             </div>
 
             {/* Role Selection */}
-            <div>
+            <div className="relative">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 <Tag className="w-4 h-4 inline mr-1" />
                 역할 선택 <span className="text-red-500">*</span>
                 <span className="text-xs text-gray-500 ml-2">(최소 1개)</span>
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                {roles.map((role) => (
-                  <button
-                    key={role.id}
-                    type="button"
-                    onClick={() => toggleRole(role.id)}
-                    className={`px-3 py-2 rounded-lg border-2 transition text-sm font-medium ${
-                      selectedRoleIds.includes(role.id)
-                        ? 'border-green-500 bg-green-50 text-green-700'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                    }`}
-                    disabled={isLoading}
-                  >
-                    <span
-                      className="inline-block w-3 h-3 rounded-full mr-2"
-                      style={{ backgroundColor: role.color || '#6B7280' }}
-                    />
-                    {role.name}
-                    {selectedRoleIds.includes(role.id) && (
-                      <span className="ml-2 text-green-600">✓</span>
-                    )}
-                  </button>
-                ))}
+              {/* 선택된 역할 태그들 */}
+              <div className="flex flex-wrap gap-2 mb-2">
+                {selectedRoleIds.map((roleId) => {
+                  const role = roles.find((r) => r.id === roleId);
+                  if (!role) return null;
+                  return (
+                    <div
+                      key={roleId}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-800 rounded-lg text-sm font-medium"
+                    >
+                      <span
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: role.color || '#6B7280' }}
+                      />
+                      {role.name}
+                      <button
+                        type="button"
+                        onClick={() => toggleRole(roleId)}
+                        className="text-green-600 hover:text-green-800"
+                        disabled={isLoading}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
-              {!showCreateStage && !showCreateRole && !showCreateImportance && (
+              {/* 역할 추가 버튼 */}
+              <div className="relative role-dropdown-container">
                 <button
                   type="button"
-                  onClick={() => setShowCreateRole(true)}
-                  className="mt-2 w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition text-sm flex items-center justify-center gap-1"
+                  onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition text-sm text-left flex items-center justify-between"
                   disabled={isLoading}
                 >
-                  <Plus className="w-4 h-4" />
-                  새 역할 추가
+                  <span className="text-gray-600">+ 역할 추가</span>
+                  <Tag className="w-4 h-4 text-gray-400" />
                 </button>
-              )}
-              {showCreateRole && renderInlineCreationForm('role', '역할')}
+                {/* 드롭다운 메뉴 */}
+                {showRoleDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {roles
+                      .filter((role) => !selectedRoleIds.includes(role.id))
+                      .map((role) => (
+                        <button
+                          key={role.id}
+                          type="button"
+                          onClick={() => {
+                            toggleRole(role.id);
+                            setShowRoleDropdown(false);
+                          }}
+                          className="w-full px-3 py-2 text-left hover:bg-gray-100 transition text-sm flex items-center gap-2"
+                        >
+                          <span
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: role.color || '#6B7280' }}
+                          />
+                          {role.name}
+                        </button>
+                      ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowRoleDropdown(false);
+                        setShowCreateRole(true);
+                      }}
+                      className="w-full px-3 py-2 text-left hover:bg-blue-50 transition text-sm text-blue-600 font-medium border-t border-gray-200 flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />+ 새 역할 추가
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Importance Selection */}
@@ -469,56 +526,27 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
                 <AlertCircle className="w-4 h-4 inline mr-1" />
                 중요도 (선택)
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                {/* "없음" 버튼 */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedImportanceId('')}
-                  className={`px-3 py-2 rounded-lg border-2 transition text-sm font-medium ${
-                    selectedImportanceId === ''
-                      ? 'border-purple-500 bg-purple-50 text-purple-700'
-                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                  }`}
-                  disabled={isLoading}
-                >
-                  <span className="inline-block w-3 h-3 rounded-full mr-2 bg-gray-300" />
-                  없음
-                </button>
+              <select
+                value={selectedImportanceId}
+                onChange={(e) => {
+                  if (e.target.value === '__create_new__') {
+                    setShowCreateImportance(true);
+                  } else {
+                    setSelectedImportanceId(e.target.value);
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                disabled={isLoading}
+              >
+                <option value="">없음</option>
                 {importances.map((importance) => (
-                  <button
-                    key={importance.id}
-                    type="button"
-                    onClick={() => setSelectedImportanceId(importance.id)}
-                    className={`px-3 py-2 rounded-lg border-2 transition text-sm font-medium ${
-                      selectedImportanceId === importance.id
-                        ? 'border-purple-500 bg-purple-50 text-purple-700'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                    }`}
-                    disabled={isLoading}
-                  >
-                    <span
-                      className="inline-block w-3 h-3 rounded-full mr-2"
-                      style={{ backgroundColor: importance.color || '#6B7280' }}
-                    />
+                  <option key={importance.id} value={importance.id}>
                     {importance.name}
-                    {'level' in importance && (
-                      <span className="ml-1 text-xs">Lv.{importance.level}</span>
-                    )}
-                  </button>
+                    {'level' in importance ? ` (Lv.${importance.level})` : ''}
+                  </option>
                 ))}
-              </div>
-              {!showCreateStage && !showCreateRole && !showCreateImportance && (
-                <button
-                  type="button"
-                  onClick={() => setShowCreateImportance(true)}
-                  className="mt-2 w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition text-sm flex items-center justify-center gap-1"
-                  disabled={isLoading}
-                >
-                  <Plus className="w-4 h-4" />
-                  새 중요도 추가
-                </button>
-              )}
-              {showCreateImportance && renderInlineCreationForm('importance', '중요도')}
+                <option value="__create_new__">+ 새 중요도 추가</option>
+              </select>
             </div>
 
             {/* Assignee and Due Date */}
@@ -578,6 +606,11 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
           </form>
         )}
       </div>
+
+      {/* Creation Modals */}
+      {showCreateStage && renderCreationModal('stage', '진행 단계')}
+      {showCreateRole && renderCreationModal('role', '역할')}
+      {showCreateImportance && renderCreationModal('importance', '중요도')}
     </div>
   );
 };
