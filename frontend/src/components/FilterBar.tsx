@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Settings, ChevronDown, Eye } from 'lucide-react';
+import { Search, ChevronDown, Eye, Table, LayoutGrid } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface FilterBarProps {
@@ -59,6 +59,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     { value: 'high', label: '중요도 높음' },
     { value: 'urgent', label: '긴급' },
     { value: 'hideCompleted', label: '완료된 것 숨기기' },
+    { value: 'custom', label: '커스텀 필터' },
   ];
 
   return (
@@ -80,7 +81,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       {/* View Modal Button */}
       <div className="relative">
         <button
-          onClick={() => setShowViewModal(!showViewModal)}
+          onClick={() => {
+            setShowViewModal(!showViewModal);
+            setShowFilterDropdown(false);
+          }}
           className={`flex items-center gap-2 px-4 py-2 border ${theme.colors.border} rounded-md ${theme.colors.card} hover:bg-gray-50 transition-colors`}
         >
           <Eye className="w-4 h-4" />
@@ -105,7 +109,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  <span className="text-2xl">📊</span>
+                  <Table className={`w-6 h-6 ${currentLayout === 'table' ? 'text-blue-600' : 'text-gray-600'}`} />
                   <span className="text-sm font-medium">표</span>
                 </button>
                 <button
@@ -118,7 +122,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  <span className="text-2xl">📋</span>
+                  <LayoutGrid className={`w-6 h-6 ${currentLayout === 'board' ? 'text-blue-600' : 'text-gray-600'}`} />
                   <span className="text-sm font-medium">보드</span>
                 </button>
               </div>
@@ -152,7 +156,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       {/* Filter Dropdown */}
       <div className="relative">
         <button
-          onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+          onClick={() => {
+            setShowFilterDropdown(!showFilterDropdown);
+            setShowViewModal(false);
+          }}
           className={`flex items-center gap-2 px-4 py-2 border ${theme.colors.border} rounded-md ${theme.colors.card} hover:bg-gray-50 transition-colors`}
         >
           <span className="text-sm font-medium">
@@ -178,16 +185,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           </div>
         )}
       </div>
-
-      {/* Manage Button */}
-      <button
-        onClick={onManageClick}
-        className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-        title="커스텀 필드 관리"
-      >
-        <Settings className="w-4 h-4" />
-        <span className="text-sm font-medium">관리</span>
-      </button>
     </div>
   );
 };
