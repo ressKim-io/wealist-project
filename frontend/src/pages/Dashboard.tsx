@@ -747,6 +747,19 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                           </div>
                         </div>
                       ))}
+
+                      {/* Drop indicator for cross-column drag - shows at bottom of target column */}
+                      {dragOverColumn === column.id &&
+                        draggedFromColumn !== column.id &&
+                        draggedBoard && (
+                          <div className="relative py-4">
+                            <div className="absolute top-2 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 z-10 animate-pulse"></div>
+                            <div className="text-center text-blue-500 text-xs font-semibold pt-4">
+                              여기에 추가됩니다
+                            </div>
+                          </div>
+                        )}
+
                       <button
                         className={`relative w-full py-3 sm:py-4 ${theme.effects.cardBorderWidth} border-dashed ${theme.colors.border} ${theme.colors.card} hover:bg-gray-100 transition flex items-center justify-center gap-2 ${theme.font.size.xs} ${theme.effects.borderRadius}`}
                         onClick={() => {
