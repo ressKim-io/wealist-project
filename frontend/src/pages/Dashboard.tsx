@@ -9,6 +9,8 @@ import {
   Briefcase,
   File,
   Settings,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import UserProfileModal from '../components/modals/UserProfileModal';
@@ -215,6 +217,10 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   const [filterOption, setFilterOption] = useState<string>('all');
   const [currentLayout, setCurrentLayout] = useState<'table' | 'board'>('board');
   const [showCompleted, setShowCompleted] = useState<boolean>(false);
+
+  // Table sorting state
+  const [sortColumn, setSortColumn] = useState<'title' | 'stage' | 'role' | 'importance' | 'assignee' | 'dueDate' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   // TODO: Implement search and filter logic
   console.log('Current filters:', {
@@ -483,6 +489,18 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     console.log(`✅ Stage 컬럼 순서 변경 (로컬)`);
   };
 
+  // Table sorting handler
+  const handleSort = (column: 'title' | 'stage' | 'role' | 'importance' | 'assignee' | 'dueDate') => {
+    if (sortColumn === column) {
+      // Toggle direction if same column
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New column, default to ascending
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
   // 외부 클릭 감지 (동일)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -705,23 +723,232 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                 showCompleted={showCompleted}
               />
 
-              {/* Boards */}
-              <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 min-w-max pb-4 mt-4">
-                {(() => {
-                  // Filter columns based on search query
-                  const filteredColumns = searchQuery.trim()
-                    ? columns.map((column) => ({
-                        ...column,
-                        boards: column.boards.filter((board) => {
-                          const query = searchQuery.toLowerCase();
-                          const titleMatch = board.title.toLowerCase().includes(query);
-                          const contentMatch = board.content?.toLowerCase().includes(query);
-                          return titleMatch || contentMatch;
-                        }),
-                      }))
-                    : columns;
+              {/* Boards or Table */}
+              {currentLayout === 'table' ? (
+                // Table Layout
+                <div className="mt-4 overflow-x-auto">
+                  <table className={`w-full ${theme.colors.card} ${theme.effects.borderRadius} overflow-hidden`}>
+                    <thead className="bg-gray-100 border-b border-gray-200">
+                      <tr>
+                        {/* Title Column */}
+                        <th className="px-4 py-3 text-left">
+                          <button
+                            onClick={() => handleSort('title')}
+                            className="flex items-center gap-2 font-semibold text-sm text-gray-700 hover:text-blue-600 transition"
+                          >
+                            제목
+                            {sortColumn === 'title' && (
+                              sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                            )}
+                          </button>
+                        </th>
+                        {/* Stage Column */}
+                        <th className="px-4 py-3 text-left">
+                          <button
+                            onClick={() => handleSort('stage')}
+                            className="flex items-center gap-2 font-semibold text-sm text-gray-700 hover:text-blue-600 transition"
+                          >
+                            진행 단계
+                            {sortColumn === 'stage' && (
+                              sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                            )}
+                          </button>
+                        </th>
+                        {/* Role Column */}
+                        <th className="px-4 py-3 text-left">
+                          <button
+                            onClick={() => handleSort('role')}
+                            className="flex items-center gap-2 font-semibold text-sm text-gray-700 hover:text-blue-600 transition"
+                          >
+                            역할
+                            {sortColumn === 'role' && (
+                              sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                            )}
+                          </button>
+                        </th>
+                        {/* Importance Column */}
+                        <th className="px-4 py-3 text-left">
+                          <button
+                            onClick={() => handleSort('importance')}
+                            className="flex items-center gap-2 font-semibold text-sm text-gray-700 hover:text-blue-600 transition"
+                          >
+                            중요도
+                            {sortColumn === 'importance' && (
+                              sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                            )}
+                          </button>
+                        </th>
+                        {/* Assignee Column */}
+                        <th className="px-4 py-3 text-left">
+                          <button
+                            onClick={() => handleSort('assignee')}
+                            className="flex items-center gap-2 font-semibold text-sm text-gray-700 hover:text-blue-600 transition"
+                          >
+                            담당자
+                            {sortColumn === 'assignee' && (
+                              sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                            )}
+                          </button>
+                        </th>
+                        {/* Due Date Column */}
+                        <th className="px-4 py-3 text-left">
+                          <button
+                            onClick={() => handleSort('dueDate')}
+                            className="flex items-center gap-2 font-semibold text-sm text-gray-700 hover:text-blue-600 transition"
+                          >
+                            마감일
+                            {sortColumn === 'dueDate' && (
+                              sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                            )}
+                          </button>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        // Flatten all boards from all columns
+                        const allBoards = columns.flatMap((column) =>
+                          column.boards.map((board) => ({
+                            ...board,
+                            stageName: column.title,
+                            stageColor: column.color,
+                          }))
+                        );
 
-                  return filteredColumns.map((column, idx) => (
+                        // Filter boards based on search query
+                        const filteredBoards = searchQuery.trim()
+                          ? allBoards.filter((board) => {
+                              const query = searchQuery.toLowerCase();
+                              const titleMatch = board.title.toLowerCase().includes(query);
+                              const contentMatch = board.content?.toLowerCase().includes(query);
+                              return titleMatch || contentMatch;
+                            })
+                          : allBoards;
+
+                        // Sort boards
+                        const sortedBoards = [...filteredBoards].sort((a, b) => {
+                          if (!sortColumn) return 0;
+
+                          let aValue: any;
+                          let bValue: any;
+
+                          switch (sortColumn) {
+                            case 'title':
+                              aValue = a.title.toLowerCase();
+                              bValue = b.title.toLowerCase();
+                              break;
+                            case 'stage':
+                              aValue = a.stageName.toLowerCase();
+                              bValue = b.stageName.toLowerCase();
+                              break;
+                            case 'role':
+                              aValue = a.roles?.[0]?.name?.toLowerCase() || '';
+                              bValue = b.roles?.[0]?.name?.toLowerCase() || '';
+                              break;
+                            case 'importance':
+                              aValue = a.importance?.level || 0;
+                              bValue = b.importance?.level || 0;
+                              break;
+                            case 'assignee':
+                              aValue = a.assignee?.name?.toLowerCase() || '';
+                              bValue = b.assignee?.name?.toLowerCase() || '';
+                              break;
+                            case 'dueDate':
+                              aValue = a.dueDate ? new Date(a.dueDate).getTime() : 0;
+                              bValue = b.dueDate ? new Date(b.dueDate).getTime() : 0;
+                              break;
+                            default:
+                              return 0;
+                          }
+
+                          if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+                          if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+                          return 0;
+                        });
+
+                        return sortedBoards.map((board) => (
+                          <tr
+                            key={board.id}
+                            onClick={() => setSelectedBoardId(board.id)}
+                            className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition"
+                          >
+                            {/* Title */}
+                            <td className="px-4 py-3 font-semibold text-gray-800">{board.title}</td>
+                            {/* Stage */}
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: board.stageColor || '#6B7280' }}
+                                />
+                                <span className="text-sm">{board.stageName}</span>
+                              </div>
+                            </td>
+                            {/* Role */}
+                            <td className="px-4 py-3">
+                              {board.roles && board.roles.length > 0 ? (
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="w-3 h-3 rounded-full"
+                                    style={{ backgroundColor: board.roles[0].color || '#6B7280' }}
+                                  />
+                                  <span className="text-sm">{board.roles[0].name}</span>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-gray-500">없음</span>
+                              )}
+                            </td>
+                            {/* Importance */}
+                            <td className="px-4 py-3">
+                              {board.importance ? (
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="w-3 h-3 rounded-full"
+                                    style={{ backgroundColor: board.importance.color || '#6B7280' }}
+                                  />
+                                  <span className="text-sm">{board.importance.name}</span>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-gray-500">없음</span>
+                              )}
+                            </td>
+                            {/* Assignee */}
+                            <td className="px-4 py-3">
+                              <AssigneeAvatarStack assignees={board.assignee?.name || 'Unassigned'} />
+                            </td>
+                            {/* Due Date */}
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {board.dueDate ? new Date(board.dueDate).toLocaleDateString('ko-KR') : '없음'}
+                            </td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                  {columns.flatMap((col) => col.boards).length === 0 && (
+                    <div className="text-center py-12 text-gray-500">
+                      보드가 없습니다. 보드를 추가해보세요.
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Board Layout
+                <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 min-w-max pb-4 mt-4">
+                  {(() => {
+                    // Filter columns based on search query
+                    const filteredColumns = searchQuery.trim()
+                      ? columns.map((column) => ({
+                          ...column,
+                          boards: column.boards.filter((board) => {
+                            const query = searchQuery.toLowerCase();
+                            const titleMatch = board.title.toLowerCase().includes(query);
+                            const contentMatch = board.content?.toLowerCase().includes(query);
+                            return titleMatch || contentMatch;
+                          }),
+                        }))
+                      : columns;
+
+                    return filteredColumns.map((column, idx) => (
                     <div
                       key={column.id}
                       draggable
@@ -866,9 +1093,10 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                         </div>
                       </div>
                     </div>
-                  ));
-                })()}
-              </div>
+                    ));
+                  })()}
+                </div>
+              )}
             </>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center p-8">

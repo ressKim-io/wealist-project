@@ -386,11 +386,11 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
       onClick={onClose}
     >
       <div
-        className={`relative w-full max-w-2xl ${theme.colors.card} p-6 ${theme.effects.borderRadius} shadow-xl max-h-[90vh] overflow-y-auto`}
+        className={`relative w-full max-w-2xl ${theme.colors.card} ${theme.effects.borderRadius} shadow-xl max-h-[90vh] flex flex-col overflow-hidden`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-4 sticky top-0 bg-white pb-2 border-b">
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b flex-shrink-0">
           <h2 className="text-xl font-bold text-gray-800">{editData ? '보드 수정' : '새 보드 만들기'}</h2>
           <button
             onClick={onClose}
@@ -400,23 +400,25 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
           </button>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-300 rounded-lg text-red-700 text-sm">
-            {error}
-          </div>
-        )}
-
-        {/* Loading State */}
-        {isLoadingFields ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-              <p className="text-gray-600">커스텀 필드를 불러오는 중...</p>
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto px-6">
+          {/* Error Message */}
+          {error && (
+            <div className="mt-4 mb-4 p-3 bg-red-50 border border-red-300 rounded-lg text-red-700 text-sm">
+              {error}
             </div>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          )}
+
+          {/* Loading State */}
+          {isLoadingFields ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p className="text-gray-600">커스텀 필드를 불러오는 중...</p>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4 pb-4">
             {/* Title */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -824,7 +826,8 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
               </button>
             </div>
           </form>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Creation Modals */}
