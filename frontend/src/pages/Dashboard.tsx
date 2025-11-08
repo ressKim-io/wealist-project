@@ -921,15 +921,30 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
         />
       )}
 
-      {selectedBoardId && selectedProject && (
-        <BoardDetailModal
-          boardId={selectedBoardId}
-          projectId={selectedProject.id}
-          onClose={() => setSelectedBoardId(null)}
-          onBoardUpdated={fetchBoards}
-          onBoardDeleted={fetchBoards}
-        />
-      )}
+      {selectedBoardId && selectedProject && (() => {
+        // 선택된 보드 찾기
+        const selectedBoard = columns.flatMap(col => col.tasks).find(board => board.id === selectedBoardId);
+        if (!selectedBoard) return null;
+
+        return (
+          <BoardDetailModal
+            boardId={selectedBoardId}
+            projectId={selectedProject.id}
+            initialData={{
+              title: selectedBoard.title,
+              content: selectedBoard.content || '',
+              stageId: selectedBoard.stage?.id || '',
+              roleIds: selectedBoard.roles?.map(r => r.id) || [],
+              importanceId: selectedBoard.importance?.id || '',
+              assigneeId: selectedBoard.assignee?.userId || '',
+              dueDate: selectedBoard.dueDate || '',
+            }}
+            onClose={() => setSelectedBoardId(null)}
+            onBoardUpdated={fetchBoards}
+            onBoardDeleted={fetchBoards}
+          />
+        );
+      })()}
 
       {/* Custom Field Manage Modal */}
       {showManageModal && selectedProject && (
