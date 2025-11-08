@@ -423,6 +423,115 @@ export const getProjectImportances = async (
 };
 
 // ============================================================================
+// Comment API
+// ============================================================================
+
+export interface CommentResponse {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCommentRequest {
+  boardId: string;
+  content: string;
+}
+
+export interface UpdateCommentRequest {
+  content: string;
+}
+
+/**
+ * 보드의 모든 댓글을 조회합니다.
+ * GET /api/comments
+ * @param boardId 보드 ID
+ * @param token 액세스 토큰
+ * @returns 댓글 배열
+ */
+export const getComments = async (
+  boardId: string,
+  token: string,
+): Promise<CommentResponse[]> => {
+  try {
+    const response = await boardService.get('/api/comments', {
+      params: { boardId },
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data || [];
+  } catch (error) {
+    console.error('getComments error:', error);
+    throw error;
+  }
+};
+
+/**
+ * 새 댓글을 생성합니다.
+ * POST /api/comments
+ * @param data 댓글 생성 정보
+ * @param token 액세스 토큰
+ * @returns 생성된 댓글
+ */
+export const createComment = async (
+  data: CreateCommentRequest,
+  token: string,
+): Promise<CommentResponse> => {
+  try {
+    const response = await boardService.post('/api/comments', data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('createComment error:', error);
+    throw error;
+  }
+};
+
+/**
+ * 댓글을 수정합니다.
+ * PUT /api/comments/{id}
+ * @param commentId 댓글 ID
+ * @param data 수정할 내용
+ * @param token 액세스 토큰
+ * @returns 수정된 댓글
+ */
+export const updateComment = async (
+  commentId: string,
+  data: UpdateCommentRequest,
+  token: string,
+): Promise<CommentResponse> => {
+  try {
+    const response = await boardService.put(`/api/comments/${commentId}`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('updateComment error:', error);
+    throw error;
+  }
+};
+
+/**
+ * 댓글을 삭제합니다.
+ * DELETE /api/comments/{id}
+ * @param commentId 댓글 ID
+ * @param token 액세스 토큰
+ */
+export const deleteComment = async (commentId: string, token: string): Promise<void> => {
+  try {
+    await boardService.delete(`/api/comments/${commentId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (error) {
+    console.error('deleteComment error:', error);
+    throw error;
+  }
+};
+
+// ============================================================================
 // 보드 뷰 API (Stage/Role 기반)
 // ============================================================================
 

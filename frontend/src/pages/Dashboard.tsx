@@ -14,7 +14,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import UserProfileModal from '../components/modals/UserProfileModal';
 import { UserProfile } from '../types';
 import { Board, BoardWithCustomFields } from '../types/board';
-import BoardDetailModal from '../components/modals/BoardDetailModal';
+import { BoardDetailModal } from '../components/modals/BoardDetailModal';
 import { CreateProjectModal } from '../components/modals/CreateProjectModal';
 import { CreateBoardModal } from '../components/modals/CreateBoardModal';
 import {
@@ -161,7 +161,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   const [showCreateProject, setShowCreateProject] = useState<boolean>(false);
   const [showCreateBoard, setShowCreateBoard] = useState<boolean>(false);
   const [createBoardStageId, setCreateBoardStageId] = useState<string>('');
-  const [selectedBoard, setSelectedBoard] = useState<BoardWithCustomFields | null>(null);
+  const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -558,7 +558,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                           <div
                             draggable
                             onDragStart={() => handleDragStart(board, column.id)}
-                            onClick={() => setSelectedBoard(board)}
+                            onClick={() => setSelectedBoardId(board.id)}
                             className={`relative ${theme.colors.card} p-3 sm:p-4 ${theme.effects.cardBorderWidth} ${theme.colors.border} hover:border-blue-500 transition cursor-pointer ${theme.effects.borderRadius}`}
                           >
                             <h3
@@ -666,8 +666,14 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
         />
       )}
 
-      {selectedBoard && (
-        <BoardDetailModal board={selectedBoard} onClose={() => setSelectedBoard(null)} />
+      {selectedBoardId && selectedProject && (
+        <BoardDetailModal
+          boardId={selectedBoardId}
+          projectId={selectedProject.id}
+          onClose={() => setSelectedBoardId(null)}
+          onBoardUpdated={fetchBoards}
+          onBoardDeleted={fetchBoards}
+        />
       )}
     </div>
   );
