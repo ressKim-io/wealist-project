@@ -58,7 +58,13 @@ const AvatarStack: React.FC<AvatarStackProps> = ({ members }) => {
   const remainingCount = members.length - displayCount;
 
   const getColorByIndex = (index: number) => {
-    const colors = ['bg-indigo-500', 'bg-pink-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500'];
+    const colors = [
+      'bg-indigo-500',
+      'bg-pink-500',
+      'bg-green-500',
+      'bg-purple-500',
+      'bg-yellow-500',
+    ];
     return colors[index % colors.length];
   };
 
@@ -78,7 +84,11 @@ const AvatarStack: React.FC<AvatarStackProps> = ({ members }) => {
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className={`w-full h-full flex items-center justify-center text-white ${getColorByIndex(index)}`}>
+            <div
+              className={`w-full h-full flex items-center justify-center text-white ${getColorByIndex(
+                index,
+              )}`}
+            >
               {member.name[0]}
             </div>
           )}
@@ -714,133 +724,140 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
               {/* Boards */}
               <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 min-w-max pb-4 mt-4">
                 {columns.map((column, idx) => (
-                <div
-                  key={column.id}
-                  onDragOver={(e) => {
-                    handleDragOver(e);
-                    handleColumnDragOver(e);
-                    if (draggedBoard && !draggedColumn) {
-                      setDragOverColumn(column.id);
-                    }
-                  }}
-                  onDragLeave={() => {
-                    if (draggedBoard && !draggedColumn) {
-                      setDragOverColumn(null);
-                    }
-                  }}
-                  onDrop={() => {
-                    if (draggedColumn) {
-                      handleColumnDrop(column);
-                    } else {
-                      handleDrop(column.id);
-                    }
-                  }}
-                  className={`w-full lg:w-80 lg:flex-shrink-0 relative transition-all ${
-                    draggedColumn?.id === column.id ? 'opacity-80 scale-95' : 'opacity-100'
-                  }`}
-                >
                   <div
-                    className={`relative ${theme.effects.cardBorderWidth} ${
-                      dragOverColumn === column.id && draggedFromColumn !== column.id
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : theme.colors.border
-                    } p-3 sm:p-4 ${theme.colors.card} ${theme.effects.borderRadius} transition-all duration-200`}
+                    key={column.id}
+                    onDragOver={(e) => {
+                      handleDragOver(e);
+                      handleColumnDragOver(e);
+                      if (draggedBoard && !draggedColumn) {
+                        setDragOverColumn(column.id);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (draggedBoard && !draggedColumn) {
+                        setDragOverColumn(null);
+                      }
+                    }}
+                    onDrop={() => {
+                      if (draggedColumn) {
+                        handleColumnDrop(column);
+                      } else {
+                        handleDrop(column.id);
+                      }
+                    }}
+                    className={`w-full lg:w-80 lg:flex-shrink-0 relative transition-all ${
+                      draggedColumn?.id === column.id ? 'opacity-80 scale-95' : 'opacity-100'
+                    }`}
                   >
                     <div
-                      draggable
-                      onDragStart={() => handleColumnDragStart(column)}
-                      className={`flex items-center justify-between pb-2 cursor-move`}
+                      className={`relative ${theme.effects.cardBorderWidth} ${
+                        dragOverColumn === column.id && draggedFromColumn !== column.id
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : theme.colors.border
+                      } p-3 sm:p-4 ${theme.colors.card} ${
+                        theme.effects.borderRadius
+                      } transition-all duration-200`}
                     >
-                      <h3
-                        className={`font-bold ${theme.colors.text} flex items-center gap-2 ${theme.font.size.xs}`}
+                      <div
+                        draggable
+                        onDragStart={() => handleColumnDragStart(column)}
+                        className={`flex items-center justify-between pb-2 cursor-move`}
                       >
-                        <span
-                          className={`w-3 h-3 sm:w-4 sm:h-4 ${theme.effects.cardBorderWidth} ${theme.colors.border}`}
-                          style={{
-                            backgroundColor:
-                              column.color || getDefaultColorByIndex(idx).hex,
-                          }}
-                        ></span>
-                        {column.title}
-                        <span
-                          className={`bg-black text-white px-1 sm:px-2 py-1 ${theme.effects.cardBorderWidth} ${theme.colors.border} text-[8px] sm:text-xs`}
+                        <h3
+                          className={`font-bold ${theme.colors.text} flex items-center gap-2 ${theme.font.size.xs}`}
                         >
-                          {column.boards.length}
-                        </span>
-                      </h3>
-                    </div>
-
-                    <div className="space-y-2 sm:space-y-3">
-                      {column.boards.map((board) => (
-                        <div
-                          key={board.id}
-                          className="relative"
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            setDragOverBoardId(board.id);
-                          }}
-                          onDragLeave={() => {
-                            setDragOverBoardId(null);
-                          }}
-                        >
-                          {/* Drop indicator line - shows where the dragged board will be inserted */}
-                          {dragOverBoardId === board.id &&
-                            draggedBoard &&
-                            draggedBoard.id !== board.id && (
-                              <div className="absolute -top-1 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 z-10 animate-pulse"></div>
-                            )}
-                          <div
-                            draggable
-                            onDragStart={() => handleDragStart(board, column.id)}
-                            onClick={() => setSelectedBoardId(board.id)}
-                            className={`relative ${theme.colors.card} p-3 sm:p-4 ${theme.effects.cardBorderWidth} ${
-                              dragOverBoardId === board.id && draggedBoard?.id !== board.id
-                                ? 'border-blue-500 mt-3'
-                                : theme.colors.border
-                            } hover:border-blue-500 transition-all cursor-pointer ${theme.effects.borderRadius} ${
-                              draggedBoard?.id === board.id ? 'opacity-80 scale-95' : 'opacity-100'
-                            }`}
+                          <span
+                            className={`w-3 h-3 sm:w-4 sm:h-4 ${theme.effects.cardBorderWidth} ${theme.colors.border}`}
+                            style={{
+                              backgroundColor: column.color || getDefaultColorByIndex(idx).hex,
+                            }}
+                          ></span>
+                          {column.title}
+                          <span
+                            className={`bg-black text-white px-1 sm:px-2 py-1 ${theme.effects.cardBorderWidth} ${theme.colors.border} text-[8px] sm:text-xs`}
                           >
-                            <h3
-                              className={`font-bold ${theme.colors.text} mb-2 sm:mb-3 ${theme.font.size.xs} break-words`}
+                            {column.boards.length}
+                          </span>
+                        </h3>
+                      </div>
+
+                      <div className="space-y-2 sm:space-y-3">
+                        {column.boards.map((board) => (
+                          <div
+                            key={board.id}
+                            className="relative"
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              setDragOverBoardId(board.id);
+                            }}
+                            onDragLeave={() => {
+                              setDragOverBoardId(null);
+                            }}
+                          >
+                            {/* Drop indicator line - shows where the dragged board will be inserted */}
+                            {dragOverBoardId === board.id &&
+                              draggedBoard &&
+                              draggedBoard.id !== board.id && (
+                                <div className="absolute -top-1 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 z-10 animate-pulse"></div>
+                              )}
+                            <div
+                              draggable
+                              onDragStart={() => handleDragStart(board, column.id)}
+                              onClick={() => setSelectedBoardId(board.id)}
+                              className={`relative ${theme.colors.card} p-3 sm:p-4 ${
+                                theme.effects.cardBorderWidth
+                              } ${
+                                dragOverBoardId === board.id && draggedBoard?.id !== board.id
+                                  ? 'border-blue-500 mt-3'
+                                  : theme.colors.border
+                              } hover:border-blue-500 transition-all cursor-pointer ${
+                                theme.effects.borderRadius
+                              } ${
+                                draggedBoard?.id === board.id
+                                  ? 'opacity-80 scale-95'
+                                  : 'opacity-100'
+                              }`}
                             >
-                              {board.title}
-                            </h3>
-                            <div className="flex items-center justify-between">
-                              <AssigneeAvatarStack
-                                assignees={board.assignee?.name || 'Unassigned'}
-                              />
+                              <h3
+                                className={`font-bold ${theme.colors.text} mb-2 sm:mb-3 ${theme.font.size.xs} break-words`}
+                              >
+                                {board.title}
+                              </h3>
+                              <div className="flex items-center justify-between">
+                                <AssigneeAvatarStack
+                                  assignees={board.assignee?.name || 'Unassigned'}
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
 
-                      {/* Drop indicator for cross-column drag - shows at bottom of target column */}
-                      {dragOverColumn === column.id &&
-                        draggedFromColumn !== column.id &&
-                        draggedBoard && (
-                          <div className="relative py-4">
-                            <div className="absolute top-2 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 z-10 animate-pulse"></div>
-                            <div className="text-center text-blue-500 text-xs font-semibold pt-4">
-                              여기에 추가됩니다
+                        {/* Drop indicator for cross-column drag - shows at bottom of target column */}
+                        {dragOverColumn === column.id &&
+                          draggedFromColumn !== column.id &&
+                          draggedBoard && (
+                            <div className="relative py-4">
+                              <div className="absolute top-2 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 z-10 animate-pulse"></div>
+                              <div className="text-center text-blue-500 text-xs font-semibold pt-4">
+                                여기에 추가됩니다
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                      <button
-                        className={`relative w-full py-3 sm:py-4 ${theme.effects.cardBorderWidth} border-dashed ${theme.colors.border} ${theme.colors.card} hover:bg-gray-100 transition flex items-center justify-center gap-2 ${theme.font.size.xs} ${theme.effects.borderRadius}`}
-                        onClick={() => {
-                          setCreateBoardStageId(column.id);
-                          setShowCreateBoard(true);
-                        }}
-                      >
-                        <Plus className="w-3 h-3 sm:w-4 sm:h-4" style={{ strokeWidth: 3 }} />
-                        보드 추가
-                      </button>
+                        <button
+                          className={`relative w-full py-3 sm:py-4 ${theme.effects.cardBorderWidth} border-dashed ${theme.colors.border} ${theme.colors.card} hover:bg-gray-100 transition flex items-center justify-center gap-2 ${theme.font.size.xs} ${theme.effects.borderRadius}`}
+                          onClick={() => {
+                            setCreateBoardStageId(column.id);
+                            setShowCreateBoard(true);
+                          }}
+                        >
+                          <Plus className="w-3 h-3 sm:w-4 sm:h-4" style={{ strokeWidth: 3 }} />
+                          보드 추가
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
               </div>
             </>
           ) : (
@@ -943,11 +960,10 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
       {/* Project Settings Modal */}
       {showProjectSettings && selectedProject && (
-        <ProjectManageModal
-          mode="PROJECT"
-          targetName={selectedProject.name}
-          role={currentRole.current}
-          onClose={() => setShowProjectSettings(false)}
+        <CreateProjectModal
+          workspaceId={currentWorkspaceId}
+          onClose={() => setShowCreateProject(false)}
+          onProjectCreated={fetchProjects}
         />
       )}
     </div>
