@@ -14,10 +14,9 @@ import { useTheme } from '../contexts/ThemeContext';
 import UserProfileModal from '../components/modals/UserProfileModal';
 import { UserProfile } from '../types';
 import { BoardDetailModal } from '../components/modals/BoardDetailModal';
-import { CreateProjectModal } from '../components/modals/CreateProjectModal';
+import { ProjectModal } from '../components/modals/ProjectModal';
 import { CreateBoardModal } from '../components/modals/CreateBoardModal';
 import { CustomFieldManageModal } from '../components/modals/CustomFieldManageModal';
-import { ProjectManageModal } from '../components/modals/ProjectManageModal';
 import { FilterBar } from '../components/FilterBar';
 import {
   getProjects,
@@ -189,9 +188,13 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>([]);
 
   const [userProfile, _setUserProfile] = useState<UserProfile>({
+    profileId: '',
+    userId: '',
     name: 'User',
     email: 'user@example.com',
-    avatar: 'U',
+    profileImageUrl: null,
+    createdAt: '',
+    updatedAt: '',
   });
 
   // UI 상태
@@ -594,9 +597,17 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
             title="계정 메뉴"
           >
             <div
-              className={`w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-sm font-bold ring-2 ring-white/50 text-gray-700`}
+              className={`w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-sm font-bold ring-2 ring-white/50 text-gray-700 overflow-hidden`}
             >
-              {userProfile.avatar}
+              {userProfile.profileImageUrl ? (
+                <img
+                  src={userProfile.profileImageUrl}
+                  alt={userProfile.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                userProfile.name[0]?.toUpperCase() || 'U'
+              )}
             </div>
           </button>
         </div>
@@ -881,9 +892,17 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
           <div className="p-3 pb-3 mb-2 border-b border-gray-200">
             <div className="flex items-center gap-3">
               <div
-                className={`w-10 h-10 ${theme.colors.primary} flex items-center justify-center text-white text-base font-bold rounded-md`}
+                className={`w-10 h-10 ${theme.colors.primary} flex items-center justify-center text-white text-base font-bold rounded-md overflow-hidden`}
               >
-                {userProfile.avatar}
+                {userProfile.profileImageUrl ? (
+                  <img
+                    src={userProfile.profileImageUrl}
+                    alt={userProfile.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  userProfile.name[0]?.toUpperCase() || 'U'
+                )}
               </div>
               <div>
                 <h3 className="font-bold text-lg text-gray-900">{userProfile.name}</h3>
@@ -923,10 +942,10 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       )}
 
       {showCreateProject && (
-        <CreateProjectModal
+        <ProjectModal
           workspaceId={currentWorkspaceId}
           onClose={() => setShowCreateProject(false)}
-          onProjectCreated={fetchProjects}
+          onProjectSaved={fetchProjects}
         />
       )}
 
@@ -960,10 +979,11 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
       {/* Project Settings Modal */}
       {showProjectSettings && selectedProject && (
-        <CreateProjectModal
+        <ProjectModal
           workspaceId={currentWorkspaceId}
-          onClose={() => setShowCreateProject(false)}
-          onProjectCreated={fetchProjects}
+          project={selectedProject}
+          onClose={() => setShowProjectSettings(false)}
+          onProjectSaved={fetchProjects}
         />
       )}
     </div>
