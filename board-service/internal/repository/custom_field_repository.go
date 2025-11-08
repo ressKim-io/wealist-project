@@ -13,6 +13,7 @@ type CustomFieldRepository interface {
 	FindCustomRoleByID(id uuid.UUID) (*domain.CustomRole, error)
 	FindCustomRolesByProject(projectID uuid.UUID) ([]domain.CustomRole, error)
 	FindCustomRoleByProjectAndName(projectID uuid.UUID, name string) (*domain.CustomRole, error)
+	FindCustomRolesByIDs(ids []uuid.UUID) ([]domain.CustomRole, error) // Batch
 	UpdateCustomRole(role *domain.CustomRole) error
 	DeleteCustomRole(id uuid.UUID) error
 	UpdateCustomRoleOrders(roles []domain.CustomRole) error
@@ -22,6 +23,7 @@ type CustomFieldRepository interface {
 	FindCustomStageByID(id uuid.UUID) (*domain.CustomStage, error)
 	FindCustomStagesByProject(projectID uuid.UUID) ([]domain.CustomStage, error)
 	FindCustomStageByProjectAndName(projectID uuid.UUID, name string) (*domain.CustomStage, error)
+	FindCustomStagesByIDs(ids []uuid.UUID) ([]domain.CustomStage, error) // Batch
 	UpdateCustomStage(stage *domain.CustomStage) error
 	DeleteCustomStage(id uuid.UUID) error
 	UpdateCustomStageOrders(stages []domain.CustomStage) error
@@ -31,6 +33,7 @@ type CustomFieldRepository interface {
 	FindCustomImportanceByID(id uuid.UUID) (*domain.CustomImportance, error)
 	FindCustomImportancesByProject(projectID uuid.UUID) ([]domain.CustomImportance, error)
 	FindCustomImportanceByProjectAndName(projectID uuid.UUID, name string) (*domain.CustomImportance, error)
+	FindCustomImportancesByIDs(ids []uuid.UUID) ([]domain.CustomImportance, error) // Batch
 	UpdateCustomImportance(importance *domain.CustomImportance) error
 	DeleteCustomImportance(id uuid.UUID) error
 	UpdateCustomImportanceOrders(importances []domain.CustomImportance) error
@@ -201,4 +204,45 @@ func (r *customFieldRepository) UpdateCustomImportanceOrders(importances []domai
 		}
 		return nil
 	})
+}
+
+// ==================== Batch Methods ====================
+
+// FindCustomRolesByIDs fetches multiple roles by IDs in a single query
+func (r *customFieldRepository) FindCustomRolesByIDs(ids []uuid.UUID) ([]domain.CustomRole, error) {
+	if len(ids) == 0 {
+		return []domain.CustomRole{}, nil
+	}
+
+	var roles []domain.CustomRole
+	if err := r.db.Where("id IN ?", ids).Find(&roles).Error; err != nil {
+		return nil, err
+	}
+	return roles, nil
+}
+
+// FindCustomStagesByIDs fetches multiple stages by IDs in a single query
+func (r *customFieldRepository) FindCustomStagesByIDs(ids []uuid.UUID) ([]domain.CustomStage, error) {
+	if len(ids) == 0 {
+		return []domain.CustomStage{}, nil
+	}
+
+	var stages []domain.CustomStage
+	if err := r.db.Where("id IN ?", ids).Find(&stages).Error; err != nil {
+		return nil, err
+	}
+	return stages, nil
+}
+
+// FindCustomImportancesByIDs fetches multiple importances by IDs in a single query
+func (r *customFieldRepository) FindCustomImportancesByIDs(ids []uuid.UUID) ([]domain.CustomImportance, error) {
+	if len(ids) == 0 {
+		return []domain.CustomImportance{}, nil
+	}
+
+	var importances []domain.CustomImportance
+	if err := r.db.Where("id IN ?", ids).Find(&importances).Error; err != nil {
+		return nil, err
+	}
+	return importances, nil
 }

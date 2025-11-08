@@ -198,14 +198,33 @@ func (s *projectService) GetProjectsByWorkspaceID(workspaceID, userID string, to
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "프로젝트 조회 실패", 500)
 	}
 
-	var responses []dto.ProjectResponse
+	// Batch fetch owner info
+	ownerIDs := make([]string, 0, len(projects))
 	for _, proj := range projects {
-		resp, err := s.toProjectResponse(&proj)
-		if err != nil {
-			s.logger.Warn("Failed to convert project to response", zap.Error(err))
-			continue
+		ownerIDs = append(ownerIDs, proj.OwnerID.String())
+	}
+	userMap := s.getUserInfoBatch(ctx, ownerIDs)
+
+	// Convert to responses
+	responses := make([]dto.ProjectResponse, 0, len(projects))
+	for _, proj := range projects {
+		response := &dto.ProjectResponse{
+			ID:          proj.ID.String(),
+			WorkspaceID: proj.WorkspaceID.String(),
+			Name:        proj.Name,
+			Description: proj.Description,
+			OwnerID:     proj.OwnerID.String(),
+			CreatedAt:   proj.CreatedAt,
+			UpdatedAt:   proj.UpdatedAt,
 		}
-		responses = append(responses, *resp)
+
+		// Add owner info from batch result
+		if userInfo, ok := userMap[proj.OwnerID.String()]; ok {
+			response.OwnerName = userInfo.Name
+			response.OwnerEmail = userInfo.Email
+		}
+
+		responses = append(responses, *response)
 	}
 
 	return responses, nil
@@ -301,15 +320,33 @@ func (s *projectService) SearchProjects(userID string, token string, req *dto.Se
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "프로젝트 검색 실패", 500)
 	}
 
-	// Convert to response DTOs
-	var responses []dto.ProjectResponse
+	// Batch fetch owner info
+	ownerIDs := make([]string, 0, len(projects))
 	for _, proj := range projects {
-		resp, err := s.toProjectResponse(&proj)
-		if err != nil {
-			s.logger.Warn("Failed to convert project to response", zap.Error(err))
-			continue
+		ownerIDs = append(ownerIDs, proj.OwnerID.String())
+	}
+	userMap := s.getUserInfoBatch(ctx, ownerIDs)
+
+	// Convert to response DTOs
+	responses := make([]dto.ProjectResponse, 0, len(projects))
+	for _, proj := range projects {
+		response := &dto.ProjectResponse{
+			ID:          proj.ID.String(),
+			WorkspaceID: proj.WorkspaceID.String(),
+			Name:        proj.Name,
+			Description: proj.Description,
+			OwnerID:     proj.OwnerID.String(),
+			CreatedAt:   proj.CreatedAt,
+			UpdatedAt:   proj.UpdatedAt,
 		}
-		responses = append(responses, *resp)
+
+		// Add owner info from batch result
+		if userInfo, ok := userMap[proj.OwnerID.String()]; ok {
+			response.OwnerName = userInfo.Name
+			response.OwnerEmail = userInfo.Email
+		}
+
+		responses = append(responses, *response)
 	}
 
 	return &dto.PaginatedProjectsResponse{
@@ -396,14 +433,33 @@ func (s *projectService) GetJoinRequests(projectID, userID string, status string
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "참여 신청 조회 실패", 500)
 	}
 
-	var responses []dto.ProjectJoinRequestResponse
+	// Batch fetch user info
+	ctx := context.Background()
+	userIDs := make([]string, 0, len(requests))
 	for _, req := range requests {
-		resp, err := s.toJoinRequestResponse(&req)
-		if err != nil {
-			s.logger.Warn("Failed to convert join request to response", zap.Error(err))
-			continue
+		userIDs = append(userIDs, req.UserID.String())
+	}
+	userMap := s.getUserInfoBatch(ctx, userIDs)
+
+	// Convert to responses
+	responses := make([]dto.ProjectJoinRequestResponse, 0, len(requests))
+	for _, req := range requests {
+		response := &dto.ProjectJoinRequestResponse{
+			ID:          req.ID.String(),
+			ProjectID:   req.ProjectID.String(),
+			UserID:      req.UserID.String(),
+			Status:      string(req.Status),
+			RequestedAt: req.RequestedAt,
+			UpdatedAt:   req.UpdatedAt,
 		}
-		responses = append(responses, *resp)
+
+		// Add user info from batch result
+		if userInfo, ok := userMap[req.UserID.String()]; ok {
+			response.UserName = userInfo.Name
+			response.UserEmail = userInfo.Email
+		}
+
+		responses = append(responses, *response)
 	}
 
 	return responses, nil
@@ -498,14 +554,39 @@ func (s *projectService) GetProjectMembers(projectID, userID string) ([]dto.Proj
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 조회 실패", 500)
 	}
 
-	var responses []dto.ProjectMemberResponse
+	// Batch fetch user info
+	ctx := context.Background()
+	userIDs := make([]string, 0, len(members))
 	for _, member := range members {
-		resp, err := s.toMemberResponse(&member)
+		userIDs = append(userIDs, member.UserID.String())
+	}
+	userMap := s.getUserInfoBatch(ctx, userIDs)
+
+	// Convert to responses
+	responses := make([]dto.ProjectMemberResponse, 0, len(members))
+	for _, member := range members {
+		// Get role name
+		role, err := s.roleRepo.FindByID(member.RoleID)
 		if err != nil {
-			s.logger.Warn("Failed to convert member to response", zap.Error(err))
+			s.logger.Warn("Failed to get role", zap.Error(err))
 			continue
 		}
-		responses = append(responses, *resp)
+
+		response := &dto.ProjectMemberResponse{
+			ID:        member.ID.String(),
+			ProjectID: member.ProjectID.String(),
+			UserID:    member.UserID.String(),
+			RoleName:  role.Name,
+			JoinedAt:  member.JoinedAt,
+		}
+
+		// Add user info from batch result
+		if userInfo, ok := userMap[member.UserID.String()]; ok {
+			response.UserName = userInfo.Name
+			response.UserEmail = userInfo.Email
+		}
+
+		responses = append(responses, *response)
 	}
 
 	return responses, nil
@@ -697,6 +778,70 @@ func (s *projectService) getUserInfoWithCache(ctx context.Context, userID string
 		Name:   userInfo.Name,
 		Email:  userInfo.Email,
 	}, nil
+}
+
+// getUserInfoBatch retrieves multiple user infos with caching
+func (s *projectService) getUserInfoBatch(ctx context.Context, userIDs []string) map[string]*dto.UserInfo {
+	if len(userIDs) == 0 {
+		return make(map[string]*dto.UserInfo)
+	}
+
+	// Try cache first
+	cachedUsers, err := s.userInfoCache.GetSimpleUsersBatch(ctx, userIDs)
+	if err != nil {
+		s.logger.Warn("Failed to get users from cache", zap.Error(err))
+		cachedUsers = make(map[string]*cache.SimpleUser)
+	}
+
+	// Find missing user IDs
+	missingUserIDs := []string{}
+	for _, userID := range userIDs {
+		if _, exists := cachedUsers[userID]; !exists {
+			missingUserIDs = append(missingUserIDs, userID)
+		}
+	}
+
+	// Build result map
+	userMap := make(map[string]*dto.UserInfo)
+
+	// Fetch missing users from User Service
+	if len(missingUserIDs) > 0 {
+		users, err := s.userClient.GetUsersBatch(ctx, missingUserIDs)
+		if err != nil {
+			s.logger.Warn("Failed to fetch users from User Service", zap.Error(err))
+		} else {
+			// Cache the fetched users
+			simpleUsers := make([]cache.SimpleUser, 0, len(users))
+			for _, user := range users {
+				userMap[user.UserID] = &dto.UserInfo{
+					UserID: user.UserID,
+					Name:   user.Name,
+					Email:  user.Email,
+				}
+				simpleUsers = append(simpleUsers, cache.SimpleUser{
+					ID:        user.UserID,
+					Name:      user.Name,
+					AvatarURL: "",
+				})
+			}
+			if cacheErr := s.userInfoCache.SetSimpleUsersBatch(ctx, simpleUsers); cacheErr != nil {
+				s.logger.Warn("Failed to cache users", zap.Error(cacheErr))
+			}
+		}
+	}
+
+	// Add cached users to result
+	for userID, cachedUser := range cachedUsers {
+		if _, exists := userMap[userID]; !exists {
+			userMap[userID] = &dto.UserInfo{
+				UserID: cachedUser.ID,
+				Name:   cachedUser.Name,
+				Email:  "", // SimpleUser doesn't have email
+			}
+		}
+	}
+
+	return userMap
 }
 
 func (s *projectService) checkProjectOwnerPermission(userID, projectID uuid.UUID) error {
