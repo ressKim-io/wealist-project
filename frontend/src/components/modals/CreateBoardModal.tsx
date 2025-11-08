@@ -700,49 +700,48 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
                   담당자 (선택)
                 </label>
 
-                {/* Selected Assignees Tags */}
-                {selectedAssigneeIds.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {selectedAssigneeIds.map((userId) => {
-                      const member = workspaceMembers.find((m) => m.userId === userId);
-                      return (
-                        <span
-                          key={userId}
-                          className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
+                {/* Input with Tags Inside */}
+                <div className="w-full min-h-[42px] px-2 py-1 border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 bg-white flex flex-wrap items-center gap-1">
+                  {/* Selected Assignees Tags Inside Input */}
+                  {selectedAssigneeIds.map((userId) => {
+                    const member = workspaceMembers.find((m) => m.userId === userId);
+                    return (
+                      <span
+                        key={userId}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
+                      >
+                        {member?.name || userId}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedAssigneeIds(selectedAssigneeIds.filter((id) => id !== userId));
+                          }}
+                          className="hover:text-blue-900"
                         >
-                          {member?.name || userId}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedAssigneeIds(selectedAssigneeIds.filter((id) => id !== userId));
-                            }}
-                            className="hover:text-blue-900"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
 
-                {/* Search Input */}
-                <input
-                  type="text"
-                  value={assigneeSearch}
-                  onChange={(e) => {
-                    setAssigneeSearch(e.target.value);
-                    setShowAssigneeDropdown(true);
-                  }}
-                  onFocus={() => setShowAssigneeDropdown(true)}
-                  placeholder="담당자 검색..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  disabled={isLoading}
-                />
+                  {/* Search Input */}
+                  <input
+                    type="text"
+                    value={assigneeSearch}
+                    onChange={(e) => {
+                      setAssigneeSearch(e.target.value);
+                      setShowAssigneeDropdown(true);
+                    }}
+                    onFocus={() => setShowAssigneeDropdown(true)}
+                    placeholder={selectedAssigneeIds.length === 0 ? "담당자 검색..." : ""}
+                    className="flex-1 min-w-[120px] px-1 py-1 text-sm focus:outline-none"
+                    disabled={isLoading}
+                  />
+                </div>
 
-                {/* Dropdown */}
+                {/* Dropdown - z-index higher than modal */}
                 {showAssigneeDropdown && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  <div className="absolute z-[110] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                     {workspaceMembers
                       .filter((member) =>
                         member.name.toLowerCase().includes(assigneeSearch.toLowerCase()) ||
