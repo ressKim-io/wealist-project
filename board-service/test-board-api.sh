@@ -310,8 +310,8 @@ board_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/boards" \
     "{
         \"projectId\": \"$PROJECT_ID\",
         \"title\": \"Implement Authentication\",
-        \"description\": \"Add JWT authentication to the API\",
-        \"roleId\": \"$ROLE_ID\",
+        \"content\": \"Add JWT authentication to the API\",
+        \"roleIds\": [\"$ROLE_ID\"],
         \"stageId\": \"$STAGE_ID\",
         \"importanceId\": \"$IMPORTANCE_ID\"
     }" \
@@ -344,7 +344,7 @@ test_api "PUT" "${BOARD_SERVICE_URL}/api/boards/${BOARD_ID}" \
     "Update Board" \
     "{
         \"title\": \"Implement JWT Authentication\",
-        \"description\": \"Add JWT authentication and authorization\",
+        \"content\": \"Add JWT authentication and authorization\",
         \"stageId\": \"$CUSTOM_STAGE_ID\"
     }" \
     200
