@@ -20,7 +20,7 @@
  * 10. POST /api/workspaces/{workspaceId}/invite/{userId}         - 회원 초대
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Search } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -78,6 +78,7 @@ const WorkspaceManagementModal: React.FC<WorkspaceManagementModalProps> = ({
   const [pendingMembers, setPendingMembers] = useState<PendingMemberType[]>([]);
   const [invitableUsers, setInvitableUsers] = useState<InvitableUser[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
 
   // 로딩 및 에러
   const [loading, setLoading] = useState(false);
@@ -276,6 +277,21 @@ const WorkspaceManagementModal: React.FC<WorkspaceManagementModalProps> = ({
       setLoading(false);
     }
   };
+
+  // ========================================
+  // 회원 목록 필터링
+  // ========================================
+
+  const filteredMembers = useMemo(() => {
+    if (!memberSearchQuery.trim()) return members;
+    const query = memberSearchQuery.toLowerCase();
+    return members.filter(
+      (member) =>
+        member.name.toLowerCase().includes(query) ||
+        member.email.toLowerCase().includes(query) ||
+        member.role.toLowerCase().includes(query),
+    );
+  }, [members, memberSearchQuery]);
 
   // ========================================
   // 렌더링
@@ -560,11 +576,23 @@ const WorkspaceManagementModal: React.FC<WorkspaceManagementModalProps> = ({
 
                 {/* 조직 회원 목록 */}
                 <div className="border border-gray-200 rounded-lg p-4">
-                  <p className="text-sm font-semibold text-gray-700 mb-3">
-                    조직 회원 목록 ({members.length}명)
-                  </p>
+                  <div className="flex items-center justify-between mb-3 gap-3">
+                    <p className="text-sm font-semibold text-gray-700 whitespace-nowrap">
+                      조직 회원 목록 ({members.length}명)
+                    </p>
+                    <div className="relative flex-1 max-w-xs">
+                      <input
+                        type="text"
+                        placeholder="이름, 이메일, 역할 검색"
+                        value={memberSearchQuery}
+                        onChange={(e) => setMemberSearchQuery(e.target.value)}
+                        className={`w-full px-3 pl-8 py-1.5 ${theme.effects.cardBorderWidth} ${theme.colors.border} ${theme.colors.card} text-xs ${theme.effects.borderRadius} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                      />
+                      <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                    </div>
+                  </div>
                   <div className="space-y-2">
-                    {members.map((member) => (
+                    {filteredMembers.map((member) => (
                       <div
                         key={member.userId}
                         className="flex items-center justify-between bg-gray-50 p-3 rounded border border-gray-200"
@@ -618,6 +646,13 @@ const WorkspaceManagementModal: React.FC<WorkspaceManagementModalProps> = ({
                         )}
                       </div>
                     ))}
+                    {filteredMembers.length === 0 && (
+                      <p className="text-center text-sm text-gray-500 py-4">
+                        {memberSearchQuery.trim()
+                          ? '검색 결과가 없습니다.'
+                          : '조직 회원이 없습니다.'}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
