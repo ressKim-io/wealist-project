@@ -20,9 +20,13 @@ export interface TaskComment {
 }
 
 export interface UserProfile {
+  profileId: string;
+  userId: string;
   name: string;
-  email: string;
-  avatar: string;
+  email: string | null;
+  profileImageUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface User {

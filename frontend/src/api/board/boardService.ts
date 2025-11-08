@@ -10,6 +10,16 @@ const boardService = axios.create({
   },
 });
 
+/**
+ * ========================================
+ * 목업 모드 전환
+ * ========================================
+ *
+ * USE_MOCK_DATA = true: 목업 데이터 사용
+ * USE_MOCK_DATA = false: 실제 API 호출
+ */
+const USE_MOCK_DATA = true;
+
 // ============================================================================
 // 프로젝트 관련 API
 // ============================================================================
@@ -25,6 +35,43 @@ export interface ProjectResponse {
   createdAt: string;
   updatedAt: string;
 }
+
+// 목업: 프로젝트 목록
+let MOCK_PROJECTS: ProjectResponse[] = [
+  {
+    id: 'project-1',
+    name: 'Wealist 서비스 개발',
+    description: '칸반보드 기반 협업 툴 개발',
+    workspaceId: 'workspace-1',
+    ownerId: 'user-123',
+    ownerName: '김개발',
+    ownerEmail: 'dev.kim@orangecloud.com',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-15T00:00:00Z',
+  },
+  {
+    id: 'project-2',
+    name: 'Orange Cloud 디자인 시스템',
+    description: 'UI/UX 컴포넌트 라이브러리 구축',
+    workspaceId: 'workspace-1',
+    ownerId: 'user-456',
+    ownerName: '이디자인',
+    ownerEmail: 'design.lee@orangecloud.com',
+    createdAt: '2024-01-05T00:00:00Z',
+    updatedAt: '2024-01-20T00:00:00Z',
+  },
+  {
+    id: 'project-3',
+    name: '인프라 자동화',
+    description: 'EKS 기반 CI/CD 파이프라인 구축',
+    workspaceId: 'workspace-1',
+    ownerId: 'user-202',
+    ownerName: '최데브옵스',
+    ownerEmail: 'devops.choi@orangecloud.com',
+    createdAt: '2024-01-10T00:00:00Z',
+    updatedAt: '2024-01-18T00:00:00Z',
+  },
+];
 
 export interface CreateProjectRequest {
   name: string;
@@ -43,6 +90,16 @@ export const getProjects = async (
   workspaceId: string,
   token: string,
 ): Promise<ProjectResponse[]> => {
+  if (USE_MOCK_DATA) {
+    console.log('[MOCK] getProjects 호출:', workspaceId);
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const filtered = MOCK_PROJECTS.filter((p) => p.workspaceId === workspaceId);
+        resolve(filtered);
+      }, 300);
+    });
+  }
+
   try {
     const response = await boardService.get('/api/projects', {
       params: { workspace_id: workspaceId },
@@ -85,6 +142,27 @@ export const createProject = async (
   data: CreateProjectRequest,
   token: string,
 ): Promise<ProjectResponse> => {
+  if (USE_MOCK_DATA) {
+    console.log('[MOCK] createProject 호출:', data);
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const newProject: ProjectResponse = {
+          id: `project-${Date.now()}`,
+          name: data.name,
+          description: data.description,
+          workspaceId: data.workspaceId,
+          ownerId: 'user-123',
+          ownerName: '김개발',
+          ownerEmail: 'dev.kim@orangecloud.com',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        MOCK_PROJECTS.push(newProject);
+        resolve(newProject);
+      }, 300);
+    });
+  }
+
   try {
     const response = await boardService.post('/api/projects', data, {
       headers: { Authorization: `Bearer ${token}` },

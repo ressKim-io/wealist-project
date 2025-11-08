@@ -59,10 +59,11 @@ public class ProfileController {
         UUID userId = extractUserId(principal);
         
         // ✅ [문제 해결]: updateProfileImageUrl 대신 통합 서비스 메서드 updateProfile 호출
-        // 이름은 null로 전달하여 변경하지 않도록 합니다.
+        // 이름과 이메일은 null로 전달하여 변경하지 않도록 합니다.
         UserProfile updatedProfile = userProfileService.updateProfile(
-            userId, 
+            userId,
             null, // 이름은 변경하지 않음
+            null, // 이메일은 변경하지 않음
             request.profileImageUrl() // 이미지 URL만 업데이트
         );
 
@@ -84,8 +85,9 @@ public class ProfileController {
 
         // ✅ 통합 서비스 메서드 호출
         UserProfile updatedProfile = userProfileService.updateProfile(
-                userId, 
-                request.name(), 
+                userId,
+                request.name(),
+                request.email(),
                 request.profileImageUrl()
         );
 

@@ -13,6 +13,7 @@ public record UserProfileResponse(
     UUID profileId,
     UUID userId,
     String name,
+    String email,
     String profileImageUrl,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
@@ -23,6 +24,7 @@ public record UserProfileResponse(
             .profileId(profile.getProfileId())
             .userId(profile.getUserId())
             .name(profile.getName())
+            .email(profile.getEmail())
             .profileImageUrl(profile.getProfileImageUrl())
             .createdAt(profile.getCreatedAt())
             .updatedAt(profile.getUpdatedAt())
