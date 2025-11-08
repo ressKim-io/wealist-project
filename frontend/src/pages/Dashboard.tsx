@@ -13,7 +13,6 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import UserProfileModal from '../components/modals/UserProfileModal';
 import { UserProfile } from '../types';
-import { Board, BoardWithCustomFields } from '../types/board';
 import { BoardDetailModal } from '../components/modals/BoardDetailModal';
 import { CreateProjectModal } from '../components/modals/CreateProjectModal';
 import { CreateBoardModal } from '../components/modals/CreateBoardModal';
@@ -22,6 +21,8 @@ import {
   getBoards,
   getProjectStages,
   updateBoard,
+  updateStageColumnOrder,
+  updateStageBoardOrder,
   ProjectResponse,
   BoardResponse,
   CustomStageResponse,
@@ -30,7 +31,7 @@ import {
 interface Column {
   id: string;
   title: string;
-  boards: BoardWithCustomFields[];
+  boards: BoardResponse[];
 }
 
 // App.tsx에서 onLogout을 받도록 수정됨
@@ -246,23 +247,13 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
         (a, b) => a.stage.displayOrder - b.stage.displayOrder,
       );
 
-      const mockColumns: Column[] = sortedStages.map(({ stage, boards }) => ({
+      const columns: Column[] = sortedStages.map(({ stage, boards }) => ({
         id: stage.id,
         title: stage.name,
-        boards: boards.map((b) => ({
-          id: b.id,
-          title: b.title,
-          assignee_id: b.assignee?.userId || '',
-          status: stage.name,
-          assignee: b.assignee?.name || 'Unassigned',
-          customFieldValues: {
-            'cf-stage': b.stage?.name || stage.name,
-            'cf-importance': b.importance?.name || 'Normal',
-          },
-        })),
+        boards: boards,
       }));
 
-      setColumns(mockColumns);
+      setColumns(columns);
     } catch (err) {
       const error = err as Error;
       console.error('❌ 보드 로드 실패:', error);
@@ -279,11 +270,13 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   }, [fetchBoards]);
 
   // 2. 드래그 앤 드롭 (용어 변경)
-  const [draggedBoard, setDraggedBoard] = useState<BoardWithCustomFields | null>(null);
+  const [draggedBoard, setDraggedBoard] = useState<BoardResponse | null>(null);
   const [draggedFromColumn, setDraggedFromColumn] = useState<string | null>(null);
+  const [draggedColumn, setDraggedColumn] = useState<Column | null>(null);
+  const [dragOverBoardId, setDragOverBoardId] = useState<string | null>(null);
 
-  const handleDragStart = (board: Board, columnId: string): void => {
-    setDraggedBoard(board as BoardWithCustomFields);
+  const handleDragStart = (board: BoardResponse, columnId: string): void => {
+    setDraggedBoard(board);
     setDraggedFromColumn(columnId);
   };
 
@@ -292,11 +285,69 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   };
 
   const handleDrop = async (targetColumnId: string): Promise<void> => {
-    if (!draggedBoard || !draggedFromColumn || draggedFromColumn === targetColumnId) return;
+    if (!draggedBoard || !draggedFromColumn) return;
 
-    const updatedBoard: BoardWithCustomFields = {
+    // Same column: reorder boards within column
+    if (draggedFromColumn === targetColumnId) {
+      if (!dragOverBoardId || dragOverBoardId === draggedBoard.id) {
+        setDraggedBoard(null);
+        setDraggedFromColumn(null);
+        setDragOverBoardId(null);
+        return;
+      }
+
+      const targetColumn = columns.find((col) => col.id === targetColumnId);
+      if (!targetColumn || !selectedProject) {
+        setDraggedBoard(null);
+        setDraggedFromColumn(null);
+        setDragOverBoardId(null);
+        return;
+      }
+
+      // Reorder boards
+      const draggedIndex = targetColumn.boards.findIndex((b) => b.id === draggedBoard.id);
+      const targetIndex = targetColumn.boards.findIndex((b) => b.id === dragOverBoardId);
+
+      if (draggedIndex === -1 || targetIndex === -1) {
+        setDraggedBoard(null);
+        setDraggedFromColumn(null);
+        setDragOverBoardId(null);
+        return;
+      }
+
+      const newBoards = [...targetColumn.boards];
+      const [removed] = newBoards.splice(draggedIndex, 1);
+      newBoards.splice(targetIndex, 0, removed);
+
+      const newColumns = columns.map((col) => {
+        if (col.id === targetColumnId) {
+          return { ...col, boards: newBoards };
+        }
+        return col;
+      });
+
+      setColumns(newColumns);
+      setDraggedBoard(null);
+      setDraggedFromColumn(null);
+      setDragOverBoardId(null);
+
+      // Persist to backend
+      try {
+        const boardIds = newBoards.map((b) => b.id);
+        await updateStageBoardOrder(selectedProject.id, targetColumnId, boardIds, accessToken);
+        console.log(`✅ Stage 내 Board 순서 변경 성공`);
+      } catch (error) {
+        console.error('❌ Stage 내 Board 순서 변경 실패:', error);
+        // Revert on error
+        setColumns(columns);
+        alert('보드 순서 변경에 실패했습니다. 다시 시도해주세요.');
+      }
+      return;
+    }
+
+    const updatedBoard: BoardResponse = {
       ...draggedBoard,
-      status: targetColumnId,
+      stage: { ...draggedBoard.stage!, id: targetColumnId },
     };
 
     // Optimistic UI update
@@ -314,6 +365,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     const boardToUpdate = draggedBoard;
     setDraggedBoard(null);
     setDraggedFromColumn(null);
+    setDragOverBoardId(null);
 
     // Persist to backend
     try {
@@ -334,6 +386,52 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       // Revert on error
       setColumns(columns);
       alert('보드 이동에 실패했습니다. 다시 시도해주세요.');
+    }
+  };
+
+  // Column drag handlers
+  const handleColumnDragStart = (column: Column): void => {
+    setDraggedColumn(column);
+  };
+
+  const handleColumnDragOver = (e: React.DragEvent<HTMLDivElement>): void => {
+    e.preventDefault();
+  };
+
+  const handleColumnDrop = async (targetColumn: Column): Promise<void> => {
+    if (!draggedColumn || draggedColumn.id === targetColumn.id) {
+      setDraggedColumn(null);
+      return;
+    }
+
+    const draggedIndex = columns.findIndex((col) => col.id === draggedColumn.id);
+    const targetIndex = columns.findIndex((col) => col.id === targetColumn.id);
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedColumn(null);
+      return;
+    }
+
+    // Reorder columns
+    const newColumns = [...columns];
+    const [removed] = newColumns.splice(draggedIndex, 1);
+    newColumns.splice(targetIndex, 0, removed);
+
+    setColumns(newColumns);
+    setDraggedColumn(null);
+
+    // Persist to backend
+    if (!selectedProject) return;
+
+    try {
+      const stageIds = newColumns.map((col) => col.id);
+      await updateStageColumnOrder(selectedProject.id, stageIds, accessToken);
+      console.log(`✅ Stage 컬럼 순서 변경 성공`);
+    } catch (error) {
+      console.error('❌ Stage 컬럼 순서 변경 실패:', error);
+      // Revert on error
+      setColumns(columns);
+      alert('컬럼 순서 변경에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -549,14 +647,27 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
               {columns.map((column, idx) => (
                 <div
                   key={column.id}
-                  onDragOver={handleDragOver}
-                  onDrop={() => handleDrop(column.id)}
+                  onDragOver={(e) => {
+                    handleDragOver(e);
+                    handleColumnDragOver(e);
+                  }}
+                  onDrop={() => {
+                    if (draggedColumn) {
+                      handleColumnDrop(column);
+                    } else {
+                      handleDrop(column.id);
+                    }
+                  }}
                   className="w-full lg:w-80 lg:flex-shrink-0 relative"
                 >
                   <div
                     className={`relative ${theme.effects.cardBorderWidth} ${theme.colors.border} p-3 sm:p-4 ${theme.colors.card} ${theme.effects.borderRadius}`}
                   >
-                    <div className={`flex items-center justify-between pb-2`}>
+                    <div
+                      draggable
+                      onDragStart={() => handleColumnDragStart(column)}
+                      className={`flex items-center justify-between pb-2 cursor-move`}
+                    >
                       <h3
                         className={`font-bold ${theme.colors.text} flex items-center gap-2 ${theme.font.size.xs}`}
                       >
@@ -576,12 +687,24 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
                     <div className="space-y-2 sm:space-y-3">
                       {column.boards.map((board) => (
-                        <div key={board.id} className="relative">
+                        <div
+                          key={board.id}
+                          className="relative"
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setDragOverBoardId(board.id);
+                          }}
+                          onDragLeave={() => {
+                            setDragOverBoardId(null);
+                          }}
+                        >
                           <div
                             draggable
                             onDragStart={() => handleDragStart(board, column.id)}
                             onClick={() => setSelectedBoardId(board.id)}
-                            className={`relative ${theme.colors.card} p-3 sm:p-4 ${theme.effects.cardBorderWidth} ${theme.colors.border} hover:border-blue-500 transition cursor-pointer ${theme.effects.borderRadius}`}
+                            className={`relative ${theme.colors.card} p-3 sm:p-4 ${theme.effects.cardBorderWidth} ${
+                              dragOverBoardId === board.id ? 'border-blue-500' : theme.colors.border
+                            } hover:border-blue-500 transition cursor-pointer ${theme.effects.borderRadius}`}
                           >
                             <h3
                               className={`font-bold ${theme.colors.text} mb-2 sm:mb-3 ${theme.font.size.xs} break-words`}
@@ -589,7 +712,9 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                               {board.title}
                             </h3>
                             <div className="flex items-center justify-between">
-                              <AssigneeAvatarStack assignees={board.assignee} />
+                              <AssigneeAvatarStack
+                                assignees={board.assignee?.name || 'Unassigned'}
+                              />
                             </div>
                           </div>
                         </div>

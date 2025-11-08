@@ -610,3 +610,53 @@ export const getStageBasedBoardView = async (
     throw error;
   }
 };
+
+/**
+ * Stage 컬럼 순서를 업데이트합니다.
+ * PUT /api/projects/{id}/orders/stage-columns
+ * @param projectId 프로젝트 ID
+ * @param stageIds Stage ID 배열 (순서대로)
+ * @param token 액세스 토큰
+ */
+export const updateStageColumnOrder = async (
+  projectId: string,
+  stageIds: string[],
+  token: string,
+): Promise<void> => {
+  try {
+    await boardService.put(
+      `/api/projects/${projectId}/orders/stage-columns`,
+      { itemIds: stageIds },
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+  } catch (error) {
+    console.error('updateStageColumnOrder error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Stage 내 Board 순서를 업데이트합니다.
+ * PUT /api/projects/{id}/orders/stage-boards/{stageId}
+ * @param projectId 프로젝트 ID
+ * @param stageId Stage ID
+ * @param boardIds Board ID 배열 (순서대로)
+ * @param token 액세스 토큰
+ */
+export const updateStageBoardOrder = async (
+  projectId: string,
+  stageId: string,
+  boardIds: string[],
+  token: string,
+): Promise<void> => {
+  try {
+    await boardService.put(
+      `/api/projects/${projectId}/orders/stage-boards/${stageId}`,
+      { itemIds: boardIds },
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+  } catch (error) {
+    console.error('updateStageBoardOrder error:', error);
+    throw error;
+  }
+};
