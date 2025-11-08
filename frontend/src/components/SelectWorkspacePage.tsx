@@ -10,6 +10,7 @@ import {
   createWorkspace,
 } from '../api/user/userService';
 import { Search, Plus, X, AlertCircle, Settings } from 'lucide-react';
+import WorkspaceManagementModal from './modals/WorkspaceManagementModal';
 
 // 2. Props 인터페이스 제거 (더 이상 App.tsx에서 props를 받지 않음)
 /*
@@ -53,6 +54,9 @@ const SelectWorkspacePage: React.FC = () => {
   const [memberEmailError, setMemberEmailError] = useState<string | null>(null);
 
   const [_createdWorkspaceId, setCreatedWorkspaceId] = useState<string | null>(null);
+
+  // 워크스페이스 관리 모달
+  const [managingWorkspace, setManagingWorkspace] = useState<WorkspaceResponse | null>(null);
 
   // 1. 초기 워크스페이스 로드
   useEffect(() => {
@@ -170,11 +174,9 @@ const SelectWorkspacePage: React.FC = () => {
     }
   };
 
-  // 워크스페이스 관리 페이지로 이동
+  // 워크스페이스 관리 모달 열기
   const handleManageWorkspace = (workspace: WorkspaceResponse) => {
-    // TODO: 워크스페이스 관리 페이지 구현 후 실제 경로로 변경
-    alert(`워크스페이스 '${workspace.name}' 관리 기능은 준비 중입니다.`);
-    // navigate(`/workspaces/${workspace.id}/settings`);
+    setManagingWorkspace(workspace);
   };
 
   // 8. 폼 초기화 (동일)
@@ -463,6 +465,15 @@ const SelectWorkspacePage: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* 워크스페이스 관리 모달 */}
+      {managingWorkspace && (
+        <WorkspaceManagementModal
+          workspaceId={managingWorkspace.id}
+          workspaceName={managingWorkspace.name}
+          onClose={() => setManagingWorkspace(null)}
+        />
+      )}
     </div>
   );
 };

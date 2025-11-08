@@ -58,6 +58,48 @@ export interface UpdateProfileRequest {
   profileImageUrl?: string;
 }
 
+// --- Workspace Management Interfaces ---
+
+export type WorkspaceMemberRole = 'OWNER' | 'ADMIN' | 'MEMBER';
+
+export interface WorkspaceMember {
+  userId: string;
+  name: string;
+  email: string;
+  role: WorkspaceMemberRole;
+  joinedAt: string;
+}
+
+export interface PendingMember {
+  userId: string;
+  name: string;
+  email: string;
+  requestedAt: string;
+}
+
+export interface InvitableUser {
+  userId: string;
+  name: string;
+  email: string;
+}
+
+export interface WorkspaceSettings {
+  workspaceId: string;
+  name: string;
+  description: string;
+  isPublic: boolean; // 공개/비공개
+  requiresApproval: boolean; // 승인제/비승인제
+  onlyOwnerCanInvite: boolean; // OWNER만 초대 가능
+}
+
+export interface UpdateWorkspaceSettingsRequest {
+  name?: string;
+  description?: string;
+  isPublic?: boolean;
+  requiresApproval?: boolean;
+  onlyOwnerCanInvite?: boolean;
+}
+
 // ========================================
 // 목업 데이터 (백엔드 개발자가 수정 가능)
 // ========================================
@@ -129,6 +171,82 @@ let MOCK_WORKSPACE_PROFILES: Record<string, UserProfileResponse> = {
     updatedAt: '2024-01-02T00:00:00Z',
   },
 };
+
+// 목업: 워크스페이스 설정
+let MOCK_WORKSPACE_SETTINGS: Record<string, WorkspaceSettings> = {
+  'workspace-1': {
+    workspaceId: 'workspace-1',
+    name: '오렌지클라우드',
+    description: '메인 워크스페이스',
+    isPublic: true,
+    requiresApproval: true,
+    onlyOwnerCanInvite: false,
+  },
+};
+
+// 목업: 워크스페이스 회원 목록
+let MOCK_WORKSPACE_MEMBERS: Record<string, WorkspaceMember[]> = {
+  'workspace-1': [
+    {
+      userId: 'user-123',
+      name: '김개발',
+      email: 'dev.kim@example.com',
+      role: 'OWNER',
+      joinedAt: '2024-01-01T00:00:00Z',
+    },
+    {
+      userId: 'user-456',
+      name: '이디자인',
+      email: 'design.lee@example.com',
+      role: 'ADMIN',
+      joinedAt: '2024-01-05T00:00:00Z',
+    },
+    {
+      userId: 'user-789',
+      name: '박기획',
+      email: 'plan.park@example.com',
+      role: 'MEMBER',
+      joinedAt: '2024-01-10T00:00:00Z',
+    },
+  ],
+};
+
+// 목업: 승인 대기 회원
+let MOCK_PENDING_MEMBERS: Record<string, PendingMember[]> = {
+  'workspace-1': [
+    {
+      userId: 'user-pending-1',
+      name: '최신입',
+      email: 'new.choi@example.com',
+      requestedAt: '2024-01-15T00:00:00Z',
+    },
+    {
+      userId: 'user-pending-2',
+      name: '강인턴',
+      email: 'intern.kang@example.com',
+      requestedAt: '2024-01-16T00:00:00Z',
+    },
+  ],
+};
+
+// 목업: 초대 가능 회원 (전체 사용자 목록에서 현재 워크스페이스에 없는 사람들)
+const MOCK_INVITABLE_USERS: InvitableUser[] = [
+  {
+    userId: 'user-inv-1',
+    name: '정마케팅',
+    email: 'marketing.jung@example.com',
+  },
+  {
+    userId: 'user-inv-2',
+    name: '송영업',
+    email: 'sales.song@example.com',
+  },
+  {
+    userId: 'user-inv-3',
+    name: '한재무',
+    email: 'finance.han@example.com',
+  },
+];
 
 // ========================================
 // API Service Functions (목업/실제 API 자동 전환)
@@ -352,6 +470,372 @@ export const updateWorkspaceProfile = async (
     },
   );
   return response.data;
+};
+
+// ========================================
+// Workspace Management API Functions
+// ========================================
+
+/**
+ * 워크스페이스 설정 조회
+ *
+ * [백엔드 API]
+ * - GET /api/workspaces/{workspaceId}/settings
+ * - Headers: Authorization: Bearer {accessToken}
+ * - Response: WorkspaceSettings
+ */
+export const getWorkspaceSettings = async (
+  workspaceId: string,
+  accessToken: string,
+): Promise<WorkspaceSettings> => {
+  if (USE_MOCK_DATA) {
+    console.log('[MOCK] getWorkspaceSettings 호출:', workspaceId);
+    const settings = MOCK_WORKSPACE_SETTINGS[workspaceId] || {
+      workspaceId,
+      name: '워크스페이스',
+      description: '',
+      isPublic: false,
+      requiresApproval: false,
+      onlyOwnerCanInvite: true,
+    };
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(settings), 300);
+    });
+  }
+
+  const response: AxiosResponse<WorkspaceSettings> = await userRepoClient.get(
+    `/api/workspaces/${workspaceId}/settings`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+  return response.data;
+};
+
+/**
+ * 워크스페이스 설정 업데이트
+ *
+ * [백엔드 API]
+ * - PUT /api/workspaces/{workspaceId}/settings
+ * - Headers: Authorization: Bearer {accessToken}
+ * - Body: UpdateWorkspaceSettingsRequest
+ * - Response: WorkspaceSettings
+ */
+export const updateWorkspaceSettings = async (
+  workspaceId: string,
+  data: UpdateWorkspaceSettingsRequest,
+  accessToken: string,
+): Promise<WorkspaceSettings> => {
+  if (USE_MOCK_DATA) {
+    console.log('[MOCK] updateWorkspaceSettings 호출:', workspaceId, data);
+    const current = MOCK_WORKSPACE_SETTINGS[workspaceId];
+    const updated = {
+      ...current,
+      ...data,
+      workspaceId,
+    };
+    MOCK_WORKSPACE_SETTINGS[workspaceId] = updated;
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(updated), 300);
+    });
+  }
+
+  const response: AxiosResponse<WorkspaceSettings> = await userRepoClient.put(
+    `/api/workspaces/${workspaceId}/settings`,
+    data,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+  return response.data;
+};
+
+/**
+ * 워크스페이스 회원 목록 조회
+ *
+ * [백엔드 API]
+ * - GET /api/workspaces/{workspaceId}/members
+ * - Headers: Authorization: Bearer {accessToken}
+ * - Response: WorkspaceMember[]
+ */
+export const getWorkspaceMembers = async (
+  workspaceId: string,
+  accessToken: string,
+): Promise<WorkspaceMember[]> => {
+  if (USE_MOCK_DATA) {
+    console.log('[MOCK] getWorkspaceMembers 호출:', workspaceId);
+    const members = MOCK_WORKSPACE_MEMBERS[workspaceId] || [];
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(members), 300);
+    });
+  }
+
+  const response: AxiosResponse<WorkspaceMember[]> = await userRepoClient.get(
+    `/api/workspaces/${workspaceId}/members`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+  return response.data;
+};
+
+/**
+ * 승인 대기 회원 목록 조회
+ *
+ * [백엔드 API]
+ * - GET /api/workspaces/{workspaceId}/pending-members
+ * - Headers: Authorization: Bearer {accessToken}
+ * - Response: PendingMember[]
+ */
+export const getPendingMembers = async (
+  workspaceId: string,
+  accessToken: string,
+): Promise<PendingMember[]> => {
+  if (USE_MOCK_DATA) {
+    console.log('[MOCK] getPendingMembers 호출:', workspaceId);
+    const pending = MOCK_PENDING_MEMBERS[workspaceId] || [];
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(pending), 300);
+    });
+  }
+
+  const response: AxiosResponse<PendingMember[]> = await userRepoClient.get(
+    `/api/workspaces/${workspaceId}/pending-members`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+  return response.data;
+};
+
+/**
+ * 회원 승인
+ *
+ * [백엔드 API]
+ * - POST /api/workspaces/{workspaceId}/members/{userId}/approve
+ * - Headers: Authorization: Bearer {accessToken}
+ * - Response: void
+ */
+export const approveMember = async (
+  workspaceId: string,
+  userId: string,
+  accessToken: string,
+): Promise<void> => {
+  if (USE_MOCK_DATA) {
+    console.log('[MOCK] approveMember 호출:', workspaceId, userId);
+    // 승인 대기 목록에서 제거
+    const pending = MOCK_PENDING_MEMBERS[workspaceId] || [];
+    const member = pending.find((m) => m.userId === userId);
+    if (member) {
+      MOCK_PENDING_MEMBERS[workspaceId] = pending.filter((m) => m.userId !== userId);
+      // 회원 목록에 추가
+      const members = MOCK_WORKSPACE_MEMBERS[workspaceId] || [];
+      members.push({
+        userId: member.userId,
+        name: member.name,
+        email: member.email,
+        role: 'MEMBER',
+        joinedAt: new Date().toISOString(),
+      });
+      MOCK_WORKSPACE_MEMBERS[workspaceId] = members;
+    }
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(), 300);
+    });
+  }
+
+  await userRepoClient.post(
+    `/api/workspaces/${workspaceId}/members/${userId}/approve`,
+    {},
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+};
+
+/**
+ * 회원 거절
+ *
+ * [백엔드 API]
+ * - POST /api/workspaces/{workspaceId}/members/{userId}/reject
+ * - Headers: Authorization: Bearer {accessToken}
+ * - Response: void
+ */
+export const rejectMember = async (
+  workspaceId: string,
+  userId: string,
+  accessToken: string,
+): Promise<void> => {
+  if (USE_MOCK_DATA) {
+    console.log('[MOCK] rejectMember 호출:', workspaceId, userId);
+    const pending = MOCK_PENDING_MEMBERS[workspaceId] || [];
+    MOCK_PENDING_MEMBERS[workspaceId] = pending.filter((m) => m.userId !== userId);
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(), 300);
+    });
+  }
+
+  await userRepoClient.post(
+    `/api/workspaces/${workspaceId}/members/${userId}/reject`,
+    {},
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+};
+
+/**
+ * 회원 역할 변경
+ *
+ * [백엔드 API]
+ * - PUT /api/workspaces/{workspaceId}/members/{userId}/role
+ * - Headers: Authorization: Bearer {accessToken}
+ * - Body: { role: WorkspaceMemberRole }
+ * - Response: void
+ */
+export const updateMemberRole = async (
+  workspaceId: string,
+  userId: string,
+  role: WorkspaceMemberRole,
+  accessToken: string,
+): Promise<void> => {
+  if (USE_MOCK_DATA) {
+    console.log('[MOCK] updateMemberRole 호출:', workspaceId, userId, role);
+    const members = MOCK_WORKSPACE_MEMBERS[workspaceId] || [];
+    const member = members.find((m) => m.userId === userId);
+    if (member) {
+      member.role = role;
+    }
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(), 300);
+    });
+  }
+
+  await userRepoClient.put(
+    `/api/workspaces/${workspaceId}/members/${userId}/role`,
+    { role },
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+};
+
+/**
+ * 회원 퇴출
+ *
+ * [백엔드 API]
+ * - DELETE /api/workspaces/{workspaceId}/members/{userId}
+ * - Headers: Authorization: Bearer {accessToken}
+ * - Response: void
+ */
+export const removeMember = async (
+  workspaceId: string,
+  userId: string,
+  accessToken: string,
+): Promise<void> => {
+  if (USE_MOCK_DATA) {
+    console.log('[MOCK] removeMember 호출:', workspaceId, userId);
+    const members = MOCK_WORKSPACE_MEMBERS[workspaceId] || [];
+    MOCK_WORKSPACE_MEMBERS[workspaceId] = members.filter((m) => m.userId !== userId);
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(), 300);
+    });
+  }
+
+  await userRepoClient.delete(`/api/workspaces/${workspaceId}/members/${userId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+};
+
+/**
+ * 초대 가능 회원 검색
+ *
+ * [백엔드 API]
+ * - GET /api/workspaces/{workspaceId}/invitable-users?query={query}
+ * - Headers: Authorization: Bearer {accessToken}
+ * - Response: InvitableUser[]
+ */
+export const searchInvitableUsers = async (
+  workspaceId: string,
+  query: string,
+  accessToken: string,
+): Promise<InvitableUser[]> => {
+  if (USE_MOCK_DATA) {
+    console.log('[MOCK] searchInvitableUsers 호출:', workspaceId, query);
+    const filtered = query.trim()
+      ? MOCK_INVITABLE_USERS.filter(
+          (u) =>
+            u.name.toLowerCase().includes(query.toLowerCase()) ||
+            u.email.toLowerCase().includes(query.toLowerCase()),
+        )
+      : MOCK_INVITABLE_USERS;
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(filtered), 300);
+    });
+  }
+
+  const response: AxiosResponse<InvitableUser[]> = await userRepoClient.get(
+    `/api/workspaces/${workspaceId}/invitable-users`,
+    {
+      params: { query },
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+  return response.data;
+};
+
+/**
+ * 회원 초대
+ *
+ * [백엔드 API]
+ * - POST /api/workspaces/{workspaceId}/invite/{userId}
+ * - Headers: Authorization: Bearer {accessToken}
+ * - Response: void
+ */
+export const inviteUser = async (
+  workspaceId: string,
+  userId: string,
+  accessToken: string,
+): Promise<void> => {
+  if (USE_MOCK_DATA) {
+    console.log('[MOCK] inviteUser 호출:', workspaceId, userId);
+    const user = MOCK_INVITABLE_USERS.find((u) => u.userId === userId);
+    if (user) {
+      // 승인제라면 승인 대기 목록에 추가, 아니면 바로 회원으로 추가
+      const settings = MOCK_WORKSPACE_SETTINGS[workspaceId];
+      if (settings?.requiresApproval) {
+        const pending = MOCK_PENDING_MEMBERS[workspaceId] || [];
+        pending.push({
+          userId: user.userId,
+          name: user.name,
+          email: user.email,
+          requestedAt: new Date().toISOString(),
+        });
+        MOCK_PENDING_MEMBERS[workspaceId] = pending;
+      } else {
+        const members = MOCK_WORKSPACE_MEMBERS[workspaceId] || [];
+        members.push({
+          userId: user.userId,
+          name: user.name,
+          email: user.email,
+          role: 'MEMBER',
+          joinedAt: new Date().toISOString(),
+        });
+        MOCK_WORKSPACE_MEMBERS[workspaceId] = members;
+      }
+    }
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(), 300);
+    });
+  }
+
+  await userRepoClient.post(
+    `/api/workspaces/${workspaceId}/invite/${userId}`,
+    {},
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
 };
 
 // 필요한 경우, getAuthInfo 등 인증 관련 API도 여기에 추가할 수 있습니다.
