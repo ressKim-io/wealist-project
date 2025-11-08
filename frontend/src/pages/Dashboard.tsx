@@ -28,6 +28,7 @@ import {
 import { getDefaultColorByIndex } from '../constants/colors';
 import { WorkspaceMember, getWorkspaceMembers } from '../api/user/userService';
 import { BoardDetailModal } from '../components/modals/BoardDetailModal';
+import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
 interface Column {
   id: string;
@@ -681,12 +682,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
           )}
 
           {isLoading && projects.length === 0 ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p className={`${theme.colors.text}`}>프로젝트를 로드 중...</p>
-              </div>
-            </div>
+            <LoadingSpinner message="프로젝트를 로드 중..." />
           ) : selectedProject ? (
             <>
               {/* FilterBar */}
@@ -700,7 +696,21 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
               {/* Boards */}
               <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 min-w-max pb-4 mt-4">
-                {columns.map((column, idx) => (
+                {(() => {
+                  // Filter columns based on search query
+                  const filteredColumns = searchQuery.trim()
+                    ? columns.map((column) => ({
+                        ...column,
+                        boards: column.boards.filter((board) => {
+                          const query = searchQuery.toLowerCase();
+                          const titleMatch = board.title.toLowerCase().includes(query);
+                          const contentMatch = board.content?.toLowerCase().includes(query);
+                          return titleMatch || contentMatch;
+                        }),
+                      }))
+                    : columns;
+
+                  return filteredColumns.map((column, idx) => (
                   <div
                     key={column.id}
                     draggable
@@ -845,7 +855,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                       </div>
                     </div>
                   </div>
-                ))}
+                  ));
+                })()}
               </div>
             </>
           ) : (
