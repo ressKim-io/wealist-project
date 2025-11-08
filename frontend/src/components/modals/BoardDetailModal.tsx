@@ -98,12 +98,25 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
         // roles가 배열이므로 첫 번째 역할만 선택 (단일 선택으로 변경)
         setSelectedRoleId(boardData.roles?.[0]?.id || '');
         setSelectedImportanceId(boardData.importance?.id || '');
-        // assignees가 배열이면 userId 추출, 단일 객체면 변환
-        const assignees = Array.isArray(boardData.assignees)
-          ? boardData.assignees.map((a: any) => a.userId).filter(Boolean)
-          : boardData.assignee?.userId
-          ? [boardData.assignee.userId]
-          : [];
+
+        // assignees 처리 - 다양한 API 응답 구조 대응
+        let assignees: string[] = [];
+
+        if (boardData.assignees && Array.isArray(boardData.assignees)) {
+          // assignees가 배열인 경우
+          assignees = boardData.assignees
+            .map((a: any) => a?.userId || a)
+            .filter((id): id is string => typeof id === 'string' && id.length > 0);
+        } else if (boardData.assignee) {
+          // 단일 assignee 객체인 경우
+          const userId = typeof boardData.assignee === 'string'
+            ? boardData.assignee
+            : boardData.assignee?.userId;
+          if (userId) {
+            assignees = [userId];
+          }
+        }
+
         setAssigneeIds(assignees);
         setDueDate(boardData.dueDate || '');
 
