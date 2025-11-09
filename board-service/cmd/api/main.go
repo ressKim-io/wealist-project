@@ -79,6 +79,7 @@ func main() {
 	userOrderCache := cache.NewUserOrderCache(rdb)
 	workspaceCache := cache.NewWorkspaceCache(rdb)
 	userInfoCache := cache.NewUserInfoCache(rdb)
+	fieldCache := cache.NewFieldCache(rdb) // Custom fields cache
 
 	// 5.6. Initialize repositories
 	roleRepo := repository.NewRoleRepository(db)
@@ -99,6 +100,7 @@ func main() {
 	// Custom fields services
 	fieldService := service.NewFieldService(fieldRepo, projectRepo, log, db)
 	fieldValueService := service.NewFieldValueService(fieldRepo, boardRepo, projectRepo, log, db)
+	viewService := service.NewViewService(fieldRepo, boardRepo, projectRepo, log, db)
 
 	// 6. Configure Gin mode
 	if cfg.Server.Env == "prod" {
@@ -140,6 +142,7 @@ func main() {
 		userOrderHandler := handler.NewUserOrderHandler(userOrderService)
 		commentHandler := handler.NewCommentHandler(commentService) // Add CommentHandler
 		fieldHandler := handler.NewFieldHandler(fieldService, fieldValueService) // Custom fields (Jira-style)
+		viewHandler := handler.NewViewHandler(viewService) // Saved views (filters/sorting/grouping)
 
 		// Project routes
 		projects := api.Group("/projects")
@@ -238,6 +241,15 @@ func main() {
 		api.POST("/board-field-values", fieldHandler.SetFieldValue)
 		api.GET("/boards/:board_id/field-values", fieldHandler.GetBoardFieldValues)
 		api.DELETE("/boards/:board_id/field-values/:field_id", fieldHandler.DeleteFieldValue)
+
+		// Saved Views (filters/sorting/grouping)
+		api.POST("/views", viewHandler.CreateView)
+		api.GET("/views/:view_id", viewHandler.GetView)
+		api.PATCH("/views/:view_id", viewHandler.UpdateView)
+		api.DELETE("/views/:view_id", viewHandler.DeleteView)
+		api.GET("/views/:view_id/boards", viewHandler.ApplyView) // Apply view and get boards
+		projects.GET("/:project_id/views", viewHandler.GetViewsByProject) // Under projects
+		api.PUT("/view-board-orders", viewHandler.UpdateBoardOrder) // Manual board ordering in views
 	}
 
 	// 12. Start server
