@@ -543,8 +543,8 @@ test_field_values() {
             "board_id": "'$BOARD_ID'",
             "field_id": "'$TAGS_FIELD_ID'",
             "values": [
-                {"value": "'$FRONTEND_TAG'", "display_order": 0},
-                {"value": "'$BUG_TAG'", "display_order": 1}
+                {"value_id": "'$FRONTEND_TAG'", "displayOrder": 0},
+                {"value_id": "'$BUG_TAG'", "displayOrder": 1}
             ]
         }')
 
