@@ -13,6 +13,9 @@ RUN go mod download
 # Copy source code
 COPY . .
 
+# Sync go.mod and go.sum (in case of version mismatch)
+RUN go mod tidy
+
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o board-api ./cmd/api
 
