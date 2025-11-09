@@ -162,8 +162,8 @@ func main() {
 			projects.GET("/:id/orders/stage-board", userOrderHandler.GetStageBasedBoardView)
 			projects.PUT("/:id/orders/role-columns", userOrderHandler.UpdateRoleColumnOrder)
 			projects.PUT("/:id/orders/stage-columns", userOrderHandler.UpdateStageColumnOrder)
-			projects.PUT("/:id/orders/role-boards/:roleId", userOrderHandler.UpdateBoardOrderInRole)
-			projects.PUT("/:id/orders/stage-boards/:stageId", userOrderHandler.UpdateBoardOrderInStage)
+			projects.PUT("/:id/orders/role-boards/:role_id", userOrderHandler.UpdateBoardOrderInRole)
+			projects.PUT("/:id/orders/stage-boards/:stage_id", userOrderHandler.UpdateBoardOrderInStage)
 		}
 
 		// Custom Fields routes
@@ -171,27 +171,27 @@ func main() {
 		{
 			// Custom Roles
 			customFields.POST("/roles", customFieldHandler.CreateCustomRole)
-			customFields.GET("/projects/:projectId/roles", customFieldHandler.GetCustomRoles)
+			customFields.GET("/projects/:project_id/roles", customFieldHandler.GetCustomRoles)
 			customFields.GET("/roles/:id", customFieldHandler.GetCustomRole)
 			customFields.PUT("/roles/:id", customFieldHandler.UpdateCustomRole)
 			customFields.DELETE("/roles/:id", customFieldHandler.DeleteCustomRole)
-			customFields.PUT("/projects/:projectId/roles/order", customFieldHandler.UpdateCustomRoleOrder)
+			customFields.PUT("/projects/:project_id/roles/order", customFieldHandler.UpdateCustomRoleOrder)
 
 			// Custom Stages
 			customFields.POST("/stages", customFieldHandler.CreateCustomStage)
-			customFields.GET("/projects/:projectId/stages", customFieldHandler.GetCustomStages)
+			customFields.GET("/projects/:project_id/stages", customFieldHandler.GetCustomStages)
 			customFields.GET("/stages/:id", customFieldHandler.GetCustomStage)
 			customFields.PUT("/stages/:id", customFieldHandler.UpdateCustomStage)
 			customFields.DELETE("/stages/:id", customFieldHandler.DeleteCustomStage)
-			customFields.PUT("/projects/:projectId/stages/order", customFieldHandler.UpdateCustomStageOrder)
+			customFields.PUT("/projects/:project_id/stages/order", customFieldHandler.UpdateCustomStageOrder)
 
 			// Custom Importance
 			customFields.POST("/importance", customFieldHandler.CreateCustomImportance)
-			customFields.GET("/projects/:projectId/importance", customFieldHandler.GetCustomImportances)
+			customFields.GET("/projects/:project_id/importance", customFieldHandler.GetCustomImportances)
 			customFields.GET("/importance/:id", customFieldHandler.GetCustomImportance)
 			customFields.PUT("/importance/:id", customFieldHandler.UpdateCustomImportance)
 			customFields.DELETE("/importance/:id", customFieldHandler.DeleteCustomImportance)
-			customFields.PUT("/projects/:projectId/importance/order", customFieldHandler.UpdateCustomImportanceOrder)
+			customFields.PUT("/projects/:project_id/importance/order", customFieldHandler.UpdateCustomImportanceOrder)
 		}
 
 		// Board routes

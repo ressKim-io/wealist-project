@@ -189,12 +189,12 @@ func (h *UserOrderHandler) UpdateStageColumnOrder(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        id path string true "Project ID"
-// @Param        roleId path string true "Role ID"
+// @Param        role_id path string true "Role ID"
 // @Param        request body dto.UpdateOrderRequest true "Order update details"
 // @Success      200 {object} dto.SuccessResponse{data=string}
 // @Failure      400 {object} dto.ErrorResponse
 // @Failure      403 {object} dto.ErrorResponse
-// @Router       /api/projects/{id}/orders/role-boards/{roleId} [put]
+// @Router       /api/projects/{id}/orders/role-boards/{role_id} [put]
 // @Security     BearerAuth
 func (h *UserOrderHandler) UpdateBoardOrderInRole(c *gin.Context) {
 	userID := c.GetString("user_id")
@@ -204,7 +204,7 @@ func (h *UserOrderHandler) UpdateBoardOrderInRole(c *gin.Context) {
 	}
 
 	projectID := c.Param("id")
-	roleID := c.Param("roleId")
+	roleID := c.Param("role_id")
 
 	if projectID == "" || roleID == "" {
 		dto.Error(c, apperrors.Wrap(nil, apperrors.ErrCodeBadRequest, "프로젝트 ID와 역할 ID가 필요합니다", 400))
@@ -237,12 +237,12 @@ func (h *UserOrderHandler) UpdateBoardOrderInRole(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        id path string true "Project ID"
-// @Param        stageId path string true "Stage ID"
+// @Param        stage_id path string true "Stage ID"
 // @Param        request body dto.UpdateOrderRequest true "Order update details"
 // @Success      200 {object} dto.SuccessResponse{data=string}
 // @Failure      400 {object} dto.ErrorResponse
 // @Failure      403 {object} dto.ErrorResponse
-// @Router       /api/projects/{id}/orders/stage-boards/{stageId} [put]
+// @Router       /api/projects/{id}/orders/stage-boards/{stage_id} [put]
 // @Security     BearerAuth
 func (h *UserOrderHandler) UpdateBoardOrderInStage(c *gin.Context) {
 	userID := c.GetString("user_id")
@@ -252,7 +252,7 @@ func (h *UserOrderHandler) UpdateBoardOrderInStage(c *gin.Context) {
 	}
 
 	projectID := c.Param("id")
-	stageID := c.Param("stageId")
+	stageID := c.Param("stage_id")
 
 	if projectID == "" || stageID == "" {
 		dto.Error(c, apperrors.Wrap(nil, apperrors.ErrCodeBadRequest, "프로젝트 ID와 진행단계 ID가 필요합니다", 400))

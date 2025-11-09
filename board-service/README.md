@@ -259,11 +259,11 @@ All `/api/*` endpoints require JWT authentication via `Authorization: Bearer <to
 
 #### Custom Fields
 - `POST /api/custom-fields/roles` - Create custom role
-- `GET /api/custom-fields/projects/:projectId/roles` - List custom roles
+- `GET /api/custom-fields/projects/:project_id/roles` - List custom roles
 - `GET /api/custom-fields/roles/:id` - Get custom role
 - `PUT /api/custom-fields/roles/:id` - Update custom role
 - `DELETE /api/custom-fields/roles/:id` - Delete custom role
-- `PUT /api/custom-fields/projects/:projectId/roles/order` - Update role order
+- `PUT /api/custom-fields/projects/:project_id/roles/order` - Update role order
 - Similar endpoints for `/stages` and `/importance`
 
 #### Boards
@@ -278,8 +278,8 @@ All `/api/*` endpoints require JWT authentication via `Authorization: Bearer <to
 - `GET /api/projects/:id/orders/stage-board` - Get stage-based board view
 - `PUT /api/projects/:id/orders/role-columns` - Update role column order
 - `PUT /api/projects/:id/orders/stage-columns` - Update stage column order
-- `PUT /api/projects/:id/orders/role-boards/:roleId` - Update board order in role column
-- `PUT /api/projects/:id/orders/stage-boards/:stageId` - Update board order in stage column
+- `PUT /api/projects/:id/orders/role-boards/:role_id` - Update board order in role column
+- `PUT /api/projects/:id/orders/stage-boards/:stage_id` - Update board order in stage column
 
 #### Comments
 - `POST /api/comments` - Create comment

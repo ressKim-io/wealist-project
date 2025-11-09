@@ -203,7 +203,7 @@ func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 // @Tags         projects
 // @Accept       json
 // @Produce      json
-// @Param        workspaceId query string true "Workspace ID"
+// @Param        workspace_id query string true "Workspace ID"
 // @Param        query query string true "Search query"
 // @Param        page query int false "Page number (default: 1)"
 // @Param        limit query int false "Page size (default: 10, max: 100)"

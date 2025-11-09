@@ -91,12 +91,12 @@ func (h *BoardHandler) GetBoard(c *gin.Context) {
 // @Tags         boards
 // @Accept       json
 // @Produce      json
-// @Param        projectId query string true "Project ID"
-// @Param        stageId query string false "Filter by Stage ID"
-// @Param        roleId query string false "Filter by Role ID"
-// @Param        importanceId query string false "Filter by Importance ID"
-// @Param        assigneeId query string false "Filter by Assignee ID"
-// @Param        authorId query string false "Filter by Author ID"
+// @Param        project_id query string true "Project ID"
+// @Param        stage_id query string false "Filter by Stage ID"
+// @Param        role_id query string false "Filter by Role ID"
+// @Param        importance_id query string false "Filter by Importance ID"
+// @Param        assignee_id query string false "Filter by Assignee ID"
+// @Param        author_id query string false "Filter by Author ID"
 // @Param        page query int false "Page number (default: 1)"
 // @Param        limit query int false "Items per page (default: 20, max: 100)"
 // @Success      200 {object} dto.SuccessResponse{data=dto.PaginatedBoardsResponse}

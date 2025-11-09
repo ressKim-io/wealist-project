@@ -64,14 +64,14 @@ func (h *CustomFieldHandler) CreateCustomRole(c *gin.Context) {
 // @Tags         custom-fields
 // @Accept       json
 // @Produce      json
-// @Param        projectId path string true "Project ID"
+// @Param        project_id path string true "Project ID"
 // @Success      200 {object} dto.SuccessResponse{data=[]dto.CustomRoleResponse}
 // @Failure      403 {object} dto.ErrorResponse
-// @Router       /api/custom-fields/projects/{projectId}/roles [get]
+// @Router       /api/custom-fields/projects/{project_id}/roles [get]
 // @Security     BearerAuth
 func (h *CustomFieldHandler) GetCustomRoles(c *gin.Context) {
 	userID := c.GetString("user_id")
-	projectID := c.Param("projectId")
+	projectID := c.Param("project_id")
 
 	roles, err := h.service.GetCustomRoles(projectID, userID)
 	if err != nil {
@@ -185,16 +185,16 @@ func (h *CustomFieldHandler) DeleteCustomRole(c *gin.Context) {
 // @Tags         custom-fields
 // @Accept       json
 // @Produce      json
-// @Param        projectId path string true "Project ID"
+// @Param        project_id path string true "Project ID"
 // @Param        request body dto.UpdateCustomRoleOrderRequest true "Role orders"
 // @Success      200 {object} dto.SuccessResponse
 // @Failure      400 {object} dto.ErrorResponse
 // @Failure      403 {object} dto.ErrorResponse
-// @Router       /api/custom-fields/projects/{projectId}/roles/order [put]
+// @Router       /api/custom-fields/projects/{project_id}/roles/order [put]
 // @Security     BearerAuth
 func (h *CustomFieldHandler) UpdateCustomRoleOrder(c *gin.Context) {
 	userID := c.GetString("user_id")
-	projectID := c.Param("projectId")
+	projectID := c.Param("project_id")
 
 	var req dto.UpdateCustomRoleOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -260,14 +260,14 @@ func (h *CustomFieldHandler) CreateCustomStage(c *gin.Context) {
 // @Tags         custom-fields
 // @Accept       json
 // @Produce      json
-// @Param        projectId path string true "Project ID"
+// @Param        project_id path string true "Project ID"
 // @Success      200 {object} dto.SuccessResponse{data=[]dto.CustomStageResponse}
 // @Failure      403 {object} dto.ErrorResponse
-// @Router       /api/custom-fields/projects/{projectId}/stages [get]
+// @Router       /api/custom-fields/projects/{project_id}/stages [get]
 // @Security     BearerAuth
 func (h *CustomFieldHandler) GetCustomStages(c *gin.Context) {
 	userID := c.GetString("user_id")
-	projectID := c.Param("projectId")
+	projectID := c.Param("project_id")
 
 	stages, err := h.service.GetCustomStages(projectID, userID)
 	if err != nil {
@@ -379,15 +379,15 @@ func (h *CustomFieldHandler) DeleteCustomStage(c *gin.Context) {
 // @Tags         custom-fields
 // @Accept       json
 // @Produce      json
-// @Param        projectId path string true "Project ID"
+// @Param        project_id path string true "Project ID"
 // @Param        request body dto.UpdateCustomStageOrderRequest true "Stage orders"
 // @Success      200 {object} dto.SuccessResponse
 // @Failure      400 {object} dto.ErrorResponse
-// @Router       /api/custom-fields/projects/{projectId}/stages/order [put]
+// @Router       /api/custom-fields/projects/{project_id}/stages/order [put]
 // @Security     BearerAuth
 func (h *CustomFieldHandler) UpdateCustomStageOrder(c *gin.Context) {
 	userID := c.GetString("user_id")
-	projectID := c.Param("projectId")
+	projectID := c.Param("project_id")
 
 	var req dto.UpdateCustomStageOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -452,14 +452,14 @@ func (h *CustomFieldHandler) CreateCustomImportance(c *gin.Context) {
 // @Tags         custom-fields
 // @Accept       json
 // @Produce      json
-// @Param        projectId path string true "Project ID"
+// @Param        project_id path string true "Project ID"
 // @Success      200 {object} dto.SuccessResponse{data=[]dto.CustomImportanceResponse}
 // @Failure      403 {object} dto.ErrorResponse
-// @Router       /api/custom-fields/projects/{projectId}/importance [get]
+// @Router       /api/custom-fields/projects/{project_id}/importance [get]
 // @Security     BearerAuth
 func (h *CustomFieldHandler) GetCustomImportances(c *gin.Context) {
 	userID := c.GetString("user_id")
-	projectID := c.Param("projectId")
+	projectID := c.Param("project_id")
 
 	importances, err := h.service.GetCustomImportances(projectID, userID)
 	if err != nil {
@@ -570,15 +570,15 @@ func (h *CustomFieldHandler) DeleteCustomImportance(c *gin.Context) {
 // @Tags         custom-fields
 // @Accept       json
 // @Produce      json
-// @Param        projectId path string true "Project ID"
+// @Param        project_id path string true "Project ID"
 // @Param        request body dto.UpdateCustomImportanceOrderRequest true "Importance orders"
 // @Success      200 {object} dto.SuccessResponse
 // @Failure      400 {object} dto.ErrorResponse
-// @Router       /api/custom-fields/projects/{projectId}/importance/order [put]
+// @Router       /api/custom-fields/projects/{project_id}/importance/order [put]
 // @Security     BearerAuth
 func (h *CustomFieldHandler) UpdateCustomImportanceOrder(c *gin.Context) {
 	userID := c.GetString("user_id")
-	projectID := c.Param("projectId")
+	projectID := c.Param("project_id")
 
 	var req dto.UpdateCustomImportanceOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
