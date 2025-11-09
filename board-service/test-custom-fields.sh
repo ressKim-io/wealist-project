@@ -109,10 +109,41 @@ create_test_project() {
 
     # Get or create workspace
     print_section "Get or Create Workspace"
-    workspaces_response=$(curl -s "$USER_SERVICE_URL/api/workspaces" \
-        -H "Authorization: Bearer $JWT_TOKEN")
 
-    WORKSPACE_ID=$(echo "$workspaces_response" | jq -r '.[0].id // .data[0].id' 2>/dev/null)
+    # Debug: Check if variables are set
+    echo "DEBUG: USER_SERVICE_URL=$USER_SERVICE_URL"
+    echo "DEBUG: JWT_TOKEN=${JWT_TOKEN:0:20}..."
+    echo "DEBUG: Calling workspace API..."
+
+    # Call workspace API with explicit timeout
+    workspaces_response=$(curl --max-time 10 -s "$USER_SERVICE_URL/api/workspaces" \
+        -H "Authorization: Bearer $JWT_TOKEN" 2>&1)
+    curl_exit=$?
+
+    echo "DEBUG: curl exit code: $curl_exit"
+    echo "DEBUG: Response length: ${#workspaces_response}"
+    echo "DEBUG: Response: $workspaces_response"
+
+    if [ $curl_exit -ne 0 ]; then
+        echo "ERROR: curl failed with exit code $curl_exit"
+        exit 1
+    fi
+
+    # Try to extract workspace ID - handle both array and object responses
+    if echo "$workspaces_response" | jq -e 'type == "array"' >/dev/null 2>&1; then
+        # Response is an array
+        WORKSPACE_ID=$(echo "$workspaces_response" | jq -r '.[0].id // empty' 2>&1)
+        echo "DEBUG: Response is array, extracted WORKSPACE_ID: $WORKSPACE_ID"
+    elif echo "$workspaces_response" | jq -e '.data' >/dev/null 2>&1; then
+        # Response has .data field
+        WORKSPACE_ID=$(echo "$workspaces_response" | jq -r '.data[0].id // empty' 2>&1)
+        echo "DEBUG: Response has .data, extracted WORKSPACE_ID: $WORKSPACE_ID"
+    else
+        # Unknown format
+        echo "ERROR: Unexpected response format"
+        echo "$workspaces_response" | jq '.' 2>&1 || echo "Response: $workspaces_response"
+        exit 1
+    fi
 
     if [ -z "$WORKSPACE_ID" ] || [ "$WORKSPACE_ID" = "null" ]; then
         print_info "No workspace found. Creating new workspace..."
