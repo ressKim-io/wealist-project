@@ -10,6 +10,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Context keys
+const (
+	UserIDKey = "user_id"
+	TokenKey  = "token"
+)
+
 // AuthMiddleware validates JWT token and extracts user ID
 func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -51,8 +57,8 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 		}
 
 		// Store user ID and token in context
-		c.Set("user_id", claims.Sub)
-		c.Set("token", tokenString)
+		c.Set(UserIDKey, claims.Sub)
+		c.Set(TokenKey, tokenString)
 
 		c.Next()
 	}

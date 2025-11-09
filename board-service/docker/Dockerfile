@@ -8,6 +8,11 @@ RUN apk add --no-cache git ca-certificates tzdata
 
 # Copy go mod files
 COPY go.mod go.sum ./
+
+# Sync go.mod and go.sum first (for Go version compatibility)
+RUN go mod tidy
+
+# Download dependencies (after tidy to ensure consistency)
 RUN go mod download
 
 # Copy source code
