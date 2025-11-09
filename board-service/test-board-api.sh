@@ -204,7 +204,7 @@ test_api "PUT" "${BOARD_SERVICE_URL}/api/projects/${PROJECT_ID}" \
     200
 
 # Search Projects
-test_api "GET" "${BOARD_SERVICE_URL}/api/projects/search?workspaceId=${WORKSPACE_ID}&query=Test" \
+test_api "GET" "${BOARD_SERVICE_URL}/api/projects/search?workspace_id=${WORKSPACE_ID}&query=Test" \
     "Search Projects" \
     "" \
     200
