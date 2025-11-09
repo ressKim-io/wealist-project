@@ -346,7 +346,7 @@ test_field_options() {
     print_section "2.1 Create Priority Options"
 
     # High priority
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/options" \
+    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/field-options" \
         -H "Authorization: Bearer $JWT_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{
@@ -364,7 +364,7 @@ test_field_options() {
     fi
 
     # Medium priority
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/options" \
+    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/field-options" \
         -H "Authorization: Bearer $JWT_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{
@@ -381,7 +381,7 @@ test_field_options() {
     fi
 
     # Low priority
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/options" \
+    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/field-options" \
         -H "Authorization: Bearer $JWT_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{
@@ -410,7 +410,7 @@ test_field_options() {
     print_section "2.3 Create Tag Options"
 
     for tag in "Frontend" "Backend" "Bug" "Feature"; do
-        curl -s -X POST "$BOARD_SERVICE_URL/api/options" \
+        curl -s -X POST "$BOARD_SERVICE_URL/api/field-options" \
             -H "Authorization: Bearer $JWT_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
@@ -451,7 +451,7 @@ test_field_values() {
 
     # 3.2 Set text field value
     print_section "3.2 Set Text Field Value"
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/field-values" \
+    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/board-field-values" \
         -H "Authorization: Bearer $JWT_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{
@@ -461,11 +461,11 @@ test_field_values() {
         }')
 
     http_code=$(echo "$response" | tail -n1)
-    print_result "$http_code" 200 "Set text field value"
+    print_result "$http_code" 204 "Set text field value"
 
     # 3.3 Set single select value (Priority)
     print_section "3.3 Set Single Select Value (Priority = High)"
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/field-values" \
+    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/board-field-values" \
         -H "Authorization: Bearer $JWT_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{
@@ -475,7 +475,7 @@ test_field_values() {
         }')
 
     http_code=$(echo "$response" | tail -n1)
-    print_result "$http_code" 200 "Set priority to High"
+    print_result "$http_code" 204 "Set priority to High"
 
     # 3.4 Set multi select values (Tags)
     print_section "3.4 Set Multi Select Values (Tags)"
@@ -487,7 +487,7 @@ test_field_values() {
     FRONTEND_TAG=$(echo "$tags_response" | jq -r '.data[] | select(.label=="Frontend") | .option_id')
     BUG_TAG=$(echo "$tags_response" | jq -r '.data[] | select(.label=="Bug") | .option_id')
 
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/field-values/multi-select" \
+    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/board-field-values/multi-select" \
         -H "Authorization: Bearer $JWT_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{
@@ -500,7 +500,7 @@ test_field_values() {
         }')
 
     http_code=$(echo "$response" | tail -n1)
-    print_result "$http_code" 200 "Set multi-select tags"
+    print_result "$http_code" 204 "Set multi-select tags"
 
     # 3.5 Get board field values
     print_section "3.5 Get Board Field Values"

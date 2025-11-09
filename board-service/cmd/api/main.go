@@ -239,6 +239,7 @@ func main() {
 
 		// Board Field Values
 		api.POST("/board-field-values", fieldHandler.SetFieldValue)
+		api.POST("/board-field-values/multi-select", fieldHandler.SetMultiSelectValue)
 		api.GET("/boards/:board_id/field-values", fieldHandler.GetBoardFieldValues)
 		api.DELETE("/boards/:board_id/field-values/:field_id", fieldHandler.DeleteFieldValue)
 
