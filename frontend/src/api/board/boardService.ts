@@ -395,8 +395,8 @@ export const getProjects = async (
 
 /**
  * 특정 프로젝트를 조회합니다.
- * GET /api/projects/{id}
- * @param projectId 프로젝트 ID
+ * GET /api/projects/{project_id}
+ * @param project_id 프로젝트 ID
  * @param token 액세스 토큰
  * @returns 프로젝트 정보
  */
@@ -457,8 +457,8 @@ export const createProject = async (
 
 /**
  * 프로젝트를 업데이트합니다.
- * PUT /api/projects/{id}
- * @param projectId 프로젝트 ID
+ * PUT /api/projects/{project_id}
+ * @param project_id 프로젝트 ID
  * @param data 업데이트 정보
  * @param token 액세스 토큰
  * @returns 업데이트된 프로젝트
@@ -481,8 +481,8 @@ export const updateProject = async (
 
 /**
  * 프로젝트를 삭제합니다.
- * DELETE /api/projects/{id}
- * @param projectId 프로젝트 ID
+ * DELETE /api/projects/{project_id}
+ * @param project_id 프로젝트 ID
  * @param token 액세스 토큰
  * @returns 응답 메시지
  */
@@ -565,7 +565,7 @@ export interface PaginatedBoardsResponse {
 /**
  * 프로젝트의 보드를 조회합니다.
  * GET /api/boards
- * @param projectId 프로젝트 ID
+ * @param project_id 프로젝트 ID
  * @param token 액세스 토큰
  * @param filters 필터 옵션 (stageId, roleId, importanceId, assigneeId, authorId, page, limit)
  * @returns 보드 배열
@@ -587,7 +587,7 @@ export const getBoards = async (
     console.log('[MOCK] getBoards 호출:', project_id, filters);
     return new Promise((resolve) => {
       setTimeout(() => {
-        let filtered = MOCK_BOARDS.filter((b) => b.project_id === projectId);
+        let filtered = MOCK_BOARDS.filter((b) => b.project_id === project_id);
 
         // 필터 적용
         if (filters?.stageId) {
@@ -631,17 +631,17 @@ export const getBoards = async (
 
 /**
  * 특정 보드를 조회합니다.
- * GET /api/boards/{id}
- * @param boardId 보드 ID
+ * GET /api/boards/{board_id}
+ * @param board_id 보드 ID
  * @param token 액세스 토큰
  * @returns 보드 정보
  */
 export const getBoard = async (board_id: string, token: string): Promise<BoardResponse> => {
   if (USE_MOCK_DATA) {
-    console.log('[MOCK] getBoard 호출:', boardId);
+    console.log('[MOCK] getBoard 호출:', board_id);
     return new Promise((resolve, reject) => {
       setTimeout(() => {
-        const board = MOCK_BOARDS.find((b) => b.board_id === boardId);
+        const board = MOCK_BOARDS.find((b) => b.board_id === board_id);
         if (board) {
           resolve(board);
         } else {
@@ -686,8 +686,8 @@ export const createBoard = async (
 
 /**
  * 보드를 업데이트합니다.
- * PUT /api/boards/{id}
- * @param boardId 보드 ID
+ * PUT /api/boards/{board_id}
+ * @param board_id 보드 ID
  * @param data 업데이트 정보
  * @param token 액세스 토큰
  * @returns 업데이트된 보드
@@ -710,8 +710,8 @@ export const updateBoard = async (
 
 /**
  * 보드를 삭제합니다.
- * DELETE /api/boards/{id}
- * @param boardId 보드 ID
+ * DELETE /api/boards/{board_id}
+ * @param board_id 보드 ID
  * @param token 액세스 토큰
  * @returns 응답 메시지
  */
@@ -766,8 +766,8 @@ export interface CustomImportanceResponse {
 
 /**
  * 프로젝트의 모든 Stage를 조회합니다.
- * GET /api/custom-fields/projects/{projectId}/stages
- * @param projectId 프로젝트 ID
+ * GET /api/custom-fields/projects/{project_id}/stages
+ * @param project_id 프로젝트 ID
  * @param token 액세스 토큰
  * @returns Stage 배열
  */
@@ -776,10 +776,10 @@ export const getProjectStages = async (
   token: string,
 ): Promise<CustomStageResponse[]> => {
   if (USE_MOCK_DATA) {
-    console.log('[MOCK] getProjectStages 호출:', projectId);
+    console.log('[MOCK] getProjectStages 호출:', project_id);
     return new Promise((resolve) => {
       setTimeout(() => {
-        const filtered = MOCK_STAGES.filter((s) => s.project_id === projectId);
+        const filtered = MOCK_STAGES.filter((s) => s.project_id === project_id);
         resolve(filtered);
       }, 200);
     });
@@ -798,8 +798,8 @@ export const getProjectStages = async (
 
 /**
  * 프로젝트의 모든 Role을 조회합니다.
- * GET /api/custom-fields/projects/{projectId}/roles
- * @param projectId 프로젝트 ID
+ * GET /api/custom-fields/projects/{project_id}/roles
+ * @param project_id 프로젝트 ID
  * @param token 액세스 토큰
  * @returns Role 배열
  */
@@ -808,10 +808,10 @@ export const getProjectRoles = async (
   token: string,
 ): Promise<CustomRoleResponse[]> => {
   if (USE_MOCK_DATA) {
-    console.log('[MOCK] getProjectRoles 호출:', projectId);
+    console.log('[MOCK] getProjectRoles 호출:', project_id);
     return new Promise((resolve) => {
       setTimeout(() => {
-        const filtered = MOCK_ROLES.filter((r) => r.project_id === projectId);
+        const filtered = MOCK_ROLES.filter((r) => r.project_id === project_id);
         resolve(filtered);
       }, 200);
     });
@@ -830,8 +830,8 @@ export const getProjectRoles = async (
 
 /**
  * 프로젝트의 모든 Importance를 조회합니다.
- * GET /api/custom-fields/projects/{projectId}/importance
- * @param projectId 프로젝트 ID
+ * GET /api/custom-fields/projects/{project_id}/importance
+ * @param project_id 프로젝트 ID
  * @param token 액세스 토큰
  * @returns Importance 배열
  */
@@ -840,10 +840,10 @@ export const getProjectImportances = async (
   token: string,
 ): Promise<CustomImportanceResponse[]> => {
   if (USE_MOCK_DATA) {
-    console.log('[MOCK] getProjectImportances 호출:', projectId);
+    console.log('[MOCK] getProjectImportances 호출:', project_id);
     return new Promise((resolve) => {
       setTimeout(() => {
-        const filtered = MOCK_IMPORTANCES.filter((i) => i.project_id === projectId);
+        const filtered = MOCK_IMPORTANCES.filter((i) => i.project_id === project_id);
         resolve(filtered);
       }, 200);
     });
@@ -920,7 +920,7 @@ export const createStage = async (
 
 /**
  * Stage를 수정합니다.
- * PUT /api/custom-fields/stages/{id}
+ * PUT /api/custom-fields/stages/{stage_id}
  */
 export const updateStage = async (
   stage_id: string,
@@ -940,7 +940,7 @@ export const updateStage = async (
 
 /**
  * Stage를 삭제합니다.
- * DELETE /api/custom-fields/stages/{id}
+ * DELETE /api/custom-fields/stages/{stage_id}
  */
 export const deleteStage = async (stage_id: string, token: string): Promise<void> => {
   try {
@@ -974,7 +974,7 @@ export const createRole = async (
 
 /**
  * Role을 수정합니다.
- * PUT /api/custom-fields/roles/{id}
+ * PUT /api/custom-fields/roles/{role_id}
  */
 export const updateRole = async (
   role_id: string,
@@ -994,7 +994,7 @@ export const updateRole = async (
 
 /**
  * Role을 삭제합니다.
- * DELETE /api/custom-fields/roles/{id}
+ * DELETE /api/custom-fields/roles/{role_id}
  */
 export const deleteRole = async (role_id: string, token: string): Promise<void> => {
   try {
@@ -1028,7 +1028,7 @@ export const createImportance = async (
 
 /**
  * Importance를 수정합니다.
- * PUT /api/custom-fields/importance/{id}
+ * PUT /api/custom-fields/importance/{importance_id}
  */
 export const updateImportance = async (
   importance_id: string,
@@ -1048,7 +1048,7 @@ export const updateImportance = async (
 
 /**
  * Importance를 삭제합니다.
- * DELETE /api/custom-fields/importance/{id}
+ * DELETE /api/custom-fields/importance/{importance_id}
  */
 export const deleteImportance = async (importance_id: string, token: string): Promise<void> => {
   try {
@@ -1087,7 +1087,7 @@ export interface UpdateCommentRequest {
 /**
  * 보드의 모든 댓글을 조회합니다.
  * GET /api/comments
- * @param boardId 보드 ID
+ * @param board_id 보드 ID
  * @param token 액세스 토큰
  * @returns 댓글 배열
  */
@@ -1131,7 +1131,7 @@ export const createComment = async (
 
 /**
  * 댓글을 수정합니다.
- * PUT /api/comments/{id}
+ * PUT /api/comments/{comment_id}
  * @param commentId 댓글 ID
  * @param data 수정할 내용
  * @param token 액세스 토큰
@@ -1155,7 +1155,7 @@ export const updateComment = async (
 
 /**
  * 댓글을 삭제합니다.
- * DELETE /api/comments/{id}
+ * DELETE /api/comments/{comment_id}
  * @param commentId 댓글 ID
  * @param token 액세스 토큰
  */
@@ -1208,8 +1208,8 @@ export interface StageBasedBoardView {
 
 /**
  * Role 기반 보드 뷰를 조회합니다.
- * GET /api/projects/{id}/orders/role-board
- * @param projectId 프로젝트 ID
+ * GET /api/projects/{project_id}/orders/role-board
+ * @param project_id 프로젝트 ID
  * @param token 액세스 토큰
  * @returns Role 기반 보드 뷰
  */
@@ -1230,8 +1230,8 @@ export const getRoleBasedBoardView = async (
 
 /**
  * Stage 기반 보드 뷰를 조회합니다.
- * GET /api/projects/{id}/orders/stage-board
- * @param projectId 프로젝트 ID
+ * GET /api/projects/{project_id}/orders/stage-board
+ * @param project_id 프로젝트 ID
  * @param token 액세스 토큰
  * @returns Stage 기반 보드 뷰
  */
@@ -1252,8 +1252,8 @@ export const getStageBasedBoardView = async (
 
 /**
  * Stage 컬럼 순서를 업데이트합니다.
- * PUT /api/projects/{id}/orders/stage-columns
- * @param projectId 프로젝트 ID
+ * PUT /api/projects/{project_id}/orders/stage-columns
+ * @param project_id 프로젝트 ID
  * @param stageIds Stage ID 배열 (순서대로)
  * @param token 액세스 토큰
  */
@@ -1276,9 +1276,9 @@ export const updateStageColumnOrder = async (
 
 /**
  * Stage 내 Board 순서를 업데이트합니다.
- * PUT /api/projects/{id}/orders/stage-boards/{stageId}
- * @param projectId 프로젝트 ID
- * @param stageId Stage ID
+ * PUT /api/projects/{project_id}/orders/stage-boards/{stage_id}
+ * @param project_id 프로젝트 ID
+ * @param stage_id Stage ID
  * @param boardIds Board ID 배열 (순서대로)
  * @param token 액세스 토큰
  */
