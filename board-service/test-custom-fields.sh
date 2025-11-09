@@ -240,8 +240,8 @@ test_field_crud() {
     http_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
 
-    if print_result "$http_code" 200 "Create text field"; then
-        TEXT_FIELD_ID=$(echo "$body" | jq -r '.field_id')
+    if print_result "$http_code" 201 "Create text field"; then
+        TEXT_FIELD_ID=$(echo "$body" | jq -r '.data.field_id')
         echo "  Field ID: $TEXT_FIELD_ID"
     fi
 
@@ -262,8 +262,8 @@ test_field_crud() {
     http_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
 
-    if print_result "$http_code" 200 "Create single_select field"; then
-        PRIORITY_FIELD_ID=$(echo "$body" | jq -r '.field_id')
+    if print_result "$http_code" 201 "Create single_select field"; then
+        PRIORITY_FIELD_ID=$(echo "$body" | jq -r '.data.field_id')
         echo "  Field ID: $PRIORITY_FIELD_ID"
     fi
 
@@ -284,8 +284,8 @@ test_field_crud() {
     http_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
 
-    if print_result "$http_code" 200 "Create multi_select field"; then
-        TAGS_FIELD_ID=$(echo "$body" | jq -r '.field_id')
+    if print_result "$http_code" 201 "Create multi_select field"; then
+        TAGS_FIELD_ID=$(echo "$body" | jq -r '.data.field_id')
         echo "  Field ID: $TAGS_FIELD_ID"
     fi
 
@@ -306,7 +306,7 @@ test_field_crud() {
     http_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
 
-    print_result "$http_code" 200 "Create number field"
+    print_result "$http_code" 201 "Create number field"
 
     # 1.5 Get all fields
     print_section "1.5 Get All Fields for Project"
@@ -317,7 +317,7 @@ test_field_crud() {
     body=$(echo "$response" | sed '$d')
 
     if print_result "$http_code" 200 "Get all fields"; then
-        field_count=$(echo "$body" | jq '. | length')
+        field_count=$(echo "$body" | jq '.data | length')
         echo "  Found $field_count fields"
     fi
 
@@ -346,7 +346,7 @@ test_field_options() {
     print_section "2.1 Create Priority Options"
 
     # High priority
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/options" \
+    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/field-options" \
         -H "Authorization: Bearer $JWT_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{
@@ -359,12 +359,12 @@ test_field_options() {
     http_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
 
-    if print_result "$http_code" 200 "Create High priority option"; then
-        HIGH_OPTION_ID=$(echo "$body" | jq -r '.option_id')
+    if print_result "$http_code" 201 "Create High priority option"; then
+        HIGH_OPTION_ID=$(echo "$body" | jq -r '.data.option_id')
     fi
 
     # Medium priority
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/options" \
+    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/field-options" \
         -H "Authorization: Bearer $JWT_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{
@@ -376,12 +376,12 @@ test_field_options() {
     http_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
 
-    if print_result "$http_code" 200 "Create Medium priority option"; then
-        MEDIUM_OPTION_ID=$(echo "$body" | jq -r '.option_id')
+    if print_result "$http_code" 201 "Create Medium priority option"; then
+        MEDIUM_OPTION_ID=$(echo "$body" | jq -r '.data.option_id')
     fi
 
     # Low priority
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/options" \
+    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/field-options" \
         -H "Authorization: Bearer $JWT_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{
@@ -391,7 +391,7 @@ test_field_options() {
         }')
 
     http_code=$(echo "$response" | tail -n1)
-    print_result "$http_code" 200 "Create Low priority option"
+    print_result "$http_code" 201 "Create Low priority option"
 
     # 2.2 Get options
     print_section "2.2 Get Field Options"
@@ -402,7 +402,7 @@ test_field_options() {
     body=$(echo "$response" | sed '$d')
 
     if print_result "$http_code" 200 "Get field options"; then
-        option_count=$(echo "$body" | jq '. | length')
+        option_count=$(echo "$body" | jq '.data | length')
         echo "  Found $option_count options"
     fi
 
@@ -410,7 +410,7 @@ test_field_options() {
     print_section "2.3 Create Tag Options"
 
     for tag in "Frontend" "Backend" "Bug" "Feature"; do
-        curl -s -X POST "$BOARD_SERVICE_URL/api/options" \
+        curl -s -X POST "$BOARD_SERVICE_URL/api/field-options" \
             -H "Authorization: Bearer $JWT_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
@@ -430,6 +430,53 @@ test_field_options() {
 test_field_values() {
     print_header "TEST 3: Board and Field Values"
 
+    # 3.0 Create Stage and Role for Board
+    print_section "3.0 Setup Stage and Role"
+
+    # Create a default stage
+    stage_response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/custom-fields/stages" \
+        -H "Authorization: Bearer $JWT_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d '{
+            "project_id": "'$PROJECT_ID'",
+            "name": "To Do",
+            "color": "#808080"
+        }')
+
+    stage_http_code=$(echo "$stage_response" | tail -n1)
+    stage_body=$(echo "$stage_response" | sed '$d')
+
+    if [ "$stage_http_code" -eq 201 ] || [ "$stage_http_code" -eq 200 ]; then
+        STAGE_ID=$(echo "$stage_body" | jq -r '.data.stage_id // .data.id // .stage_id // .id')
+        print_success "Created stage: $STAGE_ID"
+    else
+        print_error "Failed to create stage (HTTP $stage_http_code)"
+        echo "$stage_body" | jq '.' 2>/dev/null || echo "$stage_body"
+        exit 1
+    fi
+
+    # Create a default role
+    role_response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/custom-fields/roles" \
+        -H "Authorization: Bearer $JWT_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d '{
+            "project_id": "'$PROJECT_ID'",
+            "name": "Developer",
+            "color": "#0000FF"
+        }')
+
+    role_http_code=$(echo "$role_response" | tail -n1)
+    role_body=$(echo "$role_response" | sed '$d')
+
+    if [ "$role_http_code" -eq 201 ] || [ "$role_http_code" -eq 200 ]; then
+        ROLE_ID=$(echo "$role_body" | jq -r '.data.role_id // .data.id // .role_id // .id')
+        print_success "Created role: $ROLE_ID"
+    else
+        print_error "Failed to create role (HTTP $role_http_code)"
+        echo "$role_body" | jq '.' 2>/dev/null || echo "$role_body"
+        exit 1
+    fi
+
     # 3.1 Create a board first
     print_section "3.1 Create Test Board"
     response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/boards" \
@@ -438,20 +485,22 @@ test_field_values() {
         -d '{
             "project_id": "'$PROJECT_ID'",
             "title": "Test Task #1",
-            "description": "Testing custom fields"
+            "content": "Testing custom fields",
+            "stage_id": "'$STAGE_ID'",
+            "role_ids": ["'$ROLE_ID'"]
         }')
 
     http_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
 
     if print_result "$http_code" 201 "Create board"; then
-        BOARD_ID=$(echo "$body" | jq -r '.board_id')
+        BOARD_ID=$(echo "$body" | jq -r '.data.board_id')
         echo "  Board ID: $BOARD_ID"
     fi
 
     # 3.2 Set text field value
     print_section "3.2 Set Text Field Value"
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/field-values" \
+    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/board-field-values" \
         -H "Authorization: Bearer $JWT_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{
@@ -461,11 +510,11 @@ test_field_values() {
         }')
 
     http_code=$(echo "$response" | tail -n1)
-    print_result "$http_code" 200 "Set text field value"
+    print_result "$http_code" 204 "Set text field value"
 
     # 3.3 Set single select value (Priority)
     print_section "3.3 Set Single Select Value (Priority = High)"
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/field-values" \
+    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/board-field-values" \
         -H "Authorization: Bearer $JWT_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{
@@ -475,7 +524,7 @@ test_field_values() {
         }')
 
     http_code=$(echo "$response" | tail -n1)
-    print_result "$http_code" 200 "Set priority to High"
+    print_result "$http_code" 204 "Set priority to High"
 
     # 3.4 Set multi select values (Tags)
     print_section "3.4 Set Multi Select Values (Tags)"
@@ -484,23 +533,23 @@ test_field_values() {
     tags_response=$(curl -s "$BOARD_SERVICE_URL/api/fields/$TAGS_FIELD_ID/options" \
         -H "Authorization: Bearer $JWT_TOKEN")
 
-    FRONTEND_TAG=$(echo "$tags_response" | jq -r '.[] | select(.label=="Frontend") | .option_id')
-    BUG_TAG=$(echo "$tags_response" | jq -r '.[] | select(.label=="Bug") | .option_id')
+    FRONTEND_TAG=$(echo "$tags_response" | jq -r '.data[] | select(.label=="Frontend") | .option_id')
+    BUG_TAG=$(echo "$tags_response" | jq -r '.data[] | select(.label=="Bug") | .option_id')
 
-    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/field-values/multi-select" \
+    response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/board-field-values/multi-select" \
         -H "Authorization: Bearer $JWT_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{
             "board_id": "'$BOARD_ID'",
             "field_id": "'$TAGS_FIELD_ID'",
             "values": [
-                {"value": "'$FRONTEND_TAG'", "display_order": 0},
-                {"value": "'$BUG_TAG'", "display_order": 1}
+                {"value_id": "'$FRONTEND_TAG'", "displayOrder": 0},
+                {"value_id": "'$BUG_TAG'", "displayOrder": 1}
             ]
         }')
 
     http_code=$(echo "$response" | tail -n1)
-    print_result "$http_code" 200 "Set multi-select tags"
+    print_result "$http_code" 204 "Set multi-select tags"
 
     # 3.5 Get board field values
     print_section "3.5 Get Board Field Values"
@@ -546,8 +595,8 @@ test_saved_views() {
     http_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
 
-    if print_result "$http_code" 200 "Create saved view"; then
-        VIEW_ID=$(echo "$body" | jq -r '.view_id')
+    if print_result "$http_code" 201 "Create saved view"; then
+        VIEW_ID=$(echo "$body" | jq -r '.data.view_id')
         echo "  View ID: $VIEW_ID"
     fi
 
@@ -560,7 +609,7 @@ test_saved_views() {
     body=$(echo "$response" | sed '$d')
 
     if print_result "$http_code" 200 "Get project views"; then
-        view_count=$(echo "$body" | jq '. | length')
+        view_count=$(echo "$body" | jq '.data | length')
         echo "  Found $view_count views"
     fi
 
@@ -573,8 +622,8 @@ test_saved_views() {
     body=$(echo "$response" | sed '$d')
 
     if print_result "$http_code" 200 "Apply view and get boards"; then
-        board_count=$(echo "$body" | jq '.boards | length')
-        total=$(echo "$body" | jq '.total')
+        board_count=$(echo "$body" | jq '.data.boards | length')
+        total=$(echo "$body" | jq '.data.total')
         echo "  Found $board_count boards (total: $total)"
     fi
 }

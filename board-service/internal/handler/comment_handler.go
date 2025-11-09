@@ -57,9 +57,9 @@ func (h *CommentHandler) GetCommentsByBoardID(c *gin.Context) {
 		return
 	}
 
-	boardIDStr := c.Query("boardId")
+	boardIDStr := c.Query("board_id")
 	if boardIDStr == "" {
-		dto.Error(c, apperrors.New(apperrors.ErrCodeBadRequest, "boardId query parameter is required", http.StatusBadRequest))
+		dto.Error(c, apperrors.New(apperrors.ErrCodeBadRequest, "board_id query parameter is required", http.StatusBadRequest))
 		return
 	}
 

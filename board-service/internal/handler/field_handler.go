@@ -513,3 +513,39 @@ func (h *FieldHandler) DeleteFieldValue(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
+
+// SetMultiSelectValue godoc
+// @Summary Set multi-select field value
+// @Description Set ordered multi-select values for a board field
+// @Tags Field Values
+// @Accept json
+// @Produce json
+// @Param request body dto.SetMultiSelectValueRequest true "Multi-select value request"
+// @Success 204
+// @Failure 400 {object} dto.Error
+// @Failure 401 {object} dto.Error
+// @Failure 403 {object} dto.Error
+// @Failure 500 {object} dto.Error
+// @Router /board-field-values/multi-select [post]
+// @Security BearerAuth
+func (h *FieldHandler) SetMultiSelectValue(c *gin.Context) {
+	userID := c.GetString(middleware.UserIDKey)
+
+	var req dto.SetMultiSelectValueRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		appErr := apperrors.Wrap(err, apperrors.ErrCodeValidation, "입력값이 유효하지 않습니다", 400)
+		dto.Error(c, appErr)
+		return
+	}
+
+	if err := h.fieldValueService.SetMultiSelectValue(userID, &req); err != nil {
+		if appErr, ok := err.(*apperrors.AppError); ok {
+			dto.Error(c, appErr)
+		} else {
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "Multi-select 값 설정 실패", 500))
+		}
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}

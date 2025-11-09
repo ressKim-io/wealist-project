@@ -172,7 +172,7 @@ project_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/projects" \
     }" \
     201)
 
-PROJECT_ID=$(echo \"$project_data\" | jq -r '.data.project_id' 2>/dev/null)
+PROJECT_ID=$(echo "$project_data" | jq -r '.data.project_id' 2>/dev/null)
 
 if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
     print_error "Failed to get project ID from response"
@@ -204,7 +204,7 @@ test_api "PUT" "${BOARD_SERVICE_URL}/api/projects/${PROJECT_ID}" \
     200
 
 # Search Projects
-test_api "GET" "${BOARD_SERVICE_URL}/api/projects/search?workspaceId=${WORKSPACE_ID}&query=Test" \
+test_api "GET" "${BOARD_SERVICE_URL}/api/projects/search?workspace_id=${WORKSPACE_ID}&query=Test" \
     "Search Projects" \
     "" \
     200
@@ -226,20 +226,20 @@ roles_response=$(test_api "GET" "${BOARD_SERVICE_URL}/api/custom-fields/projects
     "" \
     200)
 
-ROLE_ID=$(echo \"$roles_response\" | jq -r '.data[0].role_id' 2>/dev/null)
+ROLE_ID=$(echo "$roles_response" | jq -r '.data[0].role_id' 2>/dev/null)
 print_info "Default Role ID: $ROLE_ID"
 
 # Create Custom Role
 custom_role_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/custom-fields/roles" \
     "Create Custom Role" \
     "{
-        \"projectId\": \"$PROJECT_ID\",
+        \"project_id\": \"$PROJECT_ID\",
         \"name\": \"Frontend Developer\",
         \"color\": \"#3B82F6\"
     }" \
     201)
 
-CUSTOM_ROLE_ID=$(echo \"$custom_role_data\" | jq -r '.data.role_id' 2>/dev/null)
+CUSTOM_ROLE_ID=$(echo "$custom_role_data" | jq -r '.data.role_id' 2>/dev/null)
 print_info "Custom Role ID: $CUSTOM_ROLE_ID"
 
 # Get Custom Role
@@ -263,20 +263,20 @@ stages_response=$(test_api "GET" "${BOARD_SERVICE_URL}/api/custom-fields/project
     "" \
     200)
 
-STAGE_ID=$(echo \"$stages_response\" | jq -r '.data[0].stage_id' 2>/dev/null)
+STAGE_ID=$(echo "$stages_response" | jq -r '.data[0].stage_id' 2>/dev/null)
 print_info "Default Stage ID: $STAGE_ID"
 
 # Create Custom Stage
 custom_stage_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/custom-fields/stages" \
     "Create Custom Stage" \
     "{
-        \"projectId\": \"$PROJECT_ID\",
+        \"project_id\": \"$PROJECT_ID\",
         \"name\": \"Code Review\",
         \"color\": \"#F59E0B\"
     }" \
     201)
 
-CUSTOM_STAGE_ID=$(echo \"$custom_stage_data\" | jq -r '.data.stage_id' 2>/dev/null)
+CUSTOM_STAGE_ID=$(echo "$custom_stage_data" | jq -r '.data.stage_id' 2>/dev/null)
 print_info "Custom Stage ID: $CUSTOM_STAGE_ID"
 
 # Get Custom Importance (should have defaults)
@@ -285,21 +285,21 @@ importance_response=$(test_api "GET" "${BOARD_SERVICE_URL}/api/custom-fields/pro
     "" \
     200)
 
-IMPORTANCE_ID=$(echo \"$importance_response\" | jq -r '.data[0].importance_id' 2>/dev/null)
+IMPORTANCE_ID=$(echo "$importance_response" | jq -r '.data[0].importance_id' 2>/dev/null)
 print_info "Default Importance ID: $IMPORTANCE_ID"
 
 # Create Custom Importance
 custom_importance_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/custom-fields/importance" \
     "Create Custom Importance" \
     "{
-        \"projectId\": \"$PROJECT_ID\",
+        \"project_id\": \"$PROJECT_ID\",
         \"name\": \"Critical\",
         \"color\": \"#DC2626\",
         \"level\": 5
     }" \
     201)
 
-CUSTOM_IMPORTANCE_ID=$(echo \"$custom_importance_data\" | jq -r '.data.importance_id' 2>/dev/null)
+CUSTOM_IMPORTANCE_ID=$(echo "$custom_importance_data" | jq -r '.data.importance_id' 2>/dev/null)
 print_info "Custom Importance ID: $CUSTOM_IMPORTANCE_ID"
 
 # ============================================================================
@@ -311,16 +311,16 @@ print_header "Step 5: Test Board APIs"
 board_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/boards" \
     "Create Board" \
     "{
-        \"projectId\": \"$PROJECT_ID\",
+        \"project_id\": \"$PROJECT_ID\",
         \"title\": \"Implement Authentication\",
         \"content\": \"Add JWT authentication to the API\",
-        \"roleIds\": [\"$ROLE_ID\"],
-        \"stageId\": \"$STAGE_ID\",
-        \"importanceId\": \"$IMPORTANCE_ID\"
+        \"role_ids\": [\"$ROLE_ID\"],
+        \"stage_id\": \"$STAGE_ID\",
+        \"importance_id\": \"$IMPORTANCE_ID\"
     }" \
     201)
 
-BOARD_ID=$(echo \"$board_data\" | jq -r '.data.board_id' 2>/dev/null)
+BOARD_ID=$(echo "$board_data" | jq -r '.data.board_id' 2>/dev/null)
 
 if [ -z "$BOARD_ID" ] || [ "$BOARD_ID" = "null" ]; then
     print_error "Failed to get board ID from response"
@@ -337,7 +337,7 @@ test_api "GET" "${BOARD_SERVICE_URL}/api/boards/${BOARD_ID}" \
     200
 
 # Get Boards by Project
-test_api "GET" "${BOARD_SERVICE_URL}/api/boards?projectId=${PROJECT_ID}" \
+test_api "GET" "${BOARD_SERVICE_URL}/api/boards?project_id=${PROJECT_ID}" \
     "Get Boards in Project" \
     "" \
     200
@@ -348,7 +348,7 @@ test_api "PUT" "${BOARD_SERVICE_URL}/api/boards/${BOARD_ID}" \
     "{
         \"title\": \"Implement JWT Authentication\",
         \"content\": \"Add JWT authentication and authorization\",
-        \"stageId\": \"$CUSTOM_STAGE_ID\"
+        \"stage_id\": \"$CUSTOM_STAGE_ID\"
     }" \
     200
 
@@ -361,12 +361,12 @@ print_header "Step 6: Test Comment APIs"
 comment_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/comments" \
     "Create Comment" \
     "{
-        \"boardId\": \"$BOARD_ID\",
+        \"board_id\": \"$BOARD_ID\",
         \"content\": \"This is a test comment for the board\"
     }" \
     201)
 
-COMMENT_ID=$(echo \"$comment_data\" | jq -r '.data.comment_id' 2>/dev/null)
+COMMENT_ID=$(echo "$comment_data" | jq -r '.data.comment_id' 2>/dev/null)
 
 if [ -z "$COMMENT_ID" ] || [ "$COMMENT_ID" = "null" ]; then
     print_error "Failed to get comment ID from response"
@@ -374,7 +374,7 @@ else
     print_info "Comment ID: $COMMENT_ID"
 
     # Get Comments by Board
-    test_api "GET" "${BOARD_SERVICE_URL}/api/comments?boardId=${BOARD_ID}" \
+    test_api "GET" "${BOARD_SERVICE_URL}/api/comments?board_id=${BOARD_ID}" \
         "Get Comments for Board" \
         "" \
         200
