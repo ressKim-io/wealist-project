@@ -44,21 +44,21 @@ func (h *FieldHandler) CreateField(c *gin.Context) {
 	var req dto.CreateFieldRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		appErr := apperrors.Wrap(err, apperrors.ErrCodeValidation, "입력값이 유효하지 않습니다", 400)
-		c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+		dto.Error(c, appErr)
 		return
 	}
 
 	field, err := h.fieldService.CreateField(userID, &req)
 	if err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "필드 생성 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "필드 생성 실패", 500))
 		}
 		return
 	}
 
-	c.JSON(http.StatusCreated, dto.Success(field))
+	dto.SuccessWithStatus(c, http.StatusCreated, field)
 }
 
 // GetFieldsByProject godoc
@@ -82,14 +82,14 @@ func (h *FieldHandler) GetFieldsByProject(c *gin.Context) {
 	fields, err := h.fieldService.GetFieldsByProject(userID, projectID)
 	if err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "필드 조회 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "필드 조회 실패", 500))
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.Success(fields))
+	dto.Success(c, fields)
 }
 
 // GetField godoc
@@ -114,14 +114,14 @@ func (h *FieldHandler) GetField(c *gin.Context) {
 	field, err := h.fieldService.GetField(userID, fieldID)
 	if err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "필드 조회 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "필드 조회 실패", 500))
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.Success(field))
+	dto.Success(c, field)
 }
 
 // UpdateField godoc
@@ -147,21 +147,21 @@ func (h *FieldHandler) UpdateField(c *gin.Context) {
 	var req dto.UpdateFieldRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		appErr := apperrors.Wrap(err, apperrors.ErrCodeValidation, "입력값이 유효하지 않습니다", 400)
-		c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+		dto.Error(c, appErr)
 		return
 	}
 
 	field, err := h.fieldService.UpdateField(userID, fieldID, &req)
 	if err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "필드 수정 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "필드 수정 실패", 500))
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.Success(field))
+	dto.Success(c, field)
 }
 
 // DeleteField godoc
@@ -185,9 +185,9 @@ func (h *FieldHandler) DeleteField(c *gin.Context) {
 
 	if err := h.fieldService.DeleteField(userID, fieldID); err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "필드 삭제 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "필드 삭제 실패", 500))
 		}
 		return
 	}
@@ -217,15 +217,15 @@ func (h *FieldHandler) UpdateFieldOrder(c *gin.Context) {
 	var req dto.UpdateFieldOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		appErr := apperrors.Wrap(err, apperrors.ErrCodeValidation, "입력값이 유효하지 않습니다", 400)
-		c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+		dto.Error(c, appErr)
 		return
 	}
 
 	if err := h.fieldService.UpdateFieldOrder(userID, projectID, &req); err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "필드 순서 업데이트 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "필드 순서 업데이트 실패", 500))
 		}
 		return
 	}
@@ -255,21 +255,21 @@ func (h *FieldHandler) CreateOption(c *gin.Context) {
 	var req dto.CreateOptionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		appErr := apperrors.Wrap(err, apperrors.ErrCodeValidation, "입력값이 유효하지 않습니다", 400)
-		c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+		dto.Error(c, appErr)
 		return
 	}
 
 	option, err := h.fieldService.CreateOption(userID, &req)
 	if err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "옵션 생성 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "옵션 생성 실패", 500))
 		}
 		return
 	}
 
-	c.JSON(http.StatusCreated, dto.Success(option))
+	dto.SuccessWithStatus(c, http.StatusCreated, option)
 }
 
 // GetOptionsByField godoc
@@ -293,14 +293,14 @@ func (h *FieldHandler) GetOptionsByField(c *gin.Context) {
 	options, err := h.fieldService.GetOptionsByField(userID, fieldID)
 	if err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "옵션 조회 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "옵션 조회 실패", 500))
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.Success(options))
+	dto.Success(c, options)
 }
 
 // UpdateOption godoc
@@ -326,21 +326,21 @@ func (h *FieldHandler) UpdateOption(c *gin.Context) {
 	var req dto.UpdateOptionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		appErr := apperrors.Wrap(err, apperrors.ErrCodeValidation, "입력값이 유효하지 않습니다", 400)
-		c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+		dto.Error(c, appErr)
 		return
 	}
 
 	option, err := h.fieldService.UpdateOption(userID, optionID, &req)
 	if err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "옵션 수정 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "옵션 수정 실패", 500))
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.Success(option))
+	dto.Success(c, option)
 }
 
 // DeleteOption godoc
@@ -364,9 +364,9 @@ func (h *FieldHandler) DeleteOption(c *gin.Context) {
 
 	if err := h.fieldService.DeleteOption(userID, optionID); err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "옵션 삭제 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "옵션 삭제 실패", 500))
 		}
 		return
 	}
@@ -396,15 +396,15 @@ func (h *FieldHandler) UpdateOptionOrder(c *gin.Context) {
 	var req dto.UpdateOptionOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		appErr := apperrors.Wrap(err, apperrors.ErrCodeValidation, "입력값이 유효하지 않습니다", 400)
-		c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+		dto.Error(c, appErr)
 		return
 	}
 
 	if err := h.fieldService.UpdateOptionOrder(userID, fieldID, &req); err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "옵션 순서 업데이트 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "옵션 순서 업데이트 실패", 500))
 		}
 		return
 	}
@@ -434,15 +434,15 @@ func (h *FieldHandler) SetFieldValue(c *gin.Context) {
 	var req dto.SetFieldValueRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		appErr := apperrors.Wrap(err, apperrors.ErrCodeValidation, "입력값이 유효하지 않습니다", 400)
-		c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+		dto.Error(c, appErr)
 		return
 	}
 
 	if err := h.fieldValueService.SetFieldValue(userID, &req); err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "필드 값 설정 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "필드 값 설정 실패", 500))
 		}
 		return
 	}
@@ -472,14 +472,14 @@ func (h *FieldHandler) GetBoardFieldValues(c *gin.Context) {
 	values, err := h.fieldValueService.GetBoardFieldValues(userID, boardID)
 	if err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "필드 값 조회 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "필드 값 조회 실패", 500))
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.Success(values))
+	dto.Success(c, values)
 }
 
 // DeleteFieldValue godoc
@@ -504,9 +504,9 @@ func (h *FieldHandler) DeleteFieldValue(c *gin.Context) {
 
 	if err := h.fieldValueService.DeleteFieldValue(userID, boardID, fieldID); err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "필드 값 삭제 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "필드 값 삭제 실패", 500))
 		}
 		return
 	}

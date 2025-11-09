@@ -41,21 +41,21 @@ func (h *ViewHandler) CreateView(c *gin.Context) {
 	var req dto.CreateViewRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		appErr := apperrors.Wrap(err, apperrors.ErrCodeValidation, "입력값이 유효하지 않습니다", 400)
-		c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+		dto.Error(c, appErr)
 		return
 	}
 
 	view, err := h.viewService.CreateView(userID, &req)
 	if err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "뷰 생성 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "뷰 생성 실패", 500))
 		}
 		return
 	}
 
-	c.JSON(http.StatusCreated, dto.Success(view))
+	dto.SuccessWithStatus(c, http.StatusCreated, view)
 }
 
 // GetViewsByProject godoc
@@ -79,14 +79,14 @@ func (h *ViewHandler) GetViewsByProject(c *gin.Context) {
 	views, err := h.viewService.GetViewsByProject(userID, projectID)
 	if err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "뷰 조회 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "뷰 조회 실패", 500))
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.Success(views))
+	dto.Success(c, views)
 }
 
 // GetView godoc
@@ -111,14 +111,14 @@ func (h *ViewHandler) GetView(c *gin.Context) {
 	view, err := h.viewService.GetView(userID, viewID)
 	if err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "뷰 조회 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "뷰 조회 실패", 500))
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.Success(view))
+	dto.Success(c, view)
 }
 
 // UpdateView godoc
@@ -144,21 +144,21 @@ func (h *ViewHandler) UpdateView(c *gin.Context) {
 	var req dto.UpdateViewRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		appErr := apperrors.Wrap(err, apperrors.ErrCodeValidation, "입력값이 유효하지 않습니다", 400)
-		c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+		dto.Error(c, appErr)
 		return
 	}
 
 	view, err := h.viewService.UpdateView(userID, viewID, &req)
 	if err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "뷰 수정 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "뷰 수정 실패", 500))
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.Success(view))
+	dto.Success(c, view)
 }
 
 // DeleteView godoc
@@ -182,9 +182,9 @@ func (h *ViewHandler) DeleteView(c *gin.Context) {
 
 	if err := h.viewService.DeleteView(userID, viewID); err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "뷰 삭제 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "뷰 삭제 실패", 500))
 		}
 		return
 	}
@@ -222,14 +222,14 @@ func (h *ViewHandler) ApplyView(c *gin.Context) {
 	result, err := h.viewService.ApplyView(userID, viewID, page, limit)
 	if err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "뷰 적용 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "뷰 적용 실패", 500))
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.Success(result))
+	dto.Success(c, result)
 }
 
 // ==================== Board Order ====================
@@ -254,15 +254,15 @@ func (h *ViewHandler) UpdateBoardOrder(c *gin.Context) {
 	var req dto.UpdateBoardOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		appErr := apperrors.Wrap(err, apperrors.ErrCodeValidation, "입력값이 유효하지 않습니다", 400)
-		c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+		dto.Error(c, appErr)
 		return
 	}
 
 	if err := h.viewService.UpdateBoardOrder(userID, &req); err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
-			c.JSON(appErr.HTTPStatus, dto.Error(appErr.Code, appErr.Message))
+			dto.Error(c, appErr)
 		} else {
-			c.JSON(500, dto.Error(apperrors.ErrCodeInternalServer, "보드 순서 업데이트 실패"))
+			dto.Error(c, apperrors.New(apperrors.ErrCodeInternalServer, "보드 순서 업데이트 실패", 500))
 		}
 		return
 	}
