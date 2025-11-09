@@ -69,15 +69,15 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 // @Tags         projects
 // @Accept       json
 // @Produce      json
-// @Param        id path string true "Project ID"
+// @Param        project_id path string true "Project ID"
 // @Success      200 {object} dto.SuccessResponse{data=dto.ProjectResponse}
 // @Failure      403 {object} dto.ErrorResponse
 // @Failure      404 {object} dto.ErrorResponse
-// @Router       /api/projects/{id} [get]
+// @Router       /api/projects/{project_id} [get]
 // @Security     BearerAuth
 func (h *ProjectHandler) GetProject(c *gin.Context) {
 	userID := c.GetString("user_id")
-	projectID := c.Param("id")
+	projectID := c.Param("project_id")
 
 	project, err := h.service.GetProject(projectID, userID)
 	if err != nil {
@@ -138,17 +138,17 @@ func (h *ProjectHandler) GetProjects(c *gin.Context) {
 // @Tags         projects
 // @Accept       json
 // @Produce      json
-// @Param        id path string true "Project ID"
+// @Param        project_id path string true "Project ID"
 // @Param        request body dto.UpdateProjectRequest true "Updated project details"
 // @Success      200 {object} dto.SuccessResponse{data=dto.ProjectResponse}
 // @Failure      400 {object} dto.ErrorResponse
 // @Failure      403 {object} dto.ErrorResponse
 // @Failure      404 {object} dto.ErrorResponse
-// @Router       /api/projects/{id} [put]
+// @Router       /api/projects/{project_id} [put]
 // @Security     BearerAuth
 func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	userID := c.GetString("user_id")
-	projectID := c.Param("id")
+	projectID := c.Param("project_id")
 
 	var req dto.UpdateProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -175,15 +175,15 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 // @Tags         projects
 // @Accept       json
 // @Produce      json
-// @Param        id path string true "Project ID"
+// @Param        project_id path string true "Project ID"
 // @Success      200 {object} dto.SuccessResponse{data=object{message=string}}
 // @Failure      403 {object} dto.ErrorResponse
 // @Failure      404 {object} dto.ErrorResponse
-// @Router       /api/projects/{id} [delete]
+// @Router       /api/projects/{project_id} [delete]
 // @Security     BearerAuth
 func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 	userID := c.GetString("user_id")
-	projectID := c.Param("id")
+	projectID := c.Param("project_id")
 
 	if err := h.service.DeleteProject(projectID, userID); err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
@@ -292,16 +292,16 @@ func (h *ProjectHandler) CreateJoinRequest(c *gin.Context) {
 // @Tags         projects
 // @Accept       json
 // @Produce      json
-// @Param        id path string true "Project ID"
+// @Param        project_id path string true "Project ID"
 // @Param        status query string false "Filter by status (PENDING/APPROVED/REJECTED)"
 // @Success      200 {object} dto.SuccessResponse{data=[]dto.ProjectJoinRequestResponse}
 // @Failure      403 {object} dto.ErrorResponse
 // @Failure      404 {object} dto.ErrorResponse
-// @Router       /api/projects/{id}/join-requests [get]
+// @Router       /api/projects/{project_id}/join-requests [get]
 // @Security     BearerAuth
 func (h *ProjectHandler) GetJoinRequests(c *gin.Context) {
 	userID := c.GetString("user_id")
-	projectID := c.Param("id")
+	projectID := c.Param("project_id")
 	status := c.Query("status")
 
 	requests, err := h.service.GetJoinRequests(projectID, userID, status)
@@ -323,17 +323,17 @@ func (h *ProjectHandler) GetJoinRequests(c *gin.Context) {
 // @Tags         projects
 // @Accept       json
 // @Produce      json
-// @Param        id path string true "Join Request ID"
+// @Param        join_request_id path string true "Join Request ID"
 // @Param        request body dto.UpdateProjectJoinRequestRequest true "Status update"
 // @Success      200 {object} dto.SuccessResponse{data=dto.ProjectJoinRequestResponse}
 // @Failure      400 {object} dto.ErrorResponse
 // @Failure      403 {object} dto.ErrorResponse
 // @Failure      404 {object} dto.ErrorResponse
-// @Router       /api/projects/join-requests/{id} [put]
+// @Router       /api/projects/join-requests/{join_request_id} [put]
 // @Security     BearerAuth
 func (h *ProjectHandler) UpdateJoinRequest(c *gin.Context) {
 	userID := c.GetString("user_id")
-	requestID := c.Param("id")
+	requestID := c.Param("join_request_id")
 
 	var req dto.UpdateProjectJoinRequestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -360,15 +360,15 @@ func (h *ProjectHandler) UpdateJoinRequest(c *gin.Context) {
 // @Tags         projects
 // @Accept       json
 // @Produce      json
-// @Param        id path string true "Project ID"
+// @Param        project_id path string true "Project ID"
 // @Success      200 {object} dto.SuccessResponse{data=[]dto.ProjectMemberResponse}
 // @Failure      403 {object} dto.ErrorResponse
 // @Failure      404 {object} dto.ErrorResponse
-// @Router       /api/projects/{id}/members [get]
+// @Router       /api/projects/{project_id}/members [get]
 // @Security     BearerAuth
 func (h *ProjectHandler) GetProjectMembers(c *gin.Context) {
 	userID := c.GetString("user_id")
-	projectID := c.Param("id")
+	projectID := c.Param("project_id")
 
 	members, err := h.service.GetProjectMembers(projectID, userID)
 	if err != nil {
@@ -389,19 +389,19 @@ func (h *ProjectHandler) GetProjectMembers(c *gin.Context) {
 // @Tags         projects
 // @Accept       json
 // @Produce      json
-// @Param        id path string true "Project ID"
-// @Param        memberId path string true "Member ID"
+// @Param        project_id path string true "Project ID"
+// @Param        member_id path string true "Member ID"
 // @Param        request body dto.UpdateProjectMemberRoleRequest true "New role"
 // @Success      200 {object} dto.SuccessResponse{data=dto.ProjectMemberResponse}
 // @Failure      400 {object} dto.ErrorResponse
 // @Failure      403 {object} dto.ErrorResponse
 // @Failure      404 {object} dto.ErrorResponse
-// @Router       /api/projects/{id}/members/{memberId}/role [put]
+// @Router       /api/projects/{project_id}/members/{member_id}/role [put]
 // @Security     BearerAuth
 func (h *ProjectHandler) UpdateMemberRole(c *gin.Context) {
 	userID := c.GetString("user_id")
-	projectID := c.Param("id")
-	memberID := c.Param("memberId")
+	projectID := c.Param("project_id")
+	memberID := c.Param("member_id")
 
 	var req dto.UpdateProjectMemberRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -428,18 +428,18 @@ func (h *ProjectHandler) UpdateMemberRole(c *gin.Context) {
 // @Tags         projects
 // @Accept       json
 // @Produce      json
-// @Param        id path string true "Project ID"
-// @Param        memberId path string true "Member ID"
+// @Param        project_id path string true "Project ID"
+// @Param        member_id path string true "Member ID"
 // @Success      200 {object} dto.SuccessResponse{data=object{message=string}}
 // @Failure      400 {object} dto.ErrorResponse
 // @Failure      403 {object} dto.ErrorResponse
 // @Failure      404 {object} dto.ErrorResponse
-// @Router       /api/projects/{id}/members/{memberId} [delete]
+// @Router       /api/projects/{project_id}/members/{member_id} [delete]
 // @Security     BearerAuth
 func (h *ProjectHandler) RemoveMember(c *gin.Context) {
 	userID := c.GetString("user_id")
-	projectID := c.Param("id")
-	memberID := c.Param("memberId")
+	projectID := c.Param("project_id")
+	memberID := c.Param("member_id")
 
 	if err := h.service.RemoveMember(projectID, memberID, userID); err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {

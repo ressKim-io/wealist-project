@@ -247,39 +247,39 @@ All `/api/*` endpoints require JWT authentication via `Authorization: Bearer <to
 #### Projects
 - `POST /api/projects` - Create project
 - `GET /api/projects/search` - Search projects
-- `GET /api/projects/:id` - Get project details
-- `PUT /api/projects/:id` - Update project
-- `DELETE /api/projects/:id` - Delete project (soft)
+- `GET /api/projects/:project_id` - Get project details
+- `PUT /api/projects/:project_id` - Update project
+- `DELETE /api/projects/:project_id` - Delete project (soft)
 - `POST /api/projects/join-requests` - Create join request
-- `GET /api/projects/:id/join-requests` - List join requests
-- `PUT /api/projects/join-requests/:id` - Approve/reject join request
-- `GET /api/projects/:id/members` - List project members
-- `PUT /api/projects/:id/members/:memberId/role` - Update member role
-- `DELETE /api/projects/:id/members/:memberId` - Remove member
+- `GET /api/projects/:project_id/join-requests` - List join requests
+- `PUT /api/projects/join-requests/:join_request_id` - Approve/reject join request
+- `GET /api/projects/:project_id/members` - List project members
+- `PUT /api/projects/:project_id/members/:member_id/role` - Update member role
+- `DELETE /api/projects/:project_id/members/:member_id` - Remove member
 
 #### Custom Fields
 - `POST /api/custom-fields/roles` - Create custom role
 - `GET /api/custom-fields/projects/:project_id/roles` - List custom roles
-- `GET /api/custom-fields/roles/:id` - Get custom role
-- `PUT /api/custom-fields/roles/:id` - Update custom role
-- `DELETE /api/custom-fields/roles/:id` - Delete custom role
+- `GET /api/custom-fields/roles/:role_id` - Get custom role
+- `PUT /api/custom-fields/roles/:role_id` - Update custom role
+- `DELETE /api/custom-fields/roles/:role_id` - Delete custom role
 - `PUT /api/custom-fields/projects/:project_id/roles/order` - Update role order
 - Similar endpoints for `/stages` and `/importance`
 
 #### Boards
 - `POST /api/boards` - Create board
 - `GET /api/boards` - List boards (filters: project_id, stage_id, importance_id, role_id, assignee_id, author_id)
-- `GET /api/boards/:id` - Get board details
-- `PUT /api/boards/:id` - Update board
-- `DELETE /api/boards/:id` - Delete board (soft)
+- `GET /api/boards/:board_id` - Get board details
+- `PUT /api/boards/:board_id` - Update board
+- `DELETE /api/boards/:board_id` - Delete board (soft)
 
 #### User Order (Drag-and-Drop)
-- `GET /api/projects/:id/orders/role-board` - Get role-based board view
-- `GET /api/projects/:id/orders/stage-board` - Get stage-based board view
-- `PUT /api/projects/:id/orders/role-columns` - Update role column order
-- `PUT /api/projects/:id/orders/stage-columns` - Update stage column order
-- `PUT /api/projects/:id/orders/role-boards/:role_id` - Update board order in role column
-- `PUT /api/projects/:id/orders/stage-boards/:stage_id` - Update board order in stage column
+- `GET /api/projects/:project_id/orders/role-board` - Get role-based board view
+- `GET /api/projects/:project_id/orders/stage-board` - Get stage-based board view
+- `PUT /api/projects/:project_id/orders/role-columns` - Update role column order
+- `PUT /api/projects/:project_id/orders/stage-columns` - Update stage column order
+- `PUT /api/projects/:project_id/orders/role-boards/:role_id` - Update board order in role column
+- `PUT /api/projects/:project_id/orders/stage-boards/:stage_id` - Update board order in stage column
 
 #### Comments
 - `POST /api/comments` - Create comment
