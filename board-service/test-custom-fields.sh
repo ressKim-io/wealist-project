@@ -156,7 +156,7 @@ create_test_project() {
     response_body=$(echo "$project_response" | sed '$d')
 
     if [ "$http_code" -eq 201 ]; then
-        PROJECT_ID=$(echo \"$response_body\" | jq -r '.project_id')
+        PROJECT_ID=$(echo "$response_body" | jq -r '.data.project_id')
         print_success "Project created: $PROJECT_ID"
         export PROJECT_ID
         return 0
