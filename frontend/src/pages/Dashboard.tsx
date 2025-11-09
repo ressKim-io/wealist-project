@@ -1186,7 +1186,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
       {showCreateProject && (
         <ProjectModal
-          workspaceId={currentWorkspaceId}
+          workspace_id={currentWorkspaceId}
           onClose={() => setShowCreateProject(false)}
           onProjectSaved={fetchProjects}
         />
@@ -1233,7 +1233,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       {/* Project Settings Modal */}
       {showProjectSettings && selectedProject && (
         <ProjectModal
-          workspaceId={currentWorkspaceId}
+          workspace_id={currentWorkspaceId}
           project={selectedProject}
           onClose={() => setShowProjectSettings(false)}
           onProjectSaved={fetchProjects}

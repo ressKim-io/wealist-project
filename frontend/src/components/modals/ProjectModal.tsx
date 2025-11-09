@@ -26,7 +26,7 @@ interface ProjectModalProps {
 }
 
 export const ProjectModal: React.FC<ProjectModalProps> = ({
-  workspaceId,
+  workspace_id,
   project,
   onClose,
   onProjectSaved,
@@ -82,7 +82,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         const { createProject } = await import('../../api/board/boardService');
         await createProject(
           {
-            workspaceId,
+            workspace_id,
             name: name.trim(),
             description: description.trim() || undefined,
           },
