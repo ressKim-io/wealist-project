@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { ThemeProvider } from './contexts/ThemeContext'; // ✅
+import { AuthProvider } from './contexts/AuthContext'; // ✅
 // 1. react-router-dom에서 필요한 것들을 임포트합니다.
 import { Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
 
@@ -43,34 +44,36 @@ const App: React.FC = () => {
   // 5. renderContent 함수 대신 Routes를 사용합니다.
   return (
     <ThemeProvider>
-      <Suspense fallback={<LoadingScreen />}>
-        <Routes>
-          {/* 1. 로그인 페이지 */}
-          <Route path="/" element={<AuthPage />} />
+      <AuthProvider>
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
+            {/* 1. 로그인 페이지 */}
+            <Route path="/" element={<AuthPage />} />
 
-          {/* 2. OAuth 콜백 페이지 */}
-          <Route path="/oauth/callback" element={<OAuthRedirectPage />} />
+            {/* 2. OAuth 콜백 페이지 */}
+            <Route path="/oauth/callback" element={<OAuthRedirectPage />} />
 
-          {/* 3. 보호되는 라우트 (인증 필요) */}
-          <Route element={<ProtectedRoute />}>
-            {/* SelectWorkspacePage는 이제 props가 필요 없습니다.
-              (ts(2739) 오류는 SelectWorkspacePage.tsx 파일 내부를 수정해야 해결됩니다.)
-            */}
-            <Route path="/workspaces" element={<SelectWorkspacePage />} />
+            {/* 3. 보호되는 라우트 (인증 필요) */}
+            <Route element={<ProtectedRoute />}>
+              {/* SelectWorkspacePage는 이제 props가 필요 없습니다.
+                (ts(2739) 오류는 SelectWorkspacePage.tsx 파일 내부를 수정해야 해결됩니다.)
+              */}
+              <Route path="/workspaces" element={<SelectWorkspacePage />} />
 
-            {/* MainDashboard는 onLogout prop이 필요합니다.
-              (ts(2741) 오류 해결)
-            */}
-            <Route
-              path="/kanban/:workspaceId"
-              element={<MainDashboard onLogout={handleLogout} />}
-            />
-          </Route>
+              {/* MainDashboard는 onLogout prop이 필요합니다.
+                (ts(2741) 오류 해결)
+              */}
+              <Route
+                path="/kanban/:workspaceId"
+                element={<MainDashboard onLogout={handleLogout} />}
+              />
+            </Route>
 
-          {/* 4. 일치하는 라우트가 없으면 로그인 페이지로 */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
+            {/* 4. 일치하는 라우트가 없으면 로그인 페이지로 */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </AuthProvider>
     </ThemeProvider>
   );
 };

@@ -9,12 +9,13 @@ import {
   Briefcase,
   File,
   Settings,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import UserProfileModal from '../components/modals/UserProfileModal';
 import { UserProfile } from '../types';
-import { BoardDetailModal } from '../components/modals/BoardDetailModal';
-import { CreateProjectModal } from '../components/modals/CreateProjectModal';
+import { ProjectModal } from '../components/modals/ProjectModal';
 import { CreateBoardModal } from '../components/modals/CreateBoardModal';
 import { CustomFieldManageModal } from '../components/modals/CustomFieldManageModal';
 import { FilterBar } from '../components/FilterBar';
@@ -22,14 +23,14 @@ import {
   getProjects,
   getBoards,
   getProjectStages,
-  updateBoard,
-  updateStageColumnOrder,
-  updateStageBoardOrder,
   ProjectResponse,
   BoardResponse,
   CustomStageResponse,
 } from '../api/board/boardService';
 import { getDefaultColorByIndex } from '../constants/colors';
+import { WorkspaceMember, getWorkspaceMembers } from '../api/user/userService';
+import { BoardDetailModal } from '../components/modals/BoardDetailModal';
+import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
 interface Column {
   id: string;
@@ -44,29 +45,60 @@ interface MainDashboardProps {
 }
 
 // =============================================================================
-// AvatarStack (정상)
+// AvatarStack (워크스페이스 회원)
 // =============================================================================
-const AvatarStack: React.FC = () => {
-  const mockHeaderAvatars = ['김', '박', '이', '최'];
+interface AvatarStackProps {
+  members: WorkspaceMember[];
+}
+
+const AvatarStack: React.FC<AvatarStackProps> = ({ members }) => {
+  const displayCount = 3;
+  const displayMembers = members.slice(0, displayCount);
+  const remainingCount = members.length - displayCount;
+
+  const getColorByIndex = (index: number) => {
+    const colors = [
+      'bg-indigo-500',
+      'bg-pink-500',
+      'bg-green-500',
+      'bg-purple-500',
+      'bg-yellow-500',
+    ];
+    return colors[index % colors.length];
+  };
+
   return (
     <div className="flex -space-x-1.5 p-1 pr-0 overflow-hidden">
-      {mockHeaderAvatars.slice(0, 3).map((initial, index) => (
+      {displayMembers.map((member, index) => (
         <div
-          key={index}
-          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-white text-white ${
-            index === 0 ? 'bg-indigo-500' : index === 1 ? 'bg-pink-500' : 'bg-green-500'
-          }`}
-          style={{ zIndex: mockHeaderAvatars.length - index }}
+          key={member.userId}
+          className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-white overflow-hidden"
+          style={{ zIndex: members.length - index }}
+          title={`${member.userName} (${member.roleName})`}
         >
-          {initial}
+          {member.profileImageUrl ? (
+            <img
+              src={member.profileImageUrl}
+              alt={member.userName}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div
+              className={`w-full h-full flex items-center justify-center text-white ${getColorByIndex(
+                index,
+              )}`}
+            >
+              {member.userName[0]}
+            </div>
+          )}
         </div>
       ))}
-      {mockHeaderAvatars.length > 3 && (
+      {remainingCount > 0 && (
         <div
-          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-white bg-gray-400 text-white`}
+          className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-white bg-gray-400 text-white"
           style={{ zIndex: 0 }}
         >
-          +{mockHeaderAvatars.length - 3}
+          +{remainingCount}
         </div>
       )}
     </div>
@@ -134,8 +166,8 @@ const AssigneeAvatarStack: React.FC<AssigneeAvatarStackProps> = ({ assignees }) 
 const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   const navigate = useNavigate();
 
-  // 1. URL에서 :workspaceId 값을 가져옵니다.
-  const { workspaceId } = useParams<{ workspaceId: string }>();
+  // 1. URL에서 :workspace_id 값을 가져옵니다.
+  const { workspaceId } = useParams<{ workspace_id: string }>();
   // 2. localStorage에서 토큰을 가져옵니다.
   const accessToken = localStorage.getItem('access_token') || '';
 
@@ -153,11 +185,16 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   const [projects, setProjects] = useState<ProjectResponse[]>([]);
   const [columns, setColumns] = useState<Column[]>([]);
   const [selectedProject, setSelectedProject] = useState<ProjectResponse | null>(null);
+  const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>([]);
 
   const [userProfile, _setUserProfile] = useState<UserProfile>({
+    profileId: '',
+    userId: '',
     name: 'User',
     email: 'user@example.com',
-    avatar: 'U',
+    profileImageUrl: null,
+    createdAt: '',
+    updatedAt: '',
   });
 
   // UI 상태
@@ -168,17 +205,31 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   const [showCreateBoard, setShowCreateBoard] = useState<boolean>(false);
   const [createBoardStageId, setCreateBoardStageId] = useState<string>('');
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
+  const [editBoardData, setEditBoardData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showManageModal, setShowManageModal] = useState<boolean>(false);
+  const [showProjectSettings, setShowProjectSettings] = useState<boolean>(false);
 
   // Filter/View 상태
   const [currentView, setCurrentView] = useState<'stage' | 'role'>('stage');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterOption, setFilterOption] = useState<string>('all');
+  const [currentLayout, setCurrentLayout] = useState<'table' | 'board'>('board');
+  const [showCompleted, setShowCompleted] = useState<boolean>(false);
+
+  // Table sorting state
+  const [sortColumn, setSortColumn] = useState<'title' | 'stage' | 'role' | 'importance' | 'assignee' | 'dueDate' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   // TODO: Implement search and filter logic
-  console.log('Current filters:', { currentView, searchQuery, filterOption });
+  console.log('Current filters:', {
+    currentView,
+    searchQuery,
+    filterOption,
+    currentLayout,
+    showCompleted,
+  });
 
   // Ref
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -215,12 +266,29 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     }
   }, [currentWorkspaceId, accessToken]);
 
-  // 2. 초기 로드
+  // 2. 워크스페이스 회원 조회 함수
+  const fetchWorkspaceMembers = React.useCallback(async () => {
+    if (!currentWorkspaceId || !accessToken) return;
+
+    try {
+      console.log(`[Dashboard] 워크스페이스 회원 로드 시작 (Workspace: ${currentWorkspaceId})`);
+      const members = await getWorkspaceMembers(currentWorkspaceId, accessToken);
+      console.log('✅ Workspace members loaded:', members);
+      setWorkspaceMembers(members);
+    } catch (err) {
+      const error = err as Error;
+      console.error('❌ 워크스페이스 회원 로드 실패:', error);
+      setWorkspaceMembers([]);
+    }
+  }, [currentWorkspaceId, accessToken]);
+
+  // 3. 초기 로드
   useEffect(() => {
     fetchProjects();
-  }, [fetchProjects]);
+    fetchWorkspaceMembers();
+  }, [fetchProjects, fetchWorkspaceMembers]);
 
-  // 3. 보드 목록 조회 함수 (재사용 가능)
+  // 4. 보드 목록 조회 함수 (재사용 가능)
   const fetchBoards = React.useCallback(async () => {
     if (!selectedProject || !accessToken) {
       setColumns([]);
@@ -234,22 +302,22 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       console.log(`[Dashboard] 보드 로드 시작 (Project: ${selectedProject.name})`);
 
       // 1. 프로젝트의 모든 Stages 조회
-      const stages = await getProjectStages(selectedProject.id, accessToken);
+      const stages = await getProjectStages(selectedProject.project_id, accessToken);
       console.log('✅ Stages loaded:', stages);
 
       // 2. 보드 조회
-      const boardsResponse = await getBoards(selectedProject.id, accessToken);
+      const boardsResponse = await getBoards(selectedProject.project_id, accessToken);
       console.log('✅ Boards loaded:', boardsResponse);
 
       // 3. Stage별로 빈 컬럼 먼저 생성
       const stageMap = new Map<string, { stage: CustomStageResponse; boards: BoardResponse[] }>();
       stages.forEach((stage) => {
-        stageMap.set(stage.id, { stage, boards: [] });
+        stageMap.set(stage.stage_id, { stage, boards: [] });
       });
 
       // 4. 보드를 해당 Stage 컬럼에 추가
       boardsResponse.boards.forEach((board) => {
-        const stageId = board.stage?.id;
+        const stageId = board.stage?.stage_id;
         if (stageId && stageMap.has(stageId)) {
           stageMap.get(stageId)!.boards.push(board);
         }
@@ -261,7 +329,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       );
 
       const columns: Column[] = sortedStages.map(({ stage, boards }) => ({
-        id: stage.id,
+        id: stage.stage_id,
         title: stage.name,
         color: stage.color, // Store the color from API
         boards: boards,
@@ -307,7 +375,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
     // Same column: reorder boards within column
     if (draggedFromColumn === targetColumnId) {
-      if (!dragOverBoardId || dragOverBoardId === draggedBoard.id) {
+      if (!dragOverBoardId || dragOverBoardId === draggedBoard.board_id) {
         setDraggedBoard(null);
         setDraggedFromColumn(null);
         setDragOverBoardId(null);
@@ -323,8 +391,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       }
 
       // Reorder boards
-      const draggedIndex = targetColumn.boards.findIndex((b) => b.id === draggedBoard.id);
-      const targetIndex = targetColumn.boards.findIndex((b) => b.id === dragOverBoardId);
+      const draggedIndex = targetColumn.boards.findIndex((b) => b.board_id === draggedBoard.board_id);
+      const targetIndex = targetColumn.boards.findIndex((b) => b.board_id === dragOverBoardId);
 
       if (draggedIndex === -1 || targetIndex === -1) {
         setDraggedBoard(null);
@@ -349,17 +417,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       setDraggedFromColumn(null);
       setDragOverBoardId(null);
 
-      // Persist to backend
-      try {
-        const boardIds = newBoards.map((b) => b.id);
-        await updateStageBoardOrder(selectedProject.id, targetColumnId, boardIds, accessToken);
-        console.log(`✅ Stage 내 Board 순서 변경 성공`);
-      } catch (error) {
-        console.error('❌ Stage 내 Board 순서 변경 실패:', error);
-        // Revert on error
-        setColumns(columns);
-        alert('보드 순서 변경에 실패했습니다. 다시 시도해주세요.');
-      }
+      console.log(`✅ Stage 내 Board 순서 변경 (로컬)`);
       return;
     }
 
@@ -371,40 +429,30 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     // Optimistic UI update
     const newColumns = columns.map((col) => {
       if (col.id === draggedFromColumn) {
-        return { ...col, boards: col.boards.filter((t) => t.id !== draggedBoard.id) };
+        return { ...col, boards: col.boards.filter((t) => t.board_id !== draggedBoard.board_id) };
       }
       if (col.id === targetColumnId) {
+        // Insert at the position indicated by dragOverBoardId
+        if (dragOverBoardId) {
+          const targetIndex = col.boards.findIndex((b) => b.board_id === dragOverBoardId);
+          if (targetIndex !== -1) {
+            const newBoards = [...col.boards];
+            newBoards.splice(targetIndex, 0, updatedBoard);
+            return { ...col, boards: newBoards };
+          }
+        }
+        // If no dragOverBoardId, add to the end
         return { ...col, boards: [...col.boards, updatedBoard] };
       }
       return col;
     });
 
     setColumns(newColumns);
-    const boardToUpdate = draggedBoard;
     setDraggedBoard(null);
     setDraggedFromColumn(null);
     setDragOverBoardId(null);
 
-    // Persist to backend
-    try {
-      await updateBoard(
-        boardToUpdate.id,
-        {
-          title: boardToUpdate.title,
-          content: boardToUpdate.content,
-          stageId: targetColumnId,
-          roleIds: boardToUpdate.roles?.map((r) => r.id) || [],
-          importanceId: boardToUpdate.importance?.id,
-        },
-        accessToken,
-      );
-      console.log(`✅ Board ${boardToUpdate.id} Stage 변경 성공: ${targetColumnId}`);
-    } catch (error) {
-      console.error('❌ Board Stage 변경 실패:', error);
-      // Revert on error
-      setColumns(columns);
-      alert('보드 이동에 실패했습니다. 다시 시도해주세요.');
-    }
+    console.log(`✅ Board ${draggedBoard.board_id} Stage 변경 (로컬): ${targetColumnId}`);
   };
 
   // Column drag handlers
@@ -438,18 +486,18 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     setColumns(newColumns);
     setDraggedColumn(null);
 
-    // Persist to backend
-    if (!selectedProject) return;
+    console.log(`✅ Stage 컬럼 순서 변경 (로컬)`);
+  };
 
-    try {
-      const stageIds = newColumns.map((col) => col.id);
-      await updateStageColumnOrder(selectedProject.id, stageIds, accessToken);
-      console.log(`✅ Stage 컬럼 순서 변경 성공`);
-    } catch (error) {
-      console.error('❌ Stage 컬럼 순서 변경 실패:', error);
-      // Revert on error
-      setColumns(columns);
-      alert('컬럼 순서 변경에 실패했습니다. 다시 시도해주세요.');
+  // Table sorting handler
+  const handleSort = (column: 'title' | 'stage' | 'role' | 'importance' | 'assignee' | 'dueDate') => {
+    if (sortColumn === column) {
+      // Toggle direction if same column
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New column, default to ascending
+      setSortColumn(column);
+      setSortDirection('asc');
     }
   };
 
@@ -542,9 +590,17 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
             title="계정 메뉴"
           >
             <div
-              className={`w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-sm font-bold ring-2 ring-white/50 text-gray-700`}
+              className={`w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-sm font-bold ring-2 ring-white/50 text-gray-700 overflow-hidden`}
             >
-              {userProfile.avatar}
+              {userProfile.profileImageUrl ? (
+                <img
+                  src={userProfile.profileImageUrl}
+                  alt={userProfile.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                userProfile.name[0]?.toUpperCase() || 'U'
+              )}
             </div>
           </button>
         </div>
@@ -563,12 +619,21 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
             left: sidebarWidth,
           }}
         >
-          <div className="flex items-center gap-2 relative">
+          <div className="flex items-center gap-1 relative">
             <button
               onClick={() => setShowProjectSelector(!showProjectSelector)}
               className={`flex items-center gap-2 font-bold text-xl ${theme.colors.text} hover:opacity-80 transition`}
             >
               {selectedProject?.name || '프로젝트 선택'}
+              {canAccessSettings && selectedProject && (
+                <button
+                  onClick={() => setShowProjectSettings(true)}
+                  className={`p-2 rounded-lg transition ${theme.colors.text} hover:bg-gray-100`}
+                  title="프로젝트 설정"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
+              )}
               <ChevronDown
                 className={`w-5 h-5 text-gray-500 transition-transform ${
                   showProjectSelector ? 'rotate-180' : 'rotate-0'
@@ -580,7 +645,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
             {showProjectSelector && (
               <div
                 ref={projectSelectorRef}
-                className={`absolute top-full -left-4 mt-1 w-80 ${theme.colors.card} ${theme.effects.cardBorderWidth} ${theme.colors.border} z-50 ${theme.effects.borderRadius}`}
+                className={`absolute top-full -left-6 top-8 mt-1 w-80 ${theme.colors.card} ${theme.effects.cardBorderWidth} ${theme.colors.border} z-50 ${theme.effects.borderRadius}`}
               >
                 <div className="p-3 max-h-80 overflow-y-auto">
                   <h3 className="text-xs text-gray-400 mb-2 px-1 font-semibold">
@@ -591,13 +656,13 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                   ) : (
                     projects.map((project) => (
                       <button
-                        key={project.id}
+                        key={project.project_id}
                         onClick={() => {
                           setSelectedProject(project);
                           setShowProjectSelector(false);
                         }}
                         className={`w-full px-3 py-2 text-left text-sm rounded transition truncate ${
-                          selectedProject?.id === project.id
+                          selectedProject?.project_id === project.project_id
                             ? 'bg-blue-100 text-blue-700 font-semibold'
                             : 'hover:bg-gray-100 text-gray-800'
                         }`}
@@ -621,16 +686,6 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
               </div>
             )}
           </div>
-          {canAccessSettings && (
-            <button
-              // onClick={() => setIsSettingsModalOpen(true)}
-              className={`flex items-center gap-1 p-2 rounded-lg transition ${theme.colors.secondary} ${theme.colors.text} hover:bg-gray-100 font-semibold text-sm`}
-              title="조직 설정 및 멤버 관리"
-            >
-              <Settings className="w-4 h-4" />
-              설정
-            </button>
-          )}
           {selectedProject && (
             <button
               className={`flex items-center gap-2 p-1 rounded-lg transition ${
@@ -638,7 +693,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
               }`}
               title="조직원"
             >
-              <AvatarStack />
+              <AvatarStack members={workspaceMembers} />
             </button>
           )}
         </header>
@@ -652,12 +707,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
           )}
 
           {isLoading && projects.length === 0 ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p className={`${theme.colors.text}`}>프로젝트를 로드 중...</p>
-              </div>
-            </div>
+            <LoadingSpinner message="프로젝트를 로드 중..." />
           ) : selectedProject ? (
             <>
               {/* FilterBar */}
@@ -667,139 +717,402 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                 onFilterChange={setFilterOption}
                 onManageClick={() => setShowManageModal(true)}
                 currentView={currentView}
+                onLayoutChange={setCurrentLayout}
+                onShowCompletedChange={setShowCompleted}
+                currentLayout={currentLayout}
+                showCompleted={showCompleted}
               />
 
-              {/* Boards */}
-              <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 min-w-max pb-4 mt-4">
-                {columns.map((column, idx) => (
-                <div
-                  key={column.id}
-                  onDragOver={(e) => {
-                    handleDragOver(e);
-                    handleColumnDragOver(e);
-                    if (draggedBoard && !draggedColumn) {
-                      setDragOverColumn(column.id);
-                    }
-                  }}
-                  onDragLeave={() => {
-                    if (draggedBoard && !draggedColumn) {
-                      setDragOverColumn(null);
-                    }
-                  }}
-                  onDrop={() => {
-                    if (draggedColumn) {
-                      handleColumnDrop(column);
-                    } else {
-                      handleDrop(column.id);
-                    }
-                  }}
-                  className={`w-full lg:w-80 lg:flex-shrink-0 relative transition-all ${
-                    draggedColumn?.id === column.id ? 'opacity-80 scale-95' : 'opacity-100'
-                  }`}
-                >
-                  <div
-                    className={`relative ${theme.effects.cardBorderWidth} ${
-                      dragOverColumn === column.id && draggedFromColumn !== column.id
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : theme.colors.border
-                    } p-3 sm:p-4 ${theme.colors.card} ${theme.effects.borderRadius} transition-all duration-200`}
-                  >
-                    <div
-                      draggable
-                      onDragStart={() => handleColumnDragStart(column)}
-                      className={`flex items-center justify-between pb-2 cursor-move`}
-                    >
-                      <h3
-                        className={`font-bold ${theme.colors.text} flex items-center gap-2 ${theme.font.size.xs}`}
-                      >
-                        <span
-                          className={`w-3 h-3 sm:w-4 sm:h-4 ${theme.effects.cardBorderWidth} ${theme.colors.border}`}
-                          style={{
-                            backgroundColor:
-                              column.color || getDefaultColorByIndex(idx).hex,
-                          }}
-                        ></span>
-                        {column.title}
-                        <span
-                          className={`bg-black text-white px-1 sm:px-2 py-1 ${theme.effects.cardBorderWidth} ${theme.colors.border} text-[8px] sm:text-xs`}
-                        >
-                          {column.boards.length}
-                        </span>
-                      </h3>
-                    </div>
-
-                    <div className="space-y-2 sm:space-y-3">
-                      {column.boards.map((board) => (
-                        <div
-                          key={board.id}
-                          className="relative"
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            setDragOverBoardId(board.id);
-                          }}
-                          onDragLeave={() => {
-                            setDragOverBoardId(null);
-                          }}
-                        >
-                          {/* Drop indicator line - shows where the dragged board will be inserted */}
-                          {dragOverBoardId === board.id &&
-                            draggedBoard &&
-                            draggedBoard.id !== board.id && (
-                              <div className="absolute -top-1 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 z-10 animate-pulse"></div>
-                            )}
-                          <div
-                            draggable
-                            onDragStart={() => handleDragStart(board, column.id)}
-                            onClick={() => setSelectedBoardId(board.id)}
-                            className={`relative ${theme.colors.card} p-3 sm:p-4 ${theme.effects.cardBorderWidth} ${
-                              dragOverBoardId === board.id && draggedBoard?.id !== board.id
-                                ? 'border-blue-500 mt-3'
-                                : theme.colors.border
-                            } hover:border-blue-500 transition-all cursor-pointer ${theme.effects.borderRadius} ${
-                              draggedBoard?.id === board.id ? 'opacity-80 scale-95' : 'opacity-100'
-                            }`}
+              {/* Boards or Table */}
+              {currentLayout === 'table' ? (
+                // Table Layout
+                <div className="mt-4 overflow-x-auto">
+                  <table className={`w-full ${theme.colors.card} ${theme.effects.borderRadius} overflow-hidden shadow-lg`}>
+                    <thead className="bg-gray-100 border-b border-gray-200">
+                      <tr>
+                        {/* Title Column */}
+                        <th className="px-4 py-3 text-left">
+                          <button
+                            onClick={() => handleSort('title')}
+                            className="flex items-center gap-2 font-semibold text-sm text-gray-700 hover:text-blue-600 transition"
                           >
-                            <h3
-                              className={`font-bold ${theme.colors.text} mb-2 sm:mb-3 ${theme.font.size.xs} break-words`}
-                            >
-                              {board.title}
-                            </h3>
-                            <div className="flex items-center justify-between">
-                              <AssigneeAvatarStack
-                                assignees={board.assignee?.name || 'Unassigned'}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                            제목
+                            {sortColumn === 'title' && (
+                              sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                            )}
+                          </button>
+                        </th>
+                        {/* Stage Column */}
+                        <th className="px-4 py-3 text-left">
+                          <button
+                            onClick={() => handleSort('stage')}
+                            className="flex items-center gap-2 font-semibold text-sm text-gray-700 hover:text-blue-600 transition"
+                          >
+                            진행 단계
+                            {sortColumn === 'stage' && (
+                              sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                            )}
+                          </button>
+                        </th>
+                        {/* Role Column */}
+                        <th className="px-4 py-3 text-left">
+                          <button
+                            onClick={() => handleSort('role')}
+                            className="flex items-center gap-2 font-semibold text-sm text-gray-700 hover:text-blue-600 transition"
+                          >
+                            역할
+                            {sortColumn === 'role' && (
+                              sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                            )}
+                          </button>
+                        </th>
+                        {/* Importance Column */}
+                        <th className="px-4 py-3 text-left">
+                          <button
+                            onClick={() => handleSort('importance')}
+                            className="flex items-center gap-2 font-semibold text-sm text-gray-700 hover:text-blue-600 transition"
+                          >
+                            중요도
+                            {sortColumn === 'importance' && (
+                              sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                            )}
+                          </button>
+                        </th>
+                        {/* Assignee Column */}
+                        <th className="px-4 py-3 text-left">
+                          <button
+                            onClick={() => handleSort('assignee')}
+                            className="flex items-center gap-2 font-semibold text-sm text-gray-700 hover:text-blue-600 transition"
+                          >
+                            담당자
+                            {sortColumn === 'assignee' && (
+                              sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                            )}
+                          </button>
+                        </th>
+                        {/* Due Date Column */}
+                        <th className="px-4 py-3 text-left">
+                          <button
+                            onClick={() => handleSort('dueDate')}
+                            className="flex items-center gap-2 font-semibold text-sm text-gray-700 hover:text-blue-600 transition"
+                          >
+                            마감일
+                            {sortColumn === 'dueDate' && (
+                              sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                            )}
+                          </button>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        // Flatten all boards from all columns
+                        const allBoards = columns.flatMap((column) =>
+                          column.boards.map((board) => ({
+                            ...board,
+                            stageName: column.title,
+                            stageColor: column.color,
+                          }))
+                        );
 
-                      {/* Drop indicator for cross-column drag - shows at bottom of target column */}
-                      {dragOverColumn === column.id &&
-                        draggedFromColumn !== column.id &&
-                        draggedBoard && (
-                          <div className="relative py-4">
-                            <div className="absolute top-2 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 z-10 animate-pulse"></div>
-                            <div className="text-center text-blue-500 text-xs font-semibold pt-4">
-                              여기에 추가됩니다
-                            </div>
-                          </div>
-                        )}
+                        // Filter boards based on search query
+                        const filteredBoards = searchQuery.trim()
+                          ? allBoards.filter((board) => {
+                              const query = searchQuery.toLowerCase();
+                              const titleMatch = board.title.toLowerCase().includes(query);
+                              const contentMatch = board.content?.toLowerCase().includes(query);
+                              return titleMatch || contentMatch;
+                            })
+                          : allBoards;
 
-                      <button
-                        className={`relative w-full py-3 sm:py-4 ${theme.effects.cardBorderWidth} border-dashed ${theme.colors.border} ${theme.colors.card} hover:bg-gray-100 transition flex items-center justify-center gap-2 ${theme.font.size.xs} ${theme.effects.borderRadius}`}
+                        // Sort boards
+                        const sortedBoards = [...filteredBoards].sort((a, b) => {
+                          if (!sortColumn) return 0;
+
+                          let aValue: any;
+                          let bValue: any;
+
+                          switch (sortColumn) {
+                            case 'title':
+                              aValue = a.title.toLowerCase();
+                              bValue = b.title.toLowerCase();
+                              break;
+                            case 'stage':
+                              aValue = a.stageName.toLowerCase();
+                              bValue = b.stageName.toLowerCase();
+                              break;
+                            case 'role':
+                              aValue = a.roles?.[0]?.name?.toLowerCase() || '';
+                              bValue = b.roles?.[0]?.name?.toLowerCase() || '';
+                              break;
+                            case 'importance':
+                              aValue = a.importance?.level || 0;
+                              bValue = b.importance?.level || 0;
+                              break;
+                            case 'assignee':
+                              aValue = a.assignee?.name?.toLowerCase() || '';
+                              bValue = b.assignee?.name?.toLowerCase() || '';
+                              break;
+                            case 'dueDate':
+                              aValue = a.dueDate ? new Date(a.dueDate).getTime() : 0;
+                              bValue = b.dueDate ? new Date(b.dueDate).getTime() : 0;
+                              break;
+                            default:
+                              return 0;
+                          }
+
+                          if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+                          if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+                          return 0;
+                        });
+
+                        return sortedBoards.map((board) => (
+                          <tr
+                            key={board.board_id}
+                            onClick={() => setSelectedBoardId(board.board_id)}
+                            className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition"
+                          >
+                            {/* Title */}
+                            <td className="px-4 py-3 font-semibold text-gray-800">{board.title}</td>
+                            {/* Stage */}
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: board.stageColor || '#6B7280' }}
+                                />
+                                <span className="text-sm">{board.stageName}</span>
+                              </div>
+                            </td>
+                            {/* Role */}
+                            <td className="px-4 py-3">
+                              {board.roles && board.roles.length > 0 ? (
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="w-3 h-3 rounded-full"
+                                    style={{ backgroundColor: board.roles[0].color || '#6B7280' }}
+                                  />
+                                  <span className="text-sm">{board.roles[0].name}</span>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-gray-500">없음</span>
+                              )}
+                            </td>
+                            {/* Importance */}
+                            <td className="px-4 py-3">
+                              {board.importance ? (
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="w-3 h-3 rounded-full"
+                                    style={{ backgroundColor: board.importance.color || '#6B7280' }}
+                                  />
+                                  <span className="text-sm">{board.importance.name}</span>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-gray-500">없음</span>
+                              )}
+                            </td>
+                            {/* Assignee */}
+                            <td className="px-4 py-3">
+                              <AssigneeAvatarStack assignees={board.assignee?.name || 'Unassigned'} />
+                            </td>
+                            {/* Due Date */}
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {board.dueDate ? new Date(board.dueDate).toLocaleDateString('ko-KR') : '없음'}
+                            </td>
+                          </tr>
+                        ));
+                      })()}
+
+                      {/* Add Board Row */}
+                      <tr
                         onClick={() => {
-                          setCreateBoardStageId(column.id);
+                          setCreateBoardStageId('');
                           setShowCreateBoard(true);
                         }}
+                        className="border-t-2 border-gray-300 hover:bg-blue-50 cursor-pointer transition"
                       >
-                        <Plus className="w-3 h-3 sm:w-4 sm:h-4" style={{ strokeWidth: 3 }} />
-                        보드 추가
-                      </button>
+                        <td colSpan={6} className="px-4 py-4">
+                          <div className="flex items-center justify-center gap-2 text-blue-600 font-semibold">
+                            <Plus className="w-5 h-5" />
+                            <span>보드 추가</span>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  {columns.flatMap((col) => col.boards).length === 0 && (
+                    <div className="text-center py-12 text-gray-500">
+                      보드가 없습니다. 보드를 추가해보세요.
                     </div>
-                  </div>
+                  )}
                 </div>
-              ))}
-              </div>
+              ) : (
+                // Board Layout
+                <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 min-w-max pb-4 mt-4">
+                  {(() => {
+                    // Filter columns based on search query
+                    const filteredColumns = searchQuery.trim()
+                      ? columns.map((column) => ({
+                          ...column,
+                          boards: column.boards.filter((board) => {
+                            const query = searchQuery.toLowerCase();
+                            const titleMatch = board.title.toLowerCase().includes(query);
+                            const contentMatch = board.content?.toLowerCase().includes(query);
+                            return titleMatch || contentMatch;
+                          }),
+                        }))
+                      : columns;
+
+                    return filteredColumns.map((column, idx) => (
+                    <div
+                      key={column.id}
+                      draggable
+                      onDragStart={() => handleColumnDragStart(column)}
+                      onDragOver={(e) => {
+                        handleDragOver(e);
+                        handleColumnDragOver(e);
+                        if (draggedBoard && !draggedColumn) {
+                          setDragOverColumn(column.id);
+                        }
+                      }}
+                      onDragLeave={() => {
+                        if (draggedBoard && !draggedColumn) {
+                          setDragOverColumn(null);
+                        }
+                      }}
+                      onDrop={() => {
+                        if (draggedColumn) {
+                          handleColumnDrop(column);
+                        } else {
+                          handleDrop(column.id);
+                        }
+                      }}
+                      className={`w-full lg:w-80 lg:flex-shrink-0 relative transition-all cursor-move ${
+                        draggedColumn?.id === column.id
+                          ? 'opacity-50 scale-95 shadow-2xl rotate-2'
+                          : 'opacity-100'
+                      }`}
+                    >
+                      <div
+                        className={`relative ${theme.effects.cardBorderWidth} ${
+                          dragOverColumn === column.id && draggedFromColumn !== column.id
+                            ? 'border-blue-500 border-2 bg-blue-50 dark:bg-blue-900/20 shadow-lg'
+                            : theme.colors.border
+                        } p-3 sm:p-4 ${theme.colors.card} ${
+                          theme.effects.borderRadius
+                        } transition-all duration-200`}
+                      >
+                        <div className={`flex items-center justify-between pb-2`}>
+                          <h3
+                            className={`font-bold ${theme.colors.text} flex items-center gap-2 ${theme.font.size.xs}`}
+                          >
+                            <span
+                              className={`w-3 h-3 sm:w-4 sm:h-4 ${theme.effects.cardBorderWidth} ${theme.colors.border}`}
+                              style={{
+                                backgroundColor: column.color || getDefaultColorByIndex(idx).hex,
+                              }}
+                            ></span>
+                            {column.title}
+                            <span
+                              className={`bg-black text-white px-1 sm:px-2 py-1 ${theme.effects.cardBorderWidth} ${theme.colors.border} text-[8px] sm:text-xs`}
+                            >
+                              {column.boards.length}
+                            </span>
+                          </h3>
+                        </div>
+
+                        <div className="space-y-2 sm:space-y-3">
+                          {column.boards.map((board) => (
+                            <div
+                              key={board.board_id}
+                              className="relative"
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (draggedBoard && draggedBoard.board_id !== board.board_id) {
+                                  setDragOverBoardId(board.board_id);
+                                }
+                              }}
+                              onDragLeave={(e) => {
+                                e.stopPropagation();
+                                setDragOverBoardId(null);
+                              }}
+                            >
+                              {/* Drop indicator line - shows where the dragged board will be inserted */}
+                              {dragOverBoardId === board.board_id &&
+                                draggedBoard &&
+                                draggedBoard.board_id !== board.board_id && (
+                                  <div className="absolute -top-2 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 z-10"></div>
+                                )}
+                              <div
+                                draggable
+                                onDragStart={(e) => {
+                                  e.stopPropagation();
+                                  handleDragStart(board, column.id);
+                                }}
+                                onClick={() => setSelectedBoardId(board.board_id)}
+                                className={`relative ${theme.colors.card} p-3 sm:p-4 ${
+                                  theme.effects.cardBorderWidth
+                                } ${
+                                  theme.colors.border
+                                } hover:border-blue-500 transition-all cursor-pointer ${
+                                  theme.effects.borderRadius
+                                } ${
+                                  draggedBoard?.board_id === board.board_id
+                                    ? 'opacity-50 scale-95 shadow-2xl rotate-1'
+                                    : 'opacity-100'
+                                }`}
+                              >
+                                <h3
+                                  className={`font-bold ${theme.colors.text} mb-2 sm:mb-3 ${theme.font.size.xs} break-words`}
+                                >
+                                  {board.title}
+                                </h3>
+                                <div className="flex items-center justify-between">
+                                  <AssigneeAvatarStack
+                                    assignees={board.assignee?.name || 'Unassigned'}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Drop indicator for empty column or below all boards */}
+                          {dragOverColumn === column.id &&
+                            draggedBoard &&
+                            !draggedColumn &&
+                            !dragOverBoardId && (
+                              <div className="relative py-2">
+                                <div className="h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50"></div>
+                              </div>
+                            )}
+
+                          <button
+                            className={`relative w-full py-3 sm:py-4 ${theme.effects.cardBorderWidth} border-dashed ${theme.colors.border} ${theme.colors.card} hover:bg-gray-100 transition flex items-center justify-center gap-2 ${theme.font.size.xs} ${theme.effects.borderRadius}`}
+                            onClick={() => {
+                              setCreateBoardStageId(column.id);
+                              setShowCreateBoard(true);
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (draggedBoard && !draggedColumn) {
+                                setDragOverColumn(column.id);
+                                setDragOverBoardId(null);
+                              }
+                            }}
+                          >
+                            <Plus className="w-3 h-3 sm:w-4 sm:h-4" style={{ strokeWidth: 3 }} />
+                            보드 추가
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    ));
+                  })()}
+                </div>
+              )}
             </>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center p-8">
@@ -822,9 +1135,17 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
           <div className="p-3 pb-3 mb-2 border-b border-gray-200">
             <div className="flex items-center gap-3">
               <div
-                className={`w-10 h-10 ${theme.colors.primary} flex items-center justify-center text-white text-base font-bold rounded-md`}
+                className={`w-10 h-10 ${theme.colors.primary} flex items-center justify-center text-white text-base font-bold rounded-md overflow-hidden`}
               >
-                {userProfile.avatar}
+                {userProfile.profileImageUrl ? (
+                  <img
+                    src={userProfile.profileImageUrl}
+                    alt={userProfile.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  userProfile.name[0]?.toUpperCase() || 'U'
+                )}
               </div>
               <div>
                 <h3 className="font-bold text-lg text-gray-900">{userProfile.name}</h3>
@@ -864,38 +1185,58 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       )}
 
       {showCreateProject && (
-        <CreateProjectModal
-          workspaceId={currentWorkspaceId}
+        <ProjectModal
+          workspace_id={currentWorkspaceId}
           onClose={() => setShowCreateProject(false)}
-          onProjectCreated={fetchProjects}
+          onProjectSaved={fetchProjects}
         />
       )}
 
       {showCreateBoard && selectedProject && (
         <CreateBoardModal
-          projectId={selectedProject.id}
+          projectId={selectedProject.project_id}
           stageId={createBoardStageId}
-          onClose={() => setShowCreateBoard(false)}
+          editData={editBoardData}
+          workspaceId={currentWorkspaceId}
+          onClose={() => {
+            setShowCreateBoard(false);
+            setEditBoardData(null);
+          }}
           onBoardCreated={fetchBoards}
         />
       )}
 
-      {selectedBoardId && selectedProject && (
+      {selectedBoardId && (
         <BoardDetailModal
           boardId={selectedBoardId}
-          projectId={selectedProject.id}
+          workspaceId={currentWorkspaceId}
           onClose={() => setSelectedBoardId(null)}
           onBoardUpdated={fetchBoards}
           onBoardDeleted={fetchBoards}
+          onEdit={(boardData) => {
+            setEditBoardData(boardData);
+            setSelectedBoardId(null);
+            setShowCreateBoard(true);
+          }}
         />
       )}
 
       {/* Custom Field Manage Modal */}
       {showManageModal && selectedProject && (
         <CustomFieldManageModal
-          projectId={selectedProject.id}
+          projectId={selectedProject.project_id}
           onClose={() => setShowManageModal(false)}
           onFieldsUpdated={fetchBoards}
+        />
+      )}
+
+      {/* Project Settings Modal */}
+      {showProjectSettings && selectedProject && (
+        <ProjectModal
+          workspace_id={currentWorkspaceId}
+          project={selectedProject}
+          onClose={() => setShowProjectSettings(false)}
+          onProjectSaved={fetchProjects}
         />
       )}
     </div>

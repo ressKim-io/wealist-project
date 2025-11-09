@@ -244,56 +244,42 @@ Response:
 
 All `/api/*` endpoints require JWT authentication via `Authorization: Bearer <token>` header.
 
-#### Workspaces
-- `POST /api/workspaces` - Create workspace
-- `GET /api/workspaces/search` - Search workspaces
-- `GET /api/workspaces/:id` - Get workspace details
-- `PUT /api/workspaces/:id` - Update workspace
-- `DELETE /api/workspaces/:id` - Delete workspace (soft)
-- `POST /api/workspaces/join-requests` - Create join request
-- `GET /api/workspaces/:id/join-requests` - List join requests
-- `PUT /api/workspaces/join-requests/:id` - Approve/reject join request
-- `GET /api/workspaces/:id/members` - List workspace members
-- `PUT /api/workspaces/:id/members/:memberId/role` - Update member role
-- `DELETE /api/workspaces/:id/members/:memberId` - Remove member
-- `POST /api/workspaces/default` - Set default workspace
-
 #### Projects
 - `POST /api/projects` - Create project
 - `GET /api/projects/search` - Search projects
-- `GET /api/projects/:id` - Get project details
-- `PUT /api/projects/:id` - Update project
-- `DELETE /api/projects/:id` - Delete project (soft)
+- `GET /api/projects/:project_id` - Get project details
+- `PUT /api/projects/:project_id` - Update project
+- `DELETE /api/projects/:project_id` - Delete project (soft)
 - `POST /api/projects/join-requests` - Create join request
-- `GET /api/projects/:id/join-requests` - List join requests
-- `PUT /api/projects/join-requests/:id` - Approve/reject join request
-- `GET /api/projects/:id/members` - List project members
-- `PUT /api/projects/:id/members/:memberId/role` - Update member role
-- `DELETE /api/projects/:id/members/:memberId` - Remove member
+- `GET /api/projects/:project_id/join-requests` - List join requests
+- `PUT /api/projects/join-requests/:join_request_id` - Approve/reject join request
+- `GET /api/projects/:project_id/members` - List project members
+- `PUT /api/projects/:project_id/members/:member_id/role` - Update member role
+- `DELETE /api/projects/:project_id/members/:member_id` - Remove member
 
 #### Custom Fields
 - `POST /api/custom-fields/roles` - Create custom role
-- `GET /api/custom-fields/projects/:projectId/roles` - List custom roles
-- `GET /api/custom-fields/roles/:id` - Get custom role
-- `PUT /api/custom-fields/roles/:id` - Update custom role
-- `DELETE /api/custom-fields/roles/:id` - Delete custom role
-- `PUT /api/custom-fields/projects/:projectId/roles/order` - Update role order
+- `GET /api/custom-fields/projects/:project_id/roles` - List custom roles
+- `GET /api/custom-fields/roles/:role_id` - Get custom role
+- `PUT /api/custom-fields/roles/:role_id` - Update custom role
+- `DELETE /api/custom-fields/roles/:role_id` - Delete custom role
+- `PUT /api/custom-fields/projects/:project_id/roles/order` - Update role order
 - Similar endpoints for `/stages` and `/importance`
 
 #### Boards
 - `POST /api/boards` - Create board
 - `GET /api/boards` - List boards (filters: project_id, stage_id, importance_id, role_id, assignee_id, author_id)
-- `GET /api/boards/:id` - Get board details
-- `PUT /api/boards/:id` - Update board
-- `DELETE /api/boards/:id` - Delete board (soft)
+- `GET /api/boards/:board_id` - Get board details
+- `PUT /api/boards/:board_id` - Update board
+- `DELETE /api/boards/:board_id` - Delete board (soft)
 
 #### User Order (Drag-and-Drop)
-- `GET /api/projects/:id/orders/role-board` - Get role-based board view
-- `GET /api/projects/:id/orders/stage-board` - Get stage-based board view
-- `PUT /api/projects/:id/orders/role-columns` - Update role column order
-- `PUT /api/projects/:id/orders/stage-columns` - Update stage column order
-- `PUT /api/projects/:id/orders/role-boards/:roleId` - Update board order in role column
-- `PUT /api/projects/:id/orders/stage-boards/:stageId` - Update board order in stage column
+- `GET /api/projects/:project_id/orders/role-board` - Get role-based board view
+- `GET /api/projects/:project_id/orders/stage-board` - Get stage-based board view
+- `PUT /api/projects/:project_id/orders/role-columns` - Update role column order
+- `PUT /api/projects/:project_id/orders/stage-columns` - Update stage column order
+- `PUT /api/projects/:project_id/orders/role-boards/:role_id` - Update board order in role column
+- `PUT /api/projects/:project_id/orders/stage-boards/:stage_id` - Update board order in stage column
 
 #### Comments
 - `POST /api/comments` - Create comment
@@ -486,20 +472,37 @@ The service uses structured JSON logging in production and console logging in de
 
 ## Recent Updates
 
+### v1.1.0 - API Field Name Standardization (2025-11-09)
+
+**Major Changes:**
+- **Standardized all ID field names to snake_case** for consistency with database schema
+- Updated all DTO request/response structs:
+  - `projectId` → `project_id`
+  - `workspaceId` → `workspace_id`
+  - `boardId` → `board_id`
+  - `stageId` → `stage_id`
+  - `roleId`/`roleIds` → `role_id`/`role_ids`
+  - `importanceId` → `importance_id`
+  - `assigneeId` → `assignee_id`
+  - `userId` → `user_id`
+- Response ID fields made explicit:
+  - Generic `id` → specific `board_id`, `project_id`, `stage_id`, `role_id`, `importance_id`, `comment_id`
+- Updated frontend TypeScript interfaces to match backend schema
+- Regenerated Swagger documentation with new field names
+
+**Benefits:**
+- Clear and explicit field naming
+- Direct alignment with PostgreSQL column names
+- Improved API contract clarity
+- Easier debugging and maintenance
+
 ### v1.0.1 - Soft Delete Unification (2025-01-06)
 
 **Major Changes:**
 - Unified all domain models to inherit from `BaseModel` with `is_deleted` field
-- Refactored `Board`, `BoardRole`, and all `UserOrder` models to use `BaseModel`
-- Fixed composite UNIQUE constraints on user order tables
-- Updated all repository queries from `deleted_at IS NULL` to `is_deleted = false`
 - Renamed API entity from "Kanban" to "Board" throughout codebase
 - Updated endpoints: `/api/kanbans` → `/api/boards`
 - Updated user order endpoints: `/stage-kanbans` → `/stage-boards`, `/role-kanbans` → `/role-boards`
-
-**Testing:**
-- All 13 integration tests passing
-- Health check, CRUD operations, board views, and ordering functionality verified
 
 **Exception:** `Comment` table continues to use `gorm.DeletedAt` for historical consistency.
 

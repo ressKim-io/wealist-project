@@ -62,15 +62,15 @@ func (h *BoardHandler) CreateBoard(c *gin.Context) {
 // @Tags         boards
 // @Accept       json
 // @Produce      json
-// @Param        id path string true "Board ID"
+// @Param        board_id path string true "Board ID"
 // @Success      200 {object} dto.SuccessResponse{data=dto.BoardResponse}
 // @Failure      403 {object} dto.ErrorResponse
 // @Failure      404 {object} dto.ErrorResponse
-// @Router       /api/boards/{id} [get]
+// @Router       /api/boards/{board_id} [get]
 // @Security     BearerAuth
 func (h *BoardHandler) GetBoard(c *gin.Context) {
 	userID := c.GetString("user_id")
-	boardID := c.Param("id")
+	boardID := c.Param("board_id")
 
 	board, err := h.service.GetBoard(boardID, userID)
 	if err != nil {
@@ -91,12 +91,12 @@ func (h *BoardHandler) GetBoard(c *gin.Context) {
 // @Tags         boards
 // @Accept       json
 // @Produce      json
-// @Param        projectId query string true "Project ID"
-// @Param        stageId query string false "Filter by Stage ID"
-// @Param        roleId query string false "Filter by Role ID"
-// @Param        importanceId query string false "Filter by Importance ID"
-// @Param        assigneeId query string false "Filter by Assignee ID"
-// @Param        authorId query string false "Filter by Author ID"
+// @Param        project_id query string true "Project ID"
+// @Param        stage_id query string false "Filter by Stage ID"
+// @Param        role_id query string false "Filter by Role ID"
+// @Param        importance_id query string false "Filter by Importance ID"
+// @Param        assignee_id query string false "Filter by Assignee ID"
+// @Param        author_id query string false "Filter by Author ID"
 // @Param        page query int false "Page number (default: 1)"
 // @Param        limit query int false "Items per page (default: 20, max: 100)"
 // @Success      200 {object} dto.SuccessResponse{data=dto.PaginatedBoardsResponse}
@@ -140,17 +140,17 @@ func (h *BoardHandler) GetBoards(c *gin.Context) {
 // @Tags         boards
 // @Accept       json
 // @Produce      json
-// @Param        id path string true "Board ID"
+// @Param        board_id path string true "Board ID"
 // @Param        request body dto.UpdateBoardRequest true "Board updates"
 // @Success      200 {object} dto.SuccessResponse{data=dto.BoardResponse}
 // @Failure      400 {object} dto.ErrorResponse
 // @Failure      403 {object} dto.ErrorResponse
 // @Failure      404 {object} dto.ErrorResponse
-// @Router       /api/boards/{id} [put]
+// @Router       /api/boards/{board_id} [put]
 // @Security     BearerAuth
 func (h *BoardHandler) UpdateBoard(c *gin.Context) {
 	userID := c.GetString("user_id")
-	boardID := c.Param("id")
+	boardID := c.Param("board_id")
 
 	var req dto.UpdateBoardRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -177,15 +177,15 @@ func (h *BoardHandler) UpdateBoard(c *gin.Context) {
 // @Tags         boards
 // @Accept       json
 // @Produce      json
-// @Param        id path string true "Board ID"
+// @Param        board_id path string true "Board ID"
 // @Success      200 {object} dto.SuccessResponse
 // @Failure      403 {object} dto.ErrorResponse
 // @Failure      404 {object} dto.ErrorResponse
-// @Router       /api/boards/{id} [delete]
+// @Router       /api/boards/{board_id} [delete]
 // @Security     BearerAuth
 func (h *BoardHandler) DeleteBoard(c *gin.Context) {
 	userID := c.GetString("user_id")
-	boardID := c.Param("id")
+	boardID := c.Param("board_id")
 
 	if err := h.service.DeleteBoard(boardID, userID); err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {

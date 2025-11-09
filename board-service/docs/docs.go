@@ -45,38 +45,38 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "projectId",
+                        "name": "project_id",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Filter by Stage ID",
-                        "name": "stageId",
+                        "name": "stage_id",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "Filter by Role ID",
-                        "name": "roleId",
+                        "name": "role_id",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "Filter by Importance ID",
-                        "name": "importanceId",
+                        "name": "importance_id",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "Filter by Assignee ID",
-                        "name": "assigneeId",
+                        "name": "assignee_id",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "Filter by Author ID",
-                        "name": "authorId",
+                        "name": "author_id",
                         "in": "query"
                     },
                     {
@@ -193,7 +193,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/boards/{id}": {
+        "/api/boards/{board_id}": {
             "get": {
                 "security": [
                     {
@@ -215,7 +215,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Board ID",
-                        "name": "id",
+                        "name": "board_id",
                         "in": "path",
                         "required": true
                     }
@@ -274,7 +274,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Board ID",
-                        "name": "id",
+                        "name": "board_id",
                         "in": "path",
                         "required": true
                     },
@@ -348,7 +348,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Board ID",
-                        "name": "id",
+                        "name": "board_id",
                         "in": "path",
                         "required": true
                     }
@@ -432,7 +432,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/importance/{id}": {
+        "/api/custom-fields/importance/{importance_id}": {
             "get": {
                 "security": [
                     {
@@ -454,7 +454,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Importance ID",
-                        "name": "id",
+                        "name": "importance_id",
                         "in": "path",
                         "required": true
                     }
@@ -507,7 +507,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Importance ID",
-                        "name": "id",
+                        "name": "importance_id",
                         "in": "path",
                         "required": true
                     },
@@ -569,7 +569,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Importance ID",
-                        "name": "id",
+                        "name": "importance_id",
                         "in": "path",
                         "required": true
                     }
@@ -590,7 +590,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/projects/{projectId}/importance": {
+        "/api/custom-fields/projects/{project_id}/importance": {
             "get": {
                 "security": [
                     {
@@ -612,7 +612,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "projectId",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     }
@@ -648,7 +648,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/projects/{projectId}/importance/order": {
+        "/api/custom-fields/projects/{project_id}/importance/order": {
             "put": {
                 "security": [
                     {
@@ -670,7 +670,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "projectId",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
@@ -700,7 +700,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/projects/{projectId}/roles": {
+        "/api/custom-fields/projects/{project_id}/roles": {
             "get": {
                 "security": [
                     {
@@ -722,7 +722,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "projectId",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     }
@@ -758,7 +758,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/projects/{projectId}/roles/order": {
+        "/api/custom-fields/projects/{project_id}/roles/order": {
             "put": {
                 "security": [
                     {
@@ -780,7 +780,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "projectId",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
@@ -816,7 +816,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/projects/{projectId}/stages": {
+        "/api/custom-fields/projects/{project_id}/stages": {
             "get": {
                 "security": [
                     {
@@ -838,7 +838,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "projectId",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     }
@@ -874,7 +874,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/projects/{projectId}/stages/order": {
+        "/api/custom-fields/projects/{project_id}/stages/order": {
             "put": {
                 "security": [
                     {
@@ -896,7 +896,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "projectId",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
@@ -995,7 +995,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/roles/{id}": {
+        "/api/custom-fields/roles/{role_id}": {
             "get": {
                 "security": [
                     {
@@ -1017,7 +1017,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Role ID",
-                        "name": "id",
+                        "name": "role_id",
                         "in": "path",
                         "required": true
                     }
@@ -1070,7 +1070,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Role ID",
-                        "name": "id",
+                        "name": "role_id",
                         "in": "path",
                         "required": true
                     },
@@ -1144,7 +1144,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Role ID",
-                        "name": "id",
+                        "name": "role_id",
                         "in": "path",
                         "required": true
                     }
@@ -1234,7 +1234,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/stages/{id}": {
+        "/api/custom-fields/stages/{stage_id}": {
             "get": {
                 "security": [
                     {
@@ -1256,7 +1256,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Stage ID",
-                        "name": "id",
+                        "name": "stage_id",
                         "in": "path",
                         "required": true
                     }
@@ -1309,7 +1309,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Stage ID",
-                        "name": "id",
+                        "name": "stage_id",
                         "in": "path",
                         "required": true
                     },
@@ -1377,7 +1377,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Stage ID",
-                        "name": "id",
+                        "name": "stage_id",
                         "in": "path",
                         "required": true
                     }
@@ -1610,7 +1610,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/join-requests/{id}": {
+        "/api/projects/join-requests/{join_request_id}": {
             "put": {
                 "security": [
                     {
@@ -1632,7 +1632,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Join Request ID",
-                        "name": "id",
+                        "name": "join_request_id",
                         "in": "path",
                         "required": true
                     },
@@ -1708,7 +1708,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Workspace ID",
-                        "name": "workspaceId",
+                        "name": "workspace_id",
                         "in": "query",
                         "required": true
                     },
@@ -1766,7 +1766,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}": {
+        "/api/projects/{project_id}": {
             "get": {
                 "security": [
                     {
@@ -1788,7 +1788,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     }
@@ -1847,7 +1847,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
@@ -1921,7 +1921,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     }
@@ -1965,7 +1965,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/join-requests": {
+        "/api/projects/{project_id}/join-requests": {
             "get": {
                 "security": [
                     {
@@ -1987,7 +1987,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
@@ -2035,7 +2035,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/members": {
+        "/api/projects/{project_id}/members": {
             "get": {
                 "security": [
                     {
@@ -2057,7 +2057,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     }
@@ -2099,7 +2099,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/members/{memberId}": {
+        "/api/projects/{project_id}/members/{member_id}": {
             "delete": {
                 "security": [
                     {
@@ -2121,14 +2121,14 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Member ID",
-                        "name": "memberId",
+                        "name": "member_id",
                         "in": "path",
                         "required": true
                     }
@@ -2178,7 +2178,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/members/{memberId}/role": {
+        "/api/projects/{project_id}/members/{member_id}/role": {
             "put": {
                 "security": [
                     {
@@ -2200,14 +2200,14 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Member ID",
-                        "name": "memberId",
+                        "name": "member_id",
                         "in": "path",
                         "required": true
                     },
@@ -2261,7 +2261,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/orders/role-board": {
+        "/api/projects/{project_id}/orders/role-board": {
             "get": {
                 "security": [
                     {
@@ -2283,7 +2283,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     }
@@ -2322,7 +2322,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/orders/role-boards/{roleId}": {
+        "/api/projects/{project_id}/orders/role-boards/{role_id}": {
             "put": {
                 "security": [
                     {
@@ -2344,14 +2344,14 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Role ID",
-                        "name": "roleId",
+                        "name": "role_id",
                         "in": "path",
                         "required": true
                     },
@@ -2399,7 +2399,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/orders/role-columns": {
+        "/api/projects/{project_id}/orders/role-columns": {
             "put": {
                 "security": [
                     {
@@ -2421,7 +2421,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
@@ -2469,7 +2469,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/orders/stage-board": {
+        "/api/projects/{project_id}/orders/stage-board": {
             "get": {
                 "security": [
                     {
@@ -2491,7 +2491,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     }
@@ -2530,7 +2530,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/orders/stage-boards/{stageId}": {
+        "/api/projects/{project_id}/orders/stage-boards/{stage_id}": {
             "put": {
                 "security": [
                     {
@@ -2552,14 +2552,14 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Stage ID",
-                        "name": "stageId",
+                        "name": "stage_id",
                         "in": "path",
                         "required": true
                     },
@@ -2607,7 +2607,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/orders/stage-columns": {
+        "/api/projects/{project_id}/orders/stage-columns": {
             "put": {
                 "security": [
                     {
@@ -2629,7 +2629,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
@@ -2676,912 +2676,13 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/api/workspaces": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get all workspaces for current user (or specified user_id)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "workspaces"
-                ],
-                "summary": "Get workspaces",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "User ID (optional, defaults to current user)",
-                        "name": "user_id",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.WorkspaceResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Create a new workspace (OWNER role automatically assigned)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "workspaces"
-                ],
-                "summary": "Create workspace",
-                "parameters": [
-                    {
-                        "description": "Workspace details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.CreateWorkspaceRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.WorkspaceResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/workspaces/default": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Set a workspace as default for the current user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "workspaces"
-                ],
-                "summary": "Set default workspace",
-                "parameters": [
-                    {
-                        "description": "Workspace ID",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.SetDefaultWorkspaceRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object",
-                                            "properties": {
-                                                "message": {
-                                                    "type": "string"
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/workspaces/join-requests": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Request to join a workspace",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "workspaces"
-                ],
-                "summary": "Create join request",
-                "parameters": [
-                    {
-                        "description": "Join request details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.CreateJoinRequestRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.JoinRequestResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/workspaces/join-requests/{id}": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Approve or reject a join request (OWNER/ADMIN only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "workspaces"
-                ],
-                "summary": "Update join request",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Join Request ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Status update",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.UpdateJoinRequestRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.JoinRequestResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/workspaces/search": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Search workspaces by name or description",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "workspaces"
-                ],
-                "summary": "Search workspaces",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Search query",
-                        "name": "query",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page number (default: 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page size (default: 10, max: 100)",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.PaginatedWorkspacesResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/workspaces/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get workspace details (member only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "workspaces"
-                ],
-                "summary": "Get workspace",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Workspace ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.WorkspaceResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Update workspace details (OWNER only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "workspaces"
-                ],
-                "summary": "Update workspace",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Workspace ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Updated workspace details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.UpdateWorkspaceRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.WorkspaceResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Soft delete a workspace (OWNER only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "workspaces"
-                ],
-                "summary": "Delete workspace",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Workspace ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object",
-                                            "properties": {
-                                                "message": {
-                                                    "type": "string"
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/workspaces/{id}/join-requests": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get join requests for a workspace (OWNER/ADMIN only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "workspaces"
-                ],
-                "summary": "Get join requests",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Workspace ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by status (PENDING/APPROVED/REJECTED)",
-                        "name": "status",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.JoinRequestResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/workspaces/{id}/members": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get all members of a workspace (member only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "workspaces"
-                ],
-                "summary": "Get workspace members",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Workspace ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.WorkspaceMemberResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/workspaces/{id}/members/{memberId}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Remove a member from workspace (OWNER/ADMIN only, cannot remove OWNER or self)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "workspaces"
-                ],
-                "summary": "Remove member",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Workspace ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Member ID",
-                        "name": "memberId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object",
-                                            "properties": {
-                                                "message": {
-                                                    "type": "string"
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/workspaces/{id}/members/{memberId}/role": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Update a member's role in workspace (OWNER only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "workspaces"
-                ],
-                "summary": "Update member role",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Workspace ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Member ID",
-                        "name": "memberId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "New role",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.UpdateMemberRoleRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.WorkspaceMemberResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
         "dto.BoardOrderResponse": {
             "type": "object",
             "properties": {
-                "boardId": {
+                "board_id": {
                     "type": "string"
                 },
                 "displayOrder": {
@@ -3601,6 +2702,9 @@ const docTemplate = `{
                 "author": {
                     "$ref": "#/definitions/dto.UserInfo"
                 },
+                "board_id": {
+                    "type": "string"
+                },
                 "content": {
                     "type": "string"
                 },
@@ -3610,13 +2714,10 @@ const docTemplate = `{
                 "dueDate": {
                     "type": "string"
                 },
-                "id": {
-                    "type": "string"
-                },
                 "importance": {
                     "$ref": "#/definitions/dto.CustomImportanceResponse"
                 },
-                "projectId": {
+                "project_id": {
                     "type": "string"
                 },
                 "roles": {
@@ -3639,13 +2740,13 @@ const docTemplate = `{
         "dto.CreateBoardRequest": {
             "type": "object",
             "required": [
-                "projectId",
-                "roleIds",
-                "stageId",
+                "project_id",
+                "role_ids",
+                "stage_id",
                 "title"
             ],
             "properties": {
-                "assigneeId": {
+                "assignee_id": {
                     "type": "string"
                 },
                 "content": {
@@ -3656,20 +2757,20 @@ const docTemplate = `{
                     "description": "ISO 8601 format",
                     "type": "string"
                 },
-                "importanceId": {
+                "importance_id": {
                     "type": "string"
                 },
-                "projectId": {
+                "project_id": {
                     "type": "string"
                 },
-                "roleIds": {
+                "role_ids": {
                     "type": "array",
                     "minItems": 1,
                     "items": {
                         "type": "string"
                     }
                 },
-                "stageId": {
+                "stage_id": {
                     "type": "string"
                 },
                 "title": {
@@ -3683,7 +2784,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "name",
-                "projectId"
+                "project_id"
             ],
             "properties": {
                 "color": {
@@ -3694,7 +2795,7 @@ const docTemplate = `{
                     "maxLength": 50,
                     "minLength": 1
                 },
-                "projectId": {
+                "project_id": {
                     "type": "string"
                 }
             }
@@ -3703,7 +2804,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "name",
-                "projectId"
+                "project_id"
             ],
             "properties": {
                 "color": {
@@ -3715,7 +2816,7 @@ const docTemplate = `{
                     "maxLength": 50,
                     "minLength": 1
                 },
-                "projectId": {
+                "project_id": {
                     "type": "string"
                 }
             }
@@ -3724,7 +2825,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "name",
-                "projectId"
+                "project_id"
             ],
             "properties": {
                 "color": {
@@ -3735,18 +2836,7 @@ const docTemplate = `{
                     "maxLength": 50,
                     "minLength": 1
                 },
-                "projectId": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.CreateJoinRequestRequest": {
-            "type": "object",
-            "required": [
-                "workspaceId"
-            ],
-            "properties": {
-                "workspaceId": {
+                "project_id": {
                     "type": "string"
                 }
             }
@@ -3754,10 +2844,10 @@ const docTemplate = `{
         "dto.CreateProjectJoinRequestRequest": {
             "type": "object",
             "required": [
-                "projectId"
+                "project_id"
             ],
             "properties": {
-                "projectId": {
+                "project_id": {
                     "type": "string"
                 }
             }
@@ -3766,7 +2856,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "name",
-                "workspaceId"
+                "workspace_id"
             ],
             "properties": {
                 "description": {
@@ -3778,25 +2868,8 @@ const docTemplate = `{
                     "maxLength": 100,
                     "minLength": 2
                 },
-                "workspaceId": {
+                "workspace_id": {
                     "type": "string"
-                }
-            }
-        },
-        "dto.CreateWorkspaceRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "description": {
-                    "type": "string",
-                    "maxLength": 500
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 2
                 }
             }
         },
@@ -3812,7 +2885,7 @@ const docTemplate = `{
                 "displayOrder": {
                     "type": "integer"
                 },
-                "id": {
+                "importance_id": {
                     "type": "string"
                 },
                 "isSystemDefault": {
@@ -3821,7 +2894,7 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
-                "projectId": {
+                "project_id": {
                     "type": "string"
                 },
                 "updatedAt": {
@@ -3841,16 +2914,16 @@ const docTemplate = `{
                 "displayOrder": {
                     "type": "integer"
                 },
-                "id": {
-                    "type": "string"
-                },
                 "isSystemDefault": {
                     "type": "boolean"
                 },
                 "name": {
                     "type": "string"
                 },
-                "projectId": {
+                "project_id": {
+                    "type": "string"
+                },
+                "role_id": {
                     "type": "string"
                 },
                 "updatedAt": {
@@ -3870,16 +2943,16 @@ const docTemplate = `{
                 "displayOrder": {
                     "type": "integer"
                 },
-                "id": {
-                    "type": "string"
-                },
                 "isSystemDefault": {
                     "type": "boolean"
                 },
                 "name": {
                     "type": "string"
                 },
-                "projectId": {
+                "project_id": {
+                    "type": "string"
+                },
+                "stage_id": {
                     "type": "string"
                 },
                 "updatedAt": {
@@ -3909,43 +2982,14 @@ const docTemplate = `{
         "dto.ImportanceOrder": {
             "type": "object",
             "required": [
-                "importanceId"
+                "importance_id"
             ],
             "properties": {
                 "displayOrder": {
                     "type": "integer",
                     "minimum": 0
                 },
-                "importanceId": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.JoinRequestResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "requestedAt": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "userEmail": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                },
-                "userName": {
-                    "type": "string"
-                },
-                "workspaceId": {
+                "importance_id": {
                     "type": "string"
                 }
             }
@@ -3990,33 +3034,13 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.PaginatedWorkspacesResponse": {
-            "type": "object",
-            "properties": {
-                "limit": {
-                    "type": "integer"
-                },
-                "page": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                },
-                "workspaces": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/dto.WorkspaceResponse"
-                    }
-                }
-            }
-        },
         "dto.ProjectJoinRequestResponse": {
             "type": "object",
             "properties": {
-                "id": {
+                "project_id": {
                     "type": "string"
                 },
-                "projectId": {
+                "request_id": {
                     "type": "string"
                 },
                 "requestedAt": {
@@ -4031,10 +3055,10 @@ const docTemplate = `{
                 "userEmail": {
                     "type": "string"
                 },
-                "userId": {
+                "userName": {
                     "type": "string"
                 },
-                "userName": {
+                "user_id": {
                     "type": "string"
                 }
             }
@@ -4042,13 +3066,13 @@ const docTemplate = `{
         "dto.ProjectMemberResponse": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "string"
-                },
                 "joinedAt": {
                     "type": "string"
                 },
-                "projectId": {
+                "member_id": {
+                    "type": "string"
+                },
+                "project_id": {
                     "type": "string"
                 },
                 "roleName": {
@@ -4057,10 +3081,10 @@ const docTemplate = `{
                 "userEmail": {
                     "type": "string"
                 },
-                "userId": {
+                "userName": {
                     "type": "string"
                 },
-                "userName": {
+                "user_id": {
                     "type": "string"
                 }
             }
@@ -4074,25 +3098,25 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
-                "id": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
                 "ownerEmail": {
                     "type": "string"
                 },
-                "ownerId": {
+                "ownerName": {
                     "type": "string"
                 },
-                "ownerName": {
+                "owner_id": {
+                    "type": "string"
+                },
+                "project_id": {
                     "type": "string"
                 },
                 "updatedAt": {
                     "type": "string"
                 },
-                "workspaceId": {
+                "workspace_id": {
                     "type": "string"
                 }
             }
@@ -4106,7 +3130,7 @@ const docTemplate = `{
                         "$ref": "#/definitions/dto.RoleColumnView"
                     }
                 },
-                "projectId": {
+                "project_id": {
                     "type": "string"
                 },
                 "viewType": {
@@ -4124,7 +3148,7 @@ const docTemplate = `{
                         "$ref": "#/definitions/dto.BoardOrderResponse"
                     }
                 },
-                "customRoleId": {
+                "custom_role_id": {
                     "type": "string"
                 },
                 "displayOrder": {
@@ -4141,25 +3165,14 @@ const docTemplate = `{
         "dto.RoleOrder": {
             "type": "object",
             "required": [
-                "roleId"
+                "role_id"
             ],
             "properties": {
                 "displayOrder": {
                     "type": "integer",
                     "minimum": 0
                 },
-                "roleId": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.SetDefaultWorkspaceRequest": {
-            "type": "object",
-            "required": [
-                "workspaceId"
-            ],
-            "properties": {
-                "workspaceId": {
+                "role_id": {
                     "type": "string"
                 }
             }
@@ -4173,7 +3186,7 @@ const docTemplate = `{
                         "$ref": "#/definitions/dto.StageColumnView"
                     }
                 },
-                "projectId": {
+                "project_id": {
                     "type": "string"
                 },
                 "viewType": {
@@ -4191,7 +3204,7 @@ const docTemplate = `{
                         "$ref": "#/definitions/dto.BoardOrderResponse"
                     }
                 },
-                "customStageId": {
+                "custom_stage_id": {
                     "type": "string"
                 },
                 "displayOrder": {
@@ -4208,14 +3221,14 @@ const docTemplate = `{
         "dto.StageOrder": {
             "type": "object",
             "required": [
-                "stageId"
+                "stage_id"
             ],
             "properties": {
                 "displayOrder": {
                     "type": "integer",
                     "minimum": 0
                 },
-                "stageId": {
+                "stage_id": {
                     "type": "string"
                 }
             }
@@ -4232,7 +3245,7 @@ const docTemplate = `{
         "dto.UpdateBoardRequest": {
             "type": "object",
             "properties": {
-                "assigneeId": {
+                "assignee_id": {
                     "type": "string"
                 },
                 "content": {
@@ -4242,16 +3255,16 @@ const docTemplate = `{
                 "dueDate": {
                     "type": "string"
                 },
-                "importanceId": {
+                "importance_id": {
                     "type": "string"
                 },
-                "roleIds": {
+                "role_ids": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
-                "stageId": {
+                "stage_id": {
                     "type": "string"
                 },
                 "title": {
@@ -4345,37 +3358,6 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.UpdateJoinRequestRequest": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "enum": [
-                        "APPROVED",
-                        "REJECTED"
-                    ]
-                }
-            }
-        },
-        "dto.UpdateMemberRoleRequest": {
-            "type": "object",
-            "required": [
-                "roleName"
-            ],
-            "properties": {
-                "roleName": {
-                    "type": "string",
-                    "enum": [
-                        "OWNER",
-                        "ADMIN",
-                        "MEMBER"
-                    ]
-                }
-            }
-        },
         "dto.UpdateOrderRequest": {
             "type": "object",
             "required": [
@@ -4437,20 +3419,6 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.UpdateWorkspaceRequest": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string",
-                    "maxLength": 500
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 2
-                }
-            }
-        },
         "dto.UserInfo": {
             "type": "object",
             "properties": {
@@ -4463,65 +3431,7 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.WorkspaceMemberResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "isDefault": {
-                    "type": "boolean"
-                },
-                "joinedAt": {
-                    "type": "string"
-                },
-                "roleName": {
-                    "type": "string"
-                },
-                "userEmail": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                },
-                "userName": {
-                    "type": "string"
-                },
-                "workspaceId": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.WorkspaceResponse": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "ownerEmail": {
-                    "type": "string"
-                },
-                "ownerId": {
-                    "type": "string"
-                },
-                "ownerName": {
-                    "type": "string"
-                },
-                "updatedAt": {
+                "user_id": {
                     "type": "string"
                 }
             }

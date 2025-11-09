@@ -142,28 +142,28 @@ func main() {
 			// Project CRUD
 			projects.POST("", projectHandler.CreateProject)
 			projects.GET("", projectHandler.GetProjects)           // Get all projects in workspace
-			projects.GET("/search", projectHandler.SearchProjects) // Must be before /:id
-			projects.GET("/:id", projectHandler.GetProject)
-			projects.PUT("/:id", projectHandler.UpdateProject)
-			projects.DELETE("/:id", projectHandler.DeleteProject)
+			projects.GET("/search", projectHandler.SearchProjects) // Must be before /:project_id
+			projects.GET("/:project_id", projectHandler.GetProject)
+			projects.PUT("/:project_id", projectHandler.UpdateProject)
+			projects.DELETE("/:project_id", projectHandler.DeleteProject)
 
 			// Join Requests
 			projects.POST("/join-requests", projectHandler.CreateJoinRequest)
-			projects.GET("/:id/join-requests", projectHandler.GetJoinRequests)
-			projects.PUT("/join-requests/:id", projectHandler.UpdateJoinRequest)
+			projects.GET("/:project_id/join-requests", projectHandler.GetJoinRequests)
+			projects.PUT("/join-requests/:join_request_id", projectHandler.UpdateJoinRequest)
 
 			// Members
-			projects.GET("/:id/members", projectHandler.GetProjectMembers)
-			projects.PUT("/:id/members/:memberId/role", projectHandler.UpdateMemberRole)
-			projects.DELETE("/:id/members/:memberId", projectHandler.RemoveMember)
+			projects.GET("/:project_id/members", projectHandler.GetProjectMembers)
+			projects.PUT("/:project_id/members/:member_id/role", projectHandler.UpdateMemberRole)
+			projects.DELETE("/:project_id/members/:member_id", projectHandler.RemoveMember)
 
 			// User Order Management (Drag-and-Drop)
-			projects.GET("/:id/orders/role-board", userOrderHandler.GetRoleBasedBoardView)
-			projects.GET("/:id/orders/stage-board", userOrderHandler.GetStageBasedBoardView)
-			projects.PUT("/:id/orders/role-columns", userOrderHandler.UpdateRoleColumnOrder)
-			projects.PUT("/:id/orders/stage-columns", userOrderHandler.UpdateStageColumnOrder)
-			projects.PUT("/:id/orders/role-boards/:roleId", userOrderHandler.UpdateBoardOrderInRole)
-			projects.PUT("/:id/orders/stage-boards/:stageId", userOrderHandler.UpdateBoardOrderInStage)
+			projects.GET("/:project_id/orders/role-board", userOrderHandler.GetRoleBasedBoardView)
+			projects.GET("/:project_id/orders/stage-board", userOrderHandler.GetStageBasedBoardView)
+			projects.PUT("/:project_id/orders/role-columns", userOrderHandler.UpdateRoleColumnOrder)
+			projects.PUT("/:project_id/orders/stage-columns", userOrderHandler.UpdateStageColumnOrder)
+			projects.PUT("/:project_id/orders/role-boards/:role_id", userOrderHandler.UpdateBoardOrderInRole)
+			projects.PUT("/:project_id/orders/stage-boards/:stage_id", userOrderHandler.UpdateBoardOrderInStage)
 		}
 
 		// Custom Fields routes
@@ -171,37 +171,37 @@ func main() {
 		{
 			// Custom Roles
 			customFields.POST("/roles", customFieldHandler.CreateCustomRole)
-			customFields.GET("/projects/:projectId/roles", customFieldHandler.GetCustomRoles)
-			customFields.GET("/roles/:id", customFieldHandler.GetCustomRole)
-			customFields.PUT("/roles/:id", customFieldHandler.UpdateCustomRole)
-			customFields.DELETE("/roles/:id", customFieldHandler.DeleteCustomRole)
-			customFields.PUT("/projects/:projectId/roles/order", customFieldHandler.UpdateCustomRoleOrder)
+			customFields.GET("/projects/:project_id/roles", customFieldHandler.GetCustomRoles)
+			customFields.GET("/roles/:role_id", customFieldHandler.GetCustomRole)
+			customFields.PUT("/roles/:role_id", customFieldHandler.UpdateCustomRole)
+			customFields.DELETE("/roles/:role_id", customFieldHandler.DeleteCustomRole)
+			customFields.PUT("/projects/:project_id/roles/order", customFieldHandler.UpdateCustomRoleOrder)
 
 			// Custom Stages
 			customFields.POST("/stages", customFieldHandler.CreateCustomStage)
-			customFields.GET("/projects/:projectId/stages", customFieldHandler.GetCustomStages)
-			customFields.GET("/stages/:id", customFieldHandler.GetCustomStage)
-			customFields.PUT("/stages/:id", customFieldHandler.UpdateCustomStage)
-			customFields.DELETE("/stages/:id", customFieldHandler.DeleteCustomStage)
-			customFields.PUT("/projects/:projectId/stages/order", customFieldHandler.UpdateCustomStageOrder)
+			customFields.GET("/projects/:project_id/stages", customFieldHandler.GetCustomStages)
+			customFields.GET("/stages/:stage_id", customFieldHandler.GetCustomStage)
+			customFields.PUT("/stages/:stage_id", customFieldHandler.UpdateCustomStage)
+			customFields.DELETE("/stages/:stage_id", customFieldHandler.DeleteCustomStage)
+			customFields.PUT("/projects/:project_id/stages/order", customFieldHandler.UpdateCustomStageOrder)
 
 			// Custom Importance
 			customFields.POST("/importance", customFieldHandler.CreateCustomImportance)
-			customFields.GET("/projects/:projectId/importance", customFieldHandler.GetCustomImportances)
-			customFields.GET("/importance/:id", customFieldHandler.GetCustomImportance)
-			customFields.PUT("/importance/:id", customFieldHandler.UpdateCustomImportance)
-			customFields.DELETE("/importance/:id", customFieldHandler.DeleteCustomImportance)
-			customFields.PUT("/projects/:projectId/importance/order", customFieldHandler.UpdateCustomImportanceOrder)
+			customFields.GET("/projects/:project_id/importance", customFieldHandler.GetCustomImportances)
+			customFields.GET("/importance/:importance_id", customFieldHandler.GetCustomImportance)
+			customFields.PUT("/importance/:importance_id", customFieldHandler.UpdateCustomImportance)
+			customFields.DELETE("/importance/:importance_id", customFieldHandler.DeleteCustomImportance)
+			customFields.PUT("/projects/:project_id/importance/order", customFieldHandler.UpdateCustomImportanceOrder)
 		}
 
 		// Board routes
 		boards := api.Group("/boards")
 		{
 			boards.POST("", boardHandler.CreateBoard)
-			boards.GET("/:id", boardHandler.GetBoard)
+			boards.GET("/:board_id", boardHandler.GetBoard)
 			boards.GET("", boardHandler.GetBoards)
-			boards.PUT("/:id", boardHandler.UpdateBoard)
-			boards.DELETE("/:id", boardHandler.DeleteBoard)
+			boards.PUT("/:board_id", boardHandler.UpdateBoard)
+			boards.DELETE("/:board_id", boardHandler.DeleteBoard)
 		}
 
 		// Comment routes

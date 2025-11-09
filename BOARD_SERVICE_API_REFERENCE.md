@@ -65,7 +65,7 @@ Content-Type: application/json
 
 Request:
 {
-  "workspaceId": "uuid",
+  "workspace_id": "uuid",
   "name": "string",
   "description": "string"
 }
@@ -74,10 +74,10 @@ Response 201:
 {
   "data": {
     "id": "uuid",
-    "workspaceId": "uuid",
+    "workspace_id": "uuid",
     "name": "string",
     "description": "string",
-    "ownerId": "uuid",
+    "owner_id": "uuid",
     "ownerName": "string",
     "ownerEmail": "string",
     "createdAt": "timestamp",
@@ -177,7 +177,7 @@ Response 200:
   "data": [
     {
       "id": "uuid",
-      "projectId": "uuid",
+      "project_id": "uuid",
       "name": "string",
       "color": "#RRGGBB",
       "isSystemDefault": false,
@@ -197,7 +197,7 @@ Content-Type: application/json
 
 Request:
 {
-  "projectId": "uuid",
+  "project_id": "uuid",
   "name": "string",
   "color": "#RRGGBB"
 }
@@ -242,7 +242,7 @@ Content-Type: application/json
 
 Request:
 {
-  "projectId": "uuid",
+  "project_id": "uuid",
   "name": "string",
   "color": "#RRGGBB",
   "level": 1-5
@@ -263,13 +263,13 @@ Content-Type: application/json
 
 Request:
 {
-  "projectId": "uuid",
+  "project_id": "uuid",
   "title": "string",              // required, max 200
   "content": "string",             // max 5000
-  "roleIds": ["uuid"],             // required, 최소 1개
-  "stageId": "uuid",               // required
-  "importanceId": "uuid",          // optional
-  "assigneeId": "uuid",            // optional
+  "role_ids": ["uuid"],             // required, 최소 1개
+  "stage_id": "uuid",               // required
+  "importance_id": "uuid",          // optional
+  "assignee_id": "uuid",            // optional
   "dueDate": "ISO 8601 string"     // optional
 }
 
@@ -277,7 +277,7 @@ Response 201:
 {
   "data": {
     "id": "uuid",
-    "projectId": "uuid",
+    "project_id": "uuid",
     "title": "string",
     "content": "string",
     "stage": CustomStageResponse,
@@ -342,10 +342,10 @@ Request:
 {
   "title": "string",
   "content": "string",           ← content!
-  "stageId": "uuid",
-  "importanceId": "uuid",
-  "roleIds": ["uuid"],
-  "assigneeId": "uuid",
+  "stage_id": "uuid",
+  "importance_id": "uuid",
+  "role_ids": ["uuid"],
+  "assignee_id": "uuid",
   "dueDate": "ISO 8601"
 }
 
@@ -384,7 +384,7 @@ Content-Type: application/json
 
 Request:
 {
-  "boardId": "uuid",
+  "board_id": "uuid",
   "content": "string"
 }
 
@@ -392,8 +392,8 @@ Response 201:
 {
   "data": {
     "id": "uuid",
-    "boardId": "uuid",
-    "userId": "uuid",
+    "board_id": "uuid",
+    "user_id": "uuid",
     "content": "string",
     "author": {
       "id": "uuid",
@@ -615,7 +615,7 @@ Response 200: { "data": "진행단계별 칸반 순서가 업데이트되었습�
 # 1. 프로젝트 생성
 POST /api/projects
 {
-  "workspaceId": "...",
+  "workspace_id": "...",
   "name": "My Project"
 }
 → projectId 획득
@@ -630,11 +630,11 @@ GET /api/custom-fields/projects/{projectId}/stages
 # 3. Board 생성
 POST /api/boards
 {
-  "projectId": "...",
+  "project_id": "...",
   "title": "첫 번째 작업",
   "content": "작업 설명",
-  "roleIds": ["없음 Role ID"],
-  "stageId": "대기 Stage ID"
+  "role_ids": ["없음 Role ID"],
+  "stage_id": "대기 Stage ID"
 }
 ```
 

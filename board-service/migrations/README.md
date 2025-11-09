@@ -73,7 +73,7 @@ Update models in `internal/domain/`:
 // internal/domain/attachment.go
 type Attachment struct {
     BaseModel
-    KanbanID  uuid.UUID `gorm:"type:uuid;not null;index" json:"kanban_id"`
+    BoardID   uuid.UUID `gorm:"type:uuid;not null;index" json:"board_id"`
     FileName  string    `gorm:"type:varchar(255);not null" json:"file_name"`
     FileURL   string    `gorm:"type:text;not null" json:"file_url"`
     FileSize  int64     `gorm:"not null" json:"file_size"`
@@ -102,7 +102,7 @@ ENV=dev USE_AUTO_MIGRATE=true go run cmd/api/main.go
 cat > migrations/20250110153000_add_attachments_table.up.sql << 'EOF'
 CREATE TABLE IF NOT EXISTS attachments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    kanban_id UUID NOT NULL,
+    board_id UUID NOT NULL,
     file_name VARCHAR(255) NOT NULL,
     file_url TEXT NOT NULL,
     file_size BIGINT NOT NULL,
@@ -111,9 +111,9 @@ CREATE TABLE IF NOT EXISTS attachments (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_attachments_kanban_id ON attachments(kanban_id);
+CREATE INDEX idx_attachments_board_id ON attachments(board_id);
 
-COMMENT ON COLUMN attachments.kanban_id IS 'References kanbans.id (no FK for sharding compatibility)';
+COMMENT ON COLUMN attachments.board_id IS 'References boards.id (no FK for sharding compatibility)';
 
 INSERT INTO schema_versions (version, description)
 VALUES ('20250110153000', 'Add attachments table');

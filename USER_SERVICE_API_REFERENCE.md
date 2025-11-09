@@ -52,10 +52,10 @@ User Service는 사용자 관리, 인증, 프로필, 워크스페이스 관리�
 ### User (사용자)
 ```java
 {
-  "userId": "UUID",              // 사용자 ID (PK)
+  "user_id": "UUID",              // 사용자 ID (PK)
   "email": "string",             // 이메일 (unique)
   "provider": "google",          // OAuth 제공자
-  "googleId": "string",          // Google ID (unique)
+  "google_id": "string",          // Google ID (unique)
   "createdAt": "timestamp",      // 생성 시간
   "updatedAt": "timestamp",      // 수정 시간
   "isActive": "boolean",         // 활성화 상태 (기본: true)
@@ -66,8 +66,8 @@ User Service는 사용자 관리, 인증, 프로필, 워크스페이스 관리�
 ### UserProfile (사용자 프로필)
 ```java
 {
-  "profileId": "UUID",           // 프로필 ID (PK)
-  "userId": "UUID",              // 사용자 ID (FK, unique)
+  "profile_id": "UUID",           // 프로필 ID (PK)
+  "user_id": "UUID",              // 사용자 ID (FK, unique)
   "name": "string",              // 이름 (최대 50자)
   "profileImageUrl": "string",   // 프로필 이미지 URL (nullable)
   "createdAt": "timestamp",      // 생성 시간
@@ -79,7 +79,7 @@ User Service는 사용자 관리, 인증, 프로필, 워크스페이스 관리�
 테이블명: `groups`
 ```java
 {
-  "groupId": "UUID",             // 워크스페이스 ID (PK)
+  "group_id": "UUID",             // 워크스페이스 ID (PK)
   "name": "string",              // 워크스페이스 이름
   "companyName": "string",       // 설명 (description 역할)
   "createdAt": "timestamp",      // 생성 시간
@@ -93,8 +93,8 @@ User Service는 사용자 관리, 인증, 프로필, 워크스페이스 관리�
 ```java
 {
   "memberId": "UUID",            // 멤버 ID (PK)
-  "workspaceId": "UUID",         // 워크스페이스 ID (FK)
-  "userId": "UUID",              // 사용자 ID (FK)
+  "workspace_id": "UUID",         // 워크스페이스 ID (FK)
+  "user_id": "UUID",              // 사용자 ID (FK)
   "role": "string",              // 역할: OWNER, ADMIN, MEMBER
   "joinedAt": "timestamp"        // 가입 시간
 }
@@ -104,8 +104,8 @@ User Service는 사용자 관리, 인증, 프로필, 워크스페이스 관리�
 ```java
 {
   "requestId": "UUID",           // 신청 ID (PK)
-  "workspaceId": "UUID",         // 워크스페이스 ID (FK)
-  "userId": "UUID",              // 신청자 ID (FK)
+  "workspace_id": "UUID",         // 워크스페이스 ID (FK)
+  "user_id": "UUID",              // 신청자 ID (FK)
   "status": "string",            // 상태: PENDING, APPROVED, REJECTED
   "createdAt": "timestamp",      // 신청 시간
   "processedAt": "timestamp"     // 처리 시간
@@ -144,7 +144,7 @@ Response 200:
 {
   "accessToken": "string",
   "refreshToken": "string",
-  "userId": "UUID",
+  "user_id": "UUID",
   "name": "string",
   "email": "string",
   "tokenType": "Bearer"
@@ -233,8 +233,8 @@ Authorization: Bearer <access_token>
 
 Response 200:
 {
-  "profileId": "UUID",
-  "userId": "UUID",
+  "profile_id": "UUID",
+  "user_id": "UUID",
   "name": "string",
   "profileImageUrl": "string",
   "createdAt": "timestamp",
@@ -316,7 +316,7 @@ Content-Type: application/json
 
 Request:
 {
-  "workspaceId": "UUID"
+  "workspace_id": "UUID"
 }
 
 Response 200: (empty body)
@@ -375,7 +375,7 @@ Response 200:
 [
   {
     "memberId": "UUID",
-    "userId": "UUID",
+    "user_id": "UUID",
     "userName": "string",
     "userEmail": "string",
     "role": "OWNER|ADMIN|MEMBER",
@@ -418,14 +418,14 @@ Content-Type: application/json
 
 Request:
 {
-  "workspaceId": "UUID"
+  "workspace_id": "UUID"
 }
 
 Response 200:
 {
   "requestId": "UUID",
-  "workspaceId": "UUID",
-  "userId": "UUID",
+  "workspace_id": "UUID",
+  "user_id": "UUID",
   "userName": "string",
   "status": "PENDING",
   "createdAt": "timestamp"

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, Settings, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, ChevronDown, Eye, Table, LayoutGrid, Plus, Settings } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface FilterBarProps {
@@ -8,6 +8,10 @@ interface FilterBarProps {
   onFilterChange: (filter: string) => void;
   onManageClick: () => void;
   currentView: 'stage' | 'role';
+  onLayoutChange?: (layout: 'table' | 'board') => void;
+  onShowCompletedChange?: (show: boolean) => void;
+  currentLayout?: 'table' | 'board';
+  showCompleted?: boolean;
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -16,12 +20,21 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onFilterChange,
   onManageClick,
   currentView,
+  onLayoutChange,
+  onShowCompletedChange,
+  currentLayout = 'board',
+  showCompleted = false,
 }) => {
   const { theme } = useTheme();
   const [searchValue, setSearchValue] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [showViewDropdown, setShowViewDropdown] = useState(false);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+
+  // Refs for outside click detection
+  const viewModalRef = useRef<HTMLDivElement>(null);
+  const filterDropdownRef = useRef<HTMLDivElement>(null);
 
   const handleSearchChange = (value: string) => {
     setSearchValue(value);
@@ -52,6 +65,31 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     { value: 'hideCompleted', label: '완료된 것 숨기기' },
   ];
 
+  // 외부 클릭 감지
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+
+      // View modal 외부 클릭
+      if (viewModalRef.current && !viewModalRef.current.contains(target)) {
+        setShowViewModal(false);
+      }
+
+      // Filter dropdown 외부 클릭
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(target)) {
+        setShowFilterDropdown(false);
+      }
+    };
+
+    if (showViewModal || showFilterDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showViewModal, showFilterDropdown]);
+
   return (
     <div
       className={`flex items-center gap-3 p-4 ${theme.colors.card} border-b ${theme.colors.border}`}
@@ -68,40 +106,98 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         />
       </div>
 
-      {/* View Selector */}
-      <div className="relative">
+      {/* View Modal Button */}
+      <div className="relative" ref={viewModalRef}>
         <button
-          onClick={() => setShowViewDropdown(!showViewDropdown)}
+          onClick={() => {
+            setShowViewModal(!showViewModal);
+            setShowFilterDropdown(false);
+          }}
           className={`flex items-center gap-2 px-4 py-2 border ${theme.colors.border} rounded-md ${theme.colors.card} hover:bg-gray-50 transition-colors`}
         >
-          <span className="text-sm font-medium">
-            뷰: {viewOptions.find((v) => v.value === currentView)?.label}
-          </span>
-          <ChevronDown className="w-4 h-4" />
+          <Eye className="w-4 h-4" />
+          <span className="text-sm font-medium">보기</span>
+          <ChevronDown
+            className={`w-4 h-4 transition-transform ${showViewModal ? 'rotate-180' : ''}`}
+          />
         </button>
-        {showViewDropdown && (
+        {showViewModal && (
           <div
-            className={`absolute top-full mt-2 right-0 w-48 ${theme.colors.card} border ${theme.colors.border} rounded-md shadow-lg z-10`}
+            className={`absolute top-full mt-2 right-0 w-64 ${theme.colors.card} border ${theme.colors.border} rounded-lg shadow-lg z-10 p-4`}
           >
-            {viewOptions.map((option) => (
+            {/* Layout Selection */}
+            <div className="mb-4">
+              <h4 className="text-xs font-semibold text-gray-500 mb-2">레이아웃</h4>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    onLayoutChange?.('table');
+                  }}
+                  className={`flex-1 flex flex-col items-center gap-2 px-3 py-3 rounded-md border-2 transition-all ${
+                    currentLayout === 'table'
+                      ? 'border-blue-500 bg-blue-50 text-blue-600'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <Table
+                    className={`w-6 h-6 ${
+                      currentLayout === 'table' ? 'text-blue-600' : 'text-gray-600'
+                    }`}
+                  />
+                  <span className="text-sm font-medium">표</span>
+                </button>
+                <button
+                  onClick={() => {
+                    onLayoutChange?.('board');
+                  }}
+                  className={`flex-1 flex flex-col items-center gap-2 px-3 py-3 rounded-md border-2 transition-all ${
+                    currentLayout === 'board'
+                      ? 'border-blue-500 bg-blue-50 text-blue-600'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <LayoutGrid
+                    className={`w-6 h-6 ${
+                      currentLayout === 'board' ? 'text-blue-600' : 'text-gray-600'
+                    }`}
+                  />
+                  <span className="text-sm font-medium">보드</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-gray-200 my-3"></div>
+
+            {/* Show Completed Toggle */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">완료된 항목 보기</span>
               <button
-                key={option.value}
-                onClick={() => handleViewChange(option.value as 'stage' | 'role')}
-                className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors ${
-                  currentView === option.value ? 'bg-blue-50 text-blue-600 font-medium' : ''
+                onClick={() => {
+                  onShowCompletedChange?.(!showCompleted);
+                }}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  showCompleted ? 'bg-blue-500' : 'bg-gray-300'
                 }`}
               >
-                {option.label}
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    showCompleted ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
               </button>
-            ))}
+            </div>
           </div>
         )}
       </div>
 
       {/* Filter Dropdown */}
-      <div className="relative">
+      <div className="relative" ref={filterDropdownRef}>
         <button
-          onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+          onClick={() => {
+            setShowFilterDropdown(!showFilterDropdown);
+            setShowViewModal(false);
+          }}
           className={`flex items-center gap-2 px-4 py-2 border ${theme.colors.border} rounded-md ${theme.colors.card} hover:bg-gray-50 transition-colors`}
         >
           <span className="text-sm font-medium">
@@ -111,32 +207,41 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </button>
         {showFilterDropdown && (
           <div
-            className={`absolute top-full mt-2 right-0 w-56 ${theme.colors.card} border ${theme.colors.border} rounded-md shadow-lg z-10`}
+            className={`absolute top-full mt-2 left-0 w-64 ${theme.colors.card} ${theme.effects.cardBorderWidth} ${theme.colors.border} ${theme.effects.borderRadius} shadow-lg z-10`}
           >
-            {filterOptions.map((option) => (
+            <div className="p-3 max-h-80 overflow-y-auto">
+              <h3 className="text-xs text-gray-400 mb-2 px-1 font-semibold">
+                필터 ({filterOptions.length})
+              </h3>
+              {filterOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => handleFilterChange(option.value)}
+                  className={`w-full px-3 py-2 text-left text-sm rounded transition truncate ${
+                    selectedFilter === option.value
+                      ? 'bg-blue-100 text-blue-700 font-semibold'
+                      : 'hover:bg-gray-100 text-gray-800'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <div className="pt-2 pb-2 border-t">
               <button
-                key={option.value}
-                onClick={() => handleFilterChange(option.value)}
-                className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors ${
-                  selectedFilter === option.value ? 'bg-blue-50 text-blue-600 font-medium' : ''
-                }`}
+                onClick={() => {
+                  console.log('커스텀 필터 클릭');
+                  setShowFilterDropdown(false);
+                }}
+                className={`w-full px-6 py-2 text-left text-sm flex items-center gap-2 text-blue-500 hover:bg-gray-100 ${theme.effects.borderRadius} transition`}
               >
-                {option.label}
+                <Settings className="w-4 h-4" />
+                커스텀 필터 관리
               </button>
-            ))}
+            </div>
           </div>
         )}
       </div>
-
-      {/* Manage Button */}
-      <button
-        onClick={onManageClick}
-        className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-        title="커스텀 필드 관리"
-      >
-        <Settings className="w-4 h-4" />
-        <span className="text-sm font-medium">관리</span>
-      </button>
     </div>
   );
 };

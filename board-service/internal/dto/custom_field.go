@@ -6,7 +6,7 @@ import "time"
 
 // Request DTOs
 type CreateCustomRoleRequest struct {
-	ProjectID string `json:"projectId" binding:"required,uuid"`
+	ProjectID string `json:"project_id" binding:"required,uuid"`
 	Name      string `json:"name" binding:"required,min=1,max=50"`
 	Color     string `json:"color" binding:"omitempty,len=7"` // #RRGGBB
 }
@@ -21,14 +21,14 @@ type UpdateCustomRoleOrderRequest struct {
 }
 
 type RoleOrder struct {
-	RoleID       string `json:"roleId" binding:"required,uuid"`
+	RoleID       string `json:"role_id" binding:"required,uuid"`
 	DisplayOrder int    `json:"displayOrder" binding:"min=0"`
 }
 
 // Response DTOs
 type CustomRoleResponse struct {
-	ID              string    `json:"id"`
-	ProjectID       string    `json:"projectId"`
+	ID              string    `json:"role_id"`
+	ProjectID       string    `json:"project_id"`
 	Name            string    `json:"name"`
 	Color           string    `json:"color"`
 	IsSystemDefault bool      `json:"isSystemDefault"`
@@ -41,7 +41,7 @@ type CustomRoleResponse struct {
 
 // Request DTOs
 type CreateCustomStageRequest struct {
-	ProjectID string `json:"projectId" binding:"required,uuid"`
+	ProjectID string `json:"project_id" binding:"required,uuid"`
 	Name      string `json:"name" binding:"required,min=1,max=50"`
 	Color     string `json:"color" binding:"omitempty,len=7"`
 }
@@ -56,14 +56,14 @@ type UpdateCustomStageOrderRequest struct {
 }
 
 type StageOrder struct {
-	StageID      string `json:"stageId" binding:"required,uuid"`
+	StageID      string `json:"stage_id" binding:"required,uuid"`
 	DisplayOrder int    `json:"displayOrder" binding:"min=0"`
 }
 
 // Response DTOs
 type CustomStageResponse struct {
-	ID              string    `json:"id"`
-	ProjectID       string    `json:"projectId"`
+	ID              string    `json:"stage_id"`
+	ProjectID       string    `json:"project_id"`
 	Name            string    `json:"name"`
 	Color           string    `json:"color"`
 	IsSystemDefault bool      `json:"isSystemDefault"`
@@ -76,7 +76,7 @@ type CustomStageResponse struct {
 
 // Request DTOs
 type CreateCustomImportanceRequest struct {
-	ProjectID string `json:"projectId" binding:"required,uuid"`
+	ProjectID string `json:"project_id" binding:"required,uuid"`
 	Name      string `json:"name" binding:"required,min=1,max=50"`
 	Color     string `json:"color" binding:"omitempty,len=7"`
 }
@@ -91,14 +91,14 @@ type UpdateCustomImportanceOrderRequest struct {
 }
 
 type ImportanceOrder struct {
-	ImportanceID string `json:"importanceId" binding:"required,uuid"`
+	ImportanceID string `json:"importance_id" binding:"required,uuid"`
 	DisplayOrder int    `json:"displayOrder" binding:"min=0"`
 }
 
 // Response DTOs
 type CustomImportanceResponse struct {
-	ID              string    `json:"id"`
-	ProjectID       string    `json:"projectId"`
+	ID              string    `json:"importance_id"`
+	ProjectID       string    `json:"project_id"`
 	Name            string    `json:"name"`
 	Color           string    `json:"color"`
 	IsSystemDefault bool      `json:"isSystemDefault"`

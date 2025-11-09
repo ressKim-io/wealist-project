@@ -2,7 +2,7 @@ basePath: /api
 definitions:
   dto.BoardOrderResponse:
     properties:
-      boardId:
+      board_id:
         type: string
       displayOrder:
         type: integer
@@ -15,17 +15,17 @@ definitions:
         $ref: '#/definitions/dto.UserInfo'
       author:
         $ref: '#/definitions/dto.UserInfo'
+      board_id:
+        type: string
       content:
         type: string
       createdAt:
         type: string
       dueDate:
         type: string
-      id:
-        type: string
       importance:
         $ref: '#/definitions/dto.CustomImportanceResponse'
-      projectId:
+      project_id:
         type: string
       roles:
         items:
@@ -40,7 +40,7 @@ definitions:
     type: object
   dto.CreateBoardRequest:
     properties:
-      assigneeId:
+      assignee_id:
         type: string
       content:
         maxLength: 5000
@@ -48,25 +48,25 @@ definitions:
       dueDate:
         description: ISO 8601 format
         type: string
-      importanceId:
+      importance_id:
         type: string
-      projectId:
+      project_id:
         type: string
-      roleIds:
+      role_ids:
         items:
           type: string
         minItems: 1
         type: array
-      stageId:
+      stage_id:
         type: string
       title:
         maxLength: 200
         minLength: 1
         type: string
     required:
-    - projectId
-    - roleIds
-    - stageId
+    - project_id
+    - role_ids
+    - stage_id
     - title
     type: object
   dto.CreateCustomImportanceRequest:
@@ -77,11 +77,11 @@ definitions:
         maxLength: 50
         minLength: 1
         type: string
-      projectId:
+      project_id:
         type: string
     required:
     - name
-    - projectId
+    - project_id
     type: object
   dto.CreateCustomRoleRequest:
     properties:
@@ -92,11 +92,11 @@ definitions:
         maxLength: 50
         minLength: 1
         type: string
-      projectId:
+      project_id:
         type: string
     required:
     - name
-    - projectId
+    - project_id
     type: object
   dto.CreateCustomStageRequest:
     properties:
@@ -106,25 +106,18 @@ definitions:
         maxLength: 50
         minLength: 1
         type: string
-      projectId:
+      project_id:
         type: string
     required:
     - name
-    - projectId
-    type: object
-  dto.CreateJoinRequestRequest:
-    properties:
-      workspaceId:
-        type: string
-    required:
-    - workspaceId
+    - project_id
     type: object
   dto.CreateProjectJoinRequestRequest:
     properties:
-      projectId:
+      project_id:
         type: string
     required:
-    - projectId
+    - project_id
     type: object
   dto.CreateProjectRequest:
     properties:
@@ -135,23 +128,11 @@ definitions:
         maxLength: 100
         minLength: 2
         type: string
-      workspaceId:
+      workspace_id:
         type: string
     required:
     - name
-    - workspaceId
-    type: object
-  dto.CreateWorkspaceRequest:
-    properties:
-      description:
-        maxLength: 500
-        type: string
-      name:
-        maxLength: 100
-        minLength: 2
-        type: string
-    required:
-    - name
+    - workspace_id
     type: object
   dto.CustomImportanceResponse:
     properties:
@@ -161,13 +142,13 @@ definitions:
         type: string
       displayOrder:
         type: integer
-      id:
+      importance_id:
         type: string
       isSystemDefault:
         type: boolean
       name:
         type: string
-      projectId:
+      project_id:
         type: string
       updatedAt:
         type: string
@@ -180,13 +161,13 @@ definitions:
         type: string
       displayOrder:
         type: integer
-      id:
-        type: string
       isSystemDefault:
         type: boolean
       name:
         type: string
-      projectId:
+      project_id:
+        type: string
+      role_id:
         type: string
       updatedAt:
         type: string
@@ -199,13 +180,13 @@ definitions:
         type: string
       displayOrder:
         type: integer
-      id:
-        type: string
       isSystemDefault:
         type: boolean
       name:
         type: string
-      projectId:
+      project_id:
+        type: string
+      stage_id:
         type: string
       updatedAt:
         type: string
@@ -227,29 +208,10 @@ definitions:
       displayOrder:
         minimum: 0
         type: integer
-      importanceId:
+      importance_id:
         type: string
     required:
-    - importanceId
-    type: object
-  dto.JoinRequestResponse:
-    properties:
-      id:
-        type: string
-      requestedAt:
-        type: string
-      status:
-        type: string
-      updatedAt:
-        type: string
-      userEmail:
-        type: string
-      userId:
-        type: string
-      userName:
-        type: string
-      workspaceId:
-        type: string
+    - importance_id
     type: object
   dto.PaginatedBoardsResponse:
     properties:
@@ -277,24 +239,11 @@ definitions:
       total:
         type: integer
     type: object
-  dto.PaginatedWorkspacesResponse:
-    properties:
-      limit:
-        type: integer
-      page:
-        type: integer
-      total:
-        type: integer
-      workspaces:
-        items:
-          $ref: '#/definitions/dto.WorkspaceResponse'
-        type: array
-    type: object
   dto.ProjectJoinRequestResponse:
     properties:
-      id:
+      project_id:
         type: string
-      projectId:
+      request_id:
         type: string
       requestedAt:
         type: string
@@ -302,26 +251,26 @@ definitions:
         type: string
       updatedAt:
         type: string
-      userEmail:
+      user_id:
         type: string
-      userId:
+      userEmail:
         type: string
       userName:
         type: string
     type: object
   dto.ProjectMemberResponse:
     properties:
-      id:
-        type: string
       joinedAt:
         type: string
-      projectId:
+      member_id:
+        type: string
+      project_id:
         type: string
       roleName:
         type: string
-      userEmail:
+      user_id:
         type: string
-      userId:
+      userEmail:
         type: string
       userName:
         type: string
@@ -332,19 +281,19 @@ definitions:
         type: string
       description:
         type: string
-      id:
-        type: string
       name:
+        type: string
+      owner_id:
         type: string
       ownerEmail:
         type: string
-      ownerId:
-        type: string
       ownerName:
+        type: string
+      project_id:
         type: string
       updatedAt:
         type: string
-      workspaceId:
+      workspace_id:
         type: string
     type: object
   dto.RoleBasedBoardView:
@@ -353,7 +302,7 @@ definitions:
         items:
           $ref: '#/definitions/dto.RoleColumnView'
         type: array
-      projectId:
+      project_id:
         type: string
       viewType:
         description: '"role"'
@@ -365,7 +314,7 @@ definitions:
         items:
           $ref: '#/definitions/dto.BoardOrderResponse'
         type: array
-      customRoleId:
+      custom_role_id:
         type: string
       displayOrder:
         type: integer
@@ -379,17 +328,10 @@ definitions:
       displayOrder:
         minimum: 0
         type: integer
-      roleId:
+      role_id:
         type: string
     required:
-    - roleId
-    type: object
-  dto.SetDefaultWorkspaceRequest:
-    properties:
-      workspaceId:
-        type: string
-    required:
-    - workspaceId
+    - role_id
     type: object
   dto.StageBasedBoardView:
     properties:
@@ -397,7 +339,7 @@ definitions:
         items:
           $ref: '#/definitions/dto.StageColumnView'
         type: array
-      projectId:
+      project_id:
         type: string
       viewType:
         description: '"stage"'
@@ -409,7 +351,7 @@ definitions:
         items:
           $ref: '#/definitions/dto.BoardOrderResponse'
         type: array
-      customStageId:
+      custom_stage_id:
         type: string
       displayOrder:
         type: integer
@@ -423,10 +365,10 @@ definitions:
       displayOrder:
         minimum: 0
         type: integer
-      stageId:
+      stage_id:
         type: string
     required:
-    - stageId
+    - stage_id
     type: object
   dto.SuccessResponse:
     properties:
@@ -436,20 +378,20 @@ definitions:
     type: object
   dto.UpdateBoardRequest:
     properties:
-      assigneeId:
+      assignee_id:
         type: string
       content:
         maxLength: 5000
         type: string
       dueDate:
         type: string
-      importanceId:
+      importance_id:
         type: string
-      roleIds:
+      role_ids:
         items:
           type: string
         type: array
-      stageId:
+      stage_id:
         type: string
       title:
         maxLength: 200
@@ -513,27 +455,6 @@ definitions:
         minLength: 1
         type: string
     type: object
-  dto.UpdateJoinRequestRequest:
-    properties:
-      status:
-        enum:
-        - APPROVED
-        - REJECTED
-        type: string
-    required:
-    - status
-    type: object
-  dto.UpdateMemberRoleRequest:
-    properties:
-      roleName:
-        enum:
-        - OWNER
-        - ADMIN
-        - MEMBER
-        type: string
-    required:
-    - roleName
-    type: object
   dto.UpdateOrderRequest:
     properties:
       itemIds:
@@ -576,16 +497,6 @@ definitions:
         minLength: 2
         type: string
     type: object
-  dto.UpdateWorkspaceRequest:
-    properties:
-      description:
-        maxLength: 500
-        type: string
-      name:
-        maxLength: 100
-        minLength: 2
-        type: string
-    type: object
   dto.UserInfo:
     properties:
       email:
@@ -594,45 +505,7 @@ definitions:
         type: boolean
       name:
         type: string
-      userId:
-        type: string
-    type: object
-  dto.WorkspaceMemberResponse:
-    properties:
-      id:
-        type: string
-      isDefault:
-        type: boolean
-      joinedAt:
-        type: string
-      roleName:
-        type: string
-      userEmail:
-        type: string
-      userId:
-        type: string
-      userName:
-        type: string
-      workspaceId:
-        type: string
-    type: object
-  dto.WorkspaceResponse:
-    properties:
-      createdAt:
-        type: string
-      description:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      ownerEmail:
-        type: string
-      ownerId:
-        type: string
-      ownerName:
-        type: string
-      updatedAt:
+      user_id:
         type: string
     type: object
 host: localhost:8000
@@ -656,28 +529,28 @@ paths:
       parameters:
       - description: Project ID
         in: query
-        name: projectId
+        name: project_id
         required: true
         type: string
       - description: Filter by Stage ID
         in: query
-        name: stageId
+        name: stage_id
         type: string
       - description: Filter by Role ID
         in: query
-        name: roleId
+        name: role_id
         type: string
       - description: Filter by Importance ID
         in: query
-        name: importanceId
+        name: importance_id
         type: string
       - description: Filter by Assignee ID
         in: query
-        name: assigneeId
+        name: assignee_id
         type: string
       - description: Filter by Author ID
         in: query
-        name: authorId
+        name: author_id
         type: string
       - description: 'Page number (default: 1)'
         in: query
@@ -752,7 +625,7 @@ paths:
       summary: Create board
       tags:
       - boards
-  /api/boards/{id}:
+  /api/boards/{board_id}:
     delete:
       consumes:
       - application/json
@@ -760,7 +633,7 @@ paths:
       parameters:
       - description: Board ID
         in: path
-        name: id
+        name: board_id
         required: true
         type: string
       produces:
@@ -790,7 +663,7 @@ paths:
       parameters:
       - description: Board ID
         in: path
-        name: id
+        name: board_id
         required: true
         type: string
       produces:
@@ -825,7 +698,7 @@ paths:
       parameters:
       - description: Board ID
         in: path
-        name: id
+        name: board_id
         required: true
         type: string
       - description: Board updates
@@ -896,7 +769,7 @@ paths:
       summary: Create custom importance
       tags:
       - custom-fields
-  /api/custom-fields/importance/{id}:
+  /api/custom-fields/importance/{importance_id}:
     delete:
       consumes:
       - application/json
@@ -905,7 +778,7 @@ paths:
       parameters:
       - description: Importance ID
         in: path
-        name: id
+        name: importance_id
         required: true
         type: string
       produces:
@@ -931,7 +804,7 @@ paths:
       parameters:
       - description: Importance ID
         in: path
-        name: id
+        name: importance_id
         required: true
         type: string
       produces:
@@ -963,7 +836,7 @@ paths:
       parameters:
       - description: Importance ID
         in: path
-        name: id
+        name: importance_id
         required: true
         type: string
       - description: Importance updates
@@ -993,7 +866,7 @@ paths:
       summary: Update custom importance
       tags:
       - custom-fields
-  /api/custom-fields/projects/{projectId}/importance:
+  /api/custom-fields/projects/{project_id}/importance:
     get:
       consumes:
       - application/json
@@ -1001,7 +874,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: projectId
+        name: project_id
         required: true
         type: string
       produces:
@@ -1027,7 +900,7 @@ paths:
       summary: Get custom importances
       tags:
       - custom-fields
-  /api/custom-fields/projects/{projectId}/importance/order:
+  /api/custom-fields/projects/{project_id}/importance/order:
     put:
       consumes:
       - application/json
@@ -1035,7 +908,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: projectId
+        name: project_id
         required: true
         type: string
       - description: Importance orders
@@ -1060,7 +933,7 @@ paths:
       summary: Update importance display order
       tags:
       - custom-fields
-  /api/custom-fields/projects/{projectId}/roles:
+  /api/custom-fields/projects/{project_id}/roles:
     get:
       consumes:
       - application/json
@@ -1068,7 +941,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: projectId
+        name: project_id
         required: true
         type: string
       produces:
@@ -1094,7 +967,7 @@ paths:
       summary: Get custom roles
       tags:
       - custom-fields
-  /api/custom-fields/projects/{projectId}/roles/order:
+  /api/custom-fields/projects/{project_id}/roles/order:
     put:
       consumes:
       - application/json
@@ -1102,7 +975,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: projectId
+        name: project_id
         required: true
         type: string
       - description: Role orders
@@ -1131,7 +1004,7 @@ paths:
       summary: Update role display order
       tags:
       - custom-fields
-  /api/custom-fields/projects/{projectId}/stages:
+  /api/custom-fields/projects/{project_id}/stages:
     get:
       consumes:
       - application/json
@@ -1139,7 +1012,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: projectId
+        name: project_id
         required: true
         type: string
       produces:
@@ -1165,7 +1038,7 @@ paths:
       summary: Get custom stages
       tags:
       - custom-fields
-  /api/custom-fields/projects/{projectId}/stages/order:
+  /api/custom-fields/projects/{project_id}/stages/order:
     put:
       consumes:
       - application/json
@@ -1173,7 +1046,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: projectId
+        name: project_id
         required: true
         type: string
       - description: Stage orders
@@ -1239,7 +1112,7 @@ paths:
       summary: Create custom role
       tags:
       - custom-fields
-  /api/custom-fields/roles/{id}:
+  /api/custom-fields/roles/{role_id}:
     delete:
       consumes:
       - application/json
@@ -1247,7 +1120,7 @@ paths:
       parameters:
       - description: Role ID
         in: path
-        name: id
+        name: role_id
         required: true
         type: string
       produces:
@@ -1277,7 +1150,7 @@ paths:
       parameters:
       - description: Role ID
         in: path
-        name: id
+        name: role_id
         required: true
         type: string
       produces:
@@ -1308,7 +1181,7 @@ paths:
       parameters:
       - description: Role ID
         in: path
-        name: id
+        name: role_id
         required: true
         type: string
       - description: Role updates
@@ -1383,7 +1256,7 @@ paths:
       summary: Create custom stage
       tags:
       - custom-fields
-  /api/custom-fields/stages/{id}:
+  /api/custom-fields/stages/{stage_id}:
     delete:
       consumes:
       - application/json
@@ -1391,7 +1264,7 @@ paths:
       parameters:
       - description: Stage ID
         in: path
-        name: id
+        name: stage_id
         required: true
         type: string
       produces:
@@ -1417,7 +1290,7 @@ paths:
       parameters:
       - description: Stage ID
         in: path
-        name: id
+        name: stage_id
         required: true
         type: string
       produces:
@@ -1448,7 +1321,7 @@ paths:
       parameters:
       - description: Stage ID
         in: path
-        name: id
+        name: stage_id
         required: true
         type: string
       - description: Stage updates
@@ -1564,7 +1437,7 @@ paths:
       summary: Create project
       tags:
       - projects
-  /api/projects/{id}:
+  /api/projects/{project_id}:
     delete:
       consumes:
       - application/json
@@ -1572,7 +1445,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       produces:
@@ -1610,7 +1483,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       produces:
@@ -1645,7 +1518,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       - description: Updated project details
@@ -1683,7 +1556,7 @@ paths:
       summary: Update project
       tags:
       - projects
-  /api/projects/{id}/join-requests:
+  /api/projects/{project_id}/join-requests:
     get:
       consumes:
       - application/json
@@ -1691,7 +1564,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       - description: Filter by status (PENDING/APPROVED/REJECTED)
@@ -1725,7 +1598,7 @@ paths:
       summary: Get join requests
       tags:
       - projects
-  /api/projects/{id}/members:
+  /api/projects/{project_id}/members:
     get:
       consumes:
       - application/json
@@ -1733,7 +1606,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       produces:
@@ -1763,7 +1636,7 @@ paths:
       summary: Get project members
       tags:
       - projects
-  /api/projects/{id}/members/{memberId}:
+  /api/projects/{project_id}/members/{member_id}:
     delete:
       consumes:
       - application/json
@@ -1772,12 +1645,12 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       - description: Member ID
         in: path
-        name: memberId
+        name: member_id
         required: true
         type: string
       produces:
@@ -1812,7 +1685,7 @@ paths:
       summary: Remove member
       tags:
       - projects
-  /api/projects/{id}/members/{memberId}/role:
+  /api/projects/{project_id}/members/{member_id}/role:
     put:
       consumes:
       - application/json
@@ -1820,12 +1693,12 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       - description: Member ID
         in: path
-        name: memberId
+        name: member_id
         required: true
         type: string
       - description: New role
@@ -1863,7 +1736,7 @@ paths:
       summary: Update member role
       tags:
       - projects
-  /api/projects/{id}/orders/role-board:
+  /api/projects/{project_id}/orders/role-board:
     get:
       consumes:
       - application/json
@@ -1872,7 +1745,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       produces:
@@ -1900,7 +1773,7 @@ paths:
       summary: Get role-based board view
       tags:
       - user-orders
-  /api/projects/{id}/orders/role-boards/{roleId}:
+  /api/projects/{project_id}/orders/role-boards/{role_id}:
     put:
       consumes:
       - application/json
@@ -1909,12 +1782,12 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       - description: Role ID
         in: path
-        name: roleId
+        name: role_id
         required: true
         type: string
       - description: Order update details
@@ -1948,7 +1821,7 @@ paths:
       summary: Update board order in role column
       tags:
       - user-orders
-  /api/projects/{id}/orders/role-columns:
+  /api/projects/{project_id}/orders/role-columns:
     put:
       consumes:
       - application/json
@@ -1956,7 +1829,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       - description: Order update details
@@ -1990,7 +1863,7 @@ paths:
       summary: Update role column order
       tags:
       - user-orders
-  /api/projects/{id}/orders/stage-board:
+  /api/projects/{project_id}/orders/stage-board:
     get:
       consumes:
       - application/json
@@ -1999,7 +1872,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       produces:
@@ -2027,7 +1900,7 @@ paths:
       summary: Get stage-based board view
       tags:
       - user-orders
-  /api/projects/{id}/orders/stage-boards/{stageId}:
+  /api/projects/{project_id}/orders/stage-boards/{stage_id}:
     put:
       consumes:
       - application/json
@@ -2036,12 +1909,12 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       - description: Stage ID
         in: path
-        name: stageId
+        name: stage_id
         required: true
         type: string
       - description: Order update details
@@ -2075,7 +1948,7 @@ paths:
       summary: Update board order in stage column
       tags:
       - user-orders
-  /api/projects/{id}/orders/stage-columns:
+  /api/projects/{project_id}/orders/stage-columns:
     put:
       consumes:
       - application/json
@@ -2083,7 +1956,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       - description: Order update details
@@ -2162,7 +2035,7 @@ paths:
       summary: Create join request
       tags:
       - projects
-  /api/projects/join-requests/{id}:
+  /api/projects/join-requests/{join_request_id}:
     put:
       consumes:
       - application/json
@@ -2170,7 +2043,7 @@ paths:
       parameters:
       - description: Join Request ID
         in: path
-        name: id
+        name: join_request_id
         required: true
         type: string
       - description: Status update
@@ -2216,7 +2089,7 @@ paths:
       parameters:
       - description: Workspace ID
         in: query
-        name: workspaceId
+        name: workspace_id
         required: true
         type: string
       - description: Search query
@@ -2257,545 +2130,6 @@ paths:
       summary: Search projects
       tags:
       - projects
-  /api/workspaces:
-    get:
-      consumes:
-      - application/json
-      description: Get all workspaces for current user (or specified user_id)
-      parameters:
-      - description: User ID (optional, defaults to current user)
-        in: query
-        name: user_id
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/dto.WorkspaceResponse'
-                  type: array
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get workspaces
-      tags:
-      - workspaces
-    post:
-      consumes:
-      - application/json
-      description: Create a new workspace (OWNER role automatically assigned)
-      parameters:
-      - description: Workspace details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.CreateWorkspaceRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.WorkspaceResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create workspace
-      tags:
-      - workspaces
-  /api/workspaces/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Soft delete a workspace (OWNER only)
-      parameters:
-      - description: Workspace ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  properties:
-                    message:
-                      type: string
-                  type: object
-              type: object
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete workspace
-      tags:
-      - workspaces
-    get:
-      consumes:
-      - application/json
-      description: Get workspace details (member only)
-      parameters:
-      - description: Workspace ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.WorkspaceResponse'
-              type: object
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get workspace
-      tags:
-      - workspaces
-    put:
-      consumes:
-      - application/json
-      description: Update workspace details (OWNER only)
-      parameters:
-      - description: Workspace ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Updated workspace details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.UpdateWorkspaceRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.WorkspaceResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update workspace
-      tags:
-      - workspaces
-  /api/workspaces/{id}/join-requests:
-    get:
-      consumes:
-      - application/json
-      description: Get join requests for a workspace (OWNER/ADMIN only)
-      parameters:
-      - description: Workspace ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Filter by status (PENDING/APPROVED/REJECTED)
-        in: query
-        name: status
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/dto.JoinRequestResponse'
-                  type: array
-              type: object
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get join requests
-      tags:
-      - workspaces
-  /api/workspaces/{id}/members:
-    get:
-      consumes:
-      - application/json
-      description: Get all members of a workspace (member only)
-      parameters:
-      - description: Workspace ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/dto.WorkspaceMemberResponse'
-                  type: array
-              type: object
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get workspace members
-      tags:
-      - workspaces
-  /api/workspaces/{id}/members/{memberId}:
-    delete:
-      consumes:
-      - application/json
-      description: Remove a member from workspace (OWNER/ADMIN only, cannot remove
-        OWNER or self)
-      parameters:
-      - description: Workspace ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Member ID
-        in: path
-        name: memberId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  properties:
-                    message:
-                      type: string
-                  type: object
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Remove member
-      tags:
-      - workspaces
-  /api/workspaces/{id}/members/{memberId}/role:
-    put:
-      consumes:
-      - application/json
-      description: Update a member's role in workspace (OWNER only)
-      parameters:
-      - description: Workspace ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Member ID
-        in: path
-        name: memberId
-        required: true
-        type: string
-      - description: New role
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.UpdateMemberRoleRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.WorkspaceMemberResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update member role
-      tags:
-      - workspaces
-  /api/workspaces/default:
-    post:
-      consumes:
-      - application/json
-      description: Set a workspace as default for the current user
-      parameters:
-      - description: Workspace ID
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.SetDefaultWorkspaceRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  properties:
-                    message:
-                      type: string
-                  type: object
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Set default workspace
-      tags:
-      - workspaces
-  /api/workspaces/join-requests:
-    post:
-      consumes:
-      - application/json
-      description: Request to join a workspace
-      parameters:
-      - description: Join request details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.CreateJoinRequestRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.JoinRequestResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create join request
-      tags:
-      - workspaces
-  /api/workspaces/join-requests/{id}:
-    put:
-      consumes:
-      - application/json
-      description: Approve or reject a join request (OWNER/ADMIN only)
-      parameters:
-      - description: Join Request ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Status update
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.UpdateJoinRequestRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.JoinRequestResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update join request
-      tags:
-      - workspaces
-  /api/workspaces/search:
-    get:
-      consumes:
-      - application/json
-      description: Search workspaces by name or description
-      parameters:
-      - description: Search query
-        in: query
-        name: query
-        required: true
-        type: string
-      - description: 'Page number (default: 1)'
-        in: query
-        name: page
-        type: integer
-      - description: 'Page size (default: 10, max: 100)'
-        in: query
-        name: limit
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.PaginatedWorkspacesResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Search workspaces
-      tags:
-      - workspaces
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.
