@@ -302,22 +302,22 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       console.log(`[Dashboard] 보드 로드 시작 (Project: ${selectedProject.name})`);
 
       // 1. 프로젝트의 모든 Stages 조회
-      const stages = await getProjectStages(selectedProject.id, accessToken);
+      const stages = await getProjectStages(selectedProject.project_id, accessToken);
       console.log('✅ Stages loaded:', stages);
 
       // 2. 보드 조회
-      const boardsResponse = await getBoards(selectedProject.id, accessToken);
+      const boardsResponse = await getBoards(selectedProject.project_id, accessToken);
       console.log('✅ Boards loaded:', boardsResponse);
 
       // 3. Stage별로 빈 컬럼 먼저 생성
       const stageMap = new Map<string, { stage: CustomStageResponse; boards: BoardResponse[] }>();
       stages.forEach((stage) => {
-        stageMap.set(stage.id, { stage, boards: [] });
+        stageMap.set(stage.stage_id, { stage, boards: [] });
       });
 
       // 4. 보드를 해당 Stage 컬럼에 추가
       boardsResponse.boards.forEach((board) => {
-        const stageId = board.stage?.id;
+        const stageId = board.stage?.stage_id;
         if (stageId && stageMap.has(stageId)) {
           stageMap.get(stageId)!.boards.push(board);
         }
@@ -329,7 +329,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       );
 
       const columns: Column[] = sortedStages.map(({ stage, boards }) => ({
-        id: stage.id,
+        id: stage.stage_id,
         title: stage.name,
         color: stage.color, // Store the color from API
         boards: boards,
@@ -375,7 +375,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
     // Same column: reorder boards within column
     if (draggedFromColumn === targetColumnId) {
-      if (!dragOverBoardId || dragOverBoardId === draggedBoard.id) {
+      if (!dragOverBoardId || dragOverBoardId === draggedBoard.board_id) {
         setDraggedBoard(null);
         setDraggedFromColumn(null);
         setDragOverBoardId(null);
@@ -391,8 +391,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       }
 
       // Reorder boards
-      const draggedIndex = targetColumn.boards.findIndex((b) => b.id === draggedBoard.id);
-      const targetIndex = targetColumn.boards.findIndex((b) => b.id === dragOverBoardId);
+      const draggedIndex = targetColumn.boards.findIndex((b) => b.board_id === draggedBoard.board_id);
+      const targetIndex = targetColumn.boards.findIndex((b) => b.board_id === dragOverBoardId);
 
       if (draggedIndex === -1 || targetIndex === -1) {
         setDraggedBoard(null);
@@ -429,12 +429,12 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     // Optimistic UI update
     const newColumns = columns.map((col) => {
       if (col.id === draggedFromColumn) {
-        return { ...col, boards: col.boards.filter((t) => t.id !== draggedBoard.id) };
+        return { ...col, boards: col.boards.filter((t) => t.board_id !== draggedBoard.board_id) };
       }
       if (col.id === targetColumnId) {
         // Insert at the position indicated by dragOverBoardId
         if (dragOverBoardId) {
-          const targetIndex = col.boards.findIndex((b) => b.id === dragOverBoardId);
+          const targetIndex = col.boards.findIndex((b) => b.board_id === dragOverBoardId);
           if (targetIndex !== -1) {
             const newBoards = [...col.boards];
             newBoards.splice(targetIndex, 0, updatedBoard);
@@ -452,7 +452,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     setDraggedFromColumn(null);
     setDragOverBoardId(null);
 
-    console.log(`✅ Board ${draggedBoard.id} Stage 변경 (로컬): ${targetColumnId}`);
+    console.log(`✅ Board ${draggedBoard.board_id} Stage 변경 (로컬): ${targetColumnId}`);
   };
 
   // Column drag handlers
@@ -656,13 +656,13 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                   ) : (
                     projects.map((project) => (
                       <button
-                        key={project.id}
+                        key={project.project_id}
                         onClick={() => {
                           setSelectedProject(project);
                           setShowProjectSelector(false);
                         }}
                         className={`w-full px-3 py-2 text-left text-sm rounded transition truncate ${
-                          selectedProject?.id === project.id
+                          selectedProject?.project_id === project.project_id
                             ? 'bg-blue-100 text-blue-700 font-semibold'
                             : 'hover:bg-gray-100 text-gray-800'
                         }`}
@@ -868,8 +868,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
                         return sortedBoards.map((board) => (
                           <tr
-                            key={board.id}
-                            onClick={() => setSelectedBoardId(board.id)}
+                            key={board.board_id}
+                            onClick={() => setSelectedBoardId(board.board_id)}
                             className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition"
                           >
                             {/* Title */}
@@ -1025,13 +1025,13 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                         <div className="space-y-2 sm:space-y-3">
                           {column.boards.map((board) => (
                             <div
-                              key={board.id}
+                              key={board.board_id}
                               className="relative"
                               onDragOver={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                if (draggedBoard && draggedBoard.id !== board.id) {
-                                  setDragOverBoardId(board.id);
+                                if (draggedBoard && draggedBoard.board_id !== board.board_id) {
+                                  setDragOverBoardId(board.board_id);
                                 }
                               }}
                               onDragLeave={(e) => {
@@ -1040,9 +1040,9 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                               }}
                             >
                               {/* Drop indicator line - shows where the dragged board will be inserted */}
-                              {dragOverBoardId === board.id &&
+                              {dragOverBoardId === board.board_id &&
                                 draggedBoard &&
-                                draggedBoard.id !== board.id && (
+                                draggedBoard.board_id !== board.board_id && (
                                   <div className="absolute -top-2 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 z-10"></div>
                                 )}
                               <div
@@ -1051,7 +1051,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                                   e.stopPropagation();
                                   handleDragStart(board, column.id);
                                 }}
-                                onClick={() => setSelectedBoardId(board.id)}
+                                onClick={() => setSelectedBoardId(board.board_id)}
                                 className={`relative ${theme.colors.card} p-3 sm:p-4 ${
                                   theme.effects.cardBorderWidth
                                 } ${
@@ -1059,7 +1059,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                                 } hover:border-blue-500 transition-all cursor-pointer ${
                                   theme.effects.borderRadius
                                 } ${
-                                  draggedBoard?.id === board.id
+                                  draggedBoard?.board_id === board.board_id
                                     ? 'opacity-50 scale-95 shadow-2xl rotate-1'
                                     : 'opacity-100'
                                 }`}
@@ -1194,7 +1194,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
       {showCreateBoard && selectedProject && (
         <CreateBoardModal
-          projectId={selectedProject.id}
+          projectId={selectedProject.project_id}
           stageId={createBoardStageId}
           editData={editBoardData}
           workspaceId={currentWorkspaceId}
@@ -1224,7 +1224,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       {/* Custom Field Manage Modal */}
       {showManageModal && selectedProject && (
         <CustomFieldManageModal
-          projectId={selectedProject.id}
+          projectId={selectedProject.project_id}
           onClose={() => setShowManageModal(false)}
           onFieldsUpdated={fetchBoards}
         />
