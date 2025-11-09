@@ -71,7 +71,7 @@ const AvatarStack: React.FC<AvatarStackProps> = ({ members }) => {
     <div className="flex -space-x-1.5 p-1 pr-0 overflow-hidden">
       {displayMembers.map((member, index) => (
         <div
-          key={member.userId}
+          key={member.user_id}
           className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-white overflow-hidden"
           style={{ zIndex: members.length - index }}
           title={`${member.name} (${member.role})`}
@@ -166,8 +166,8 @@ const AssigneeAvatarStack: React.FC<AssigneeAvatarStackProps> = ({ assignees }) 
 const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   const navigate = useNavigate();
 
-  // 1. URL에서 :workspaceId 값을 가져옵니다.
-  const { workspaceId } = useParams<{ workspaceId: string }>();
+  // 1. URL에서 :workspace_id 값을 가져옵니다.
+  const { workspaceId } = useParams<{ workspace_id: string }>();
   // 2. localStorage에서 토큰을 가져옵니다.
   const accessToken = localStorage.getItem('access_token') || '';
 

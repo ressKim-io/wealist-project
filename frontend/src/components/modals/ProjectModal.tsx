@@ -10,7 +10,7 @@ interface ProjectData {
   id: string;
   name: string;
   description?: string;
-  workspaceId: string;
+  workspace_id: string;
   ownerId: string;
   ownerName: string;
   ownerEmail: string;
@@ -19,7 +19,7 @@ interface ProjectData {
 }
 
 interface ProjectModalProps {
-  workspaceId: string;
+  workspace_id: string;
   project?: ProjectData; // 편집 모드일 때만 전달
   onClose: () => void;
   onProjectSaved: () => void; // 생성 또는 수정 후 호출

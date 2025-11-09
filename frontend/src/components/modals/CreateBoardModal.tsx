@@ -18,27 +18,27 @@ import {
 import { WorkspaceMember, getWorkspaceMembers } from '../../api/user/userService';
 
 interface CreateBoardModalProps {
-  projectId: string;
+  project_id: string;
   stageId?: string; // 컬럼에서 열었을 때 미리 선택된 stageId
   editData?: {
     boardId: string;
-    projectId: string;
+    project_id: string;
     title: string;
     content: string;
-    stageId: string;
+    stage_id: string;
     roleId: string;
-    importanceId: string;
+    importance_id: string;
     assigneeIds: string[];
     dueDate: string;
   } | null;
-  workspaceId: string;
+  workspace_id: string;
   onClose: () => void;
   onBoardCreated: () => void;
 }
 
 export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
   projectId,
-  stageId: initialStageId,
+  stage_id: initialStageId,
   editData,
   workspaceId,
   onClose,
@@ -50,10 +50,10 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
   // Form state
   const [title, setTitle] = useState(editData?.title || '');
   const [content, setContent] = useState(editData?.content || '');
-  const [selectedStageId, setSelectedStageId] = useState(editData?.stageId || initialStageId || '');
-  const [selectedRoleId, setSelectedRoleId] = useState<string>(editData?.roleId || '');
-  const [selectedImportanceId, setSelectedImportanceId] = useState<string>(editData?.importanceId || '');
-  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>(editData?.assigneeIds || []);
+  const [selectedStageId, setSelectedStageId] = useState(editData?.stage_id || initialStageId || '');
+  const [selectedRoleId, setSelectedRoleId] = useState<string>(editData?.role_id || '');
+  const [selectedImportanceId, setSelectedImportanceId] = useState<string>(editData?.importance_id || '');
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>(editData?.assignee_ids || []);
   const [dueDate, setDueDate] = useState<string>(editData?.dueDate || '');
 
   // Assignee search state
@@ -261,16 +261,16 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
         projectId,
         title: title.trim(),
         content: content.trim() || undefined,
-        stageId: selectedStageId,
-        roleIds: [selectedRoleId],
-        importanceId: selectedImportanceId || undefined,
+        stage_id: selectedStageId,
+        role_ids: [selectedRoleId],
+        importance_id: selectedImportanceId || undefined,
         assigneeIds: selectedAssigneeIds.length > 0 ? selectedAssigneeIds : undefined,
         dueDate: dueDate || undefined,
       };
 
       if (editData) {
         // 수정 모드
-        await updateBoard(editData.boardId, boardData, accessToken);
+        await updateBoard(editData.board_id, boardData, accessToken);
         console.log('✅ 보드 수정 성공:', title);
       } else {
         // 생성 모드
@@ -705,7 +705,7 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
                 <div className="w-full min-h-[42px] px-2 py-1 border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 bg-white flex flex-wrap items-center gap-1">
                   {/* Selected Assignees Tags Inside Input */}
                   {selectedAssigneeIds.map((userId) => {
-                    const member = workspaceMembers.find((m) => m.userId === userId);
+                    const member = workspaceMembers.find((m) => m.user_id === userId);
                     return (
                       <span
                         key={userId}
@@ -747,16 +747,16 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
                         member.email.toLowerCase().includes(assigneeSearch.toLowerCase())
                       )
                       .map((member) => {
-                        const isSelected = selectedAssigneeIds.includes(member.userId);
+                        const isSelected = selectedAssigneeIds.includes(member.user_id);
                         return (
                           <button
-                            key={member.userId}
+                            key={member.user_id}
                             type="button"
                             onClick={() => {
                               if (isSelected) {
-                                setSelectedAssigneeIds(selectedAssigneeIds.filter((id) => id !== member.userId));
+                                setSelectedAssigneeIds(selectedAssigneeIds.filter((id) => id !== member.user_id));
                               } else {
-                                setSelectedAssigneeIds([...selectedAssigneeIds, member.userId]);
+                                setSelectedAssigneeIds([...selectedAssigneeIds, member.user_id]);
                               }
                               setAssigneeSearch('');
                             }}

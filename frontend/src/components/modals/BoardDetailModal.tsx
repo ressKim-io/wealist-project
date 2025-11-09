@@ -29,18 +29,18 @@ import { WorkspaceMember, getWorkspaceMembers } from '../../api/user/userService
  */
 interface BoardDetailModalProps {
   boardId: string;
-  workspaceId: string;
+  workspace_id: string;
   onClose: () => void;
   onBoardUpdated: () => void;
   onBoardDeleted: () => void;
   onEdit: (boardData: {
     boardId: string;
-    projectId: string;
+    project_id: string;
     title: string;
     content: string;
-    stageId: string;
+    stage_id: string;
     roleId: string;
-    importanceId: string;
+    importance_id: string;
     assigneeIds: string[];
     dueDate: string;
   }) => void;
@@ -91,7 +91,7 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
         const boardData = await getBoard(boardId, accessToken);
 
         // 보드 데이터로 상태 초기화
-        setProjectId(boardData.projectId);
+        setProjectId(boardData.project_id);
         setTitle(boardData.title);
         setContent(boardData.content || '');
         setSelectedStageId(boardData.stage?.id || '');
@@ -105,13 +105,13 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
         if (boardData.assignees && Array.isArray(boardData.assignees)) {
           // assignees가 배열인 경우
           assignees = boardData.assignees
-            .map((a: any) => a?.userId || a)
+            .map((a: any) => a?.user_id || a)
             .filter((id): id is string => typeof id === 'string' && id.length > 0);
         } else if (boardData.assignee) {
           // 단일 assignee 객체인 경우
           const userId = typeof boardData.assignee === 'string'
             ? boardData.assignee
-            : boardData.assignee?.userId;
+            : boardData.assignee?.user_id;
           if (userId) {
             assignees = [userId];
           }
@@ -351,7 +351,7 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
               {assigneeIds.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
                   {assigneeIds.map((userId) => {
-                    const member = workspaceMembers.find((m) => m.userId === userId);
+                    const member = workspaceMembers.find((m) => m.user_id === userId);
                     return (
                       <span
                         key={userId}
@@ -435,9 +435,9 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
                 projectId,
                 title,
                 content,
-                stageId: selectedStageId,
+                stage_id: selectedStageId,
                 roleId: selectedRoleId,
-                importanceId: selectedImportanceId,
+                importance_id: selectedImportanceId,
                 assigneeIds,
                 dueDate,
               });

@@ -5,7 +5,7 @@ import "time"
 // Request DTOs
 
 type CreateProjectRequest struct {
-	WorkspaceID string `json:"workspaceId" binding:"required,uuid"`
+	WorkspaceID string `json:"workspace_id" binding:"required,uuid"`
 	Name        string `json:"name" binding:"required,min=2,max=100"`
 	Description string `json:"description" binding:"max=500"`
 }
@@ -16,14 +16,14 @@ type UpdateProjectRequest struct {
 }
 
 type SearchProjectsRequest struct {
-	WorkspaceID string `form:"workspaceId" binding:"required,uuid"`
+	WorkspaceID string `form:"workspace_id" binding:"required,uuid"`
 	Query       string `form:"query" binding:"required,min=1"`
 	Page        int    `form:"page" binding:"omitempty,min=1"`
 	Limit       int    `form:"limit" binding:"omitempty,min=1,max=100"`
 }
 
 type CreateProjectJoinRequestRequest struct {
-	ProjectID string `json:"projectId" binding:"required,uuid"`
+	ProjectID string `json:"project_id" binding:"required,uuid"`
 }
 
 type UpdateProjectJoinRequestRequest struct {
@@ -37,11 +37,11 @@ type UpdateProjectMemberRoleRequest struct {
 // Response DTOs
 
 type ProjectResponse struct {
-	ID          string    `json:"id"`
-	WorkspaceID string    `json:"workspaceId"`
+	ID          string    `json:"project_id"`
+	WorkspaceID string    `json:"workspace_id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	OwnerID     string    `json:"ownerId"`
+	OwnerID     string    `json:"owner_id"`
 	OwnerName   string    `json:"ownerName"`
 	OwnerEmail  string    `json:"ownerEmail"`
 	CreatedAt   time.Time `json:"createdAt"`
@@ -49,9 +49,9 @@ type ProjectResponse struct {
 }
 
 type ProjectMemberResponse struct {
-	ID        string    `json:"id"`
-	ProjectID string    `json:"projectId"`
-	UserID    string    `json:"userId"`
+	ID        string    `json:"member_id"`
+	ProjectID string    `json:"project_id"`
+	UserID    string    `json:"user_id"`
 	UserName  string    `json:"userName"`
 	UserEmail string    `json:"userEmail"`
 	RoleName  string    `json:"roleName"`
@@ -59,9 +59,9 @@ type ProjectMemberResponse struct {
 }
 
 type ProjectJoinRequestResponse struct {
-	ID          string    `json:"id"`
-	ProjectID   string    `json:"projectId"`
-	UserID      string    `json:"userId"`
+	ID          string    `json:"request_id"`
+	ProjectID   string    `json:"project_id"`
+	UserID      string    `json:"user_id"`
 	UserName    string    `json:"userName"`
 	UserEmail   string    `json:"userEmail"`
 	Status      string    `json:"status"`

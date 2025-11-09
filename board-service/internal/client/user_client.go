@@ -31,7 +31,7 @@ type userClient struct {
 
 // UserInfo represents detailed user information from User Service.
 type UserInfo struct {
-	UserID   string `json:"userId"`
+	UserID   string `json:"user_id"`
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	IsActive bool   `json:"isActive"`
@@ -39,17 +39,17 @@ type UserInfo struct {
 
 // SimpleUser represents basic user information needed for display.
 type SimpleUser struct {
-	ID        string `json:"id"`
+	ID        string `json:"user_id"`
 	Name      string `json:"name"`
 	AvatarURL string `json:"avatarUrl"`
 }
 
 // WorkspaceInfo represents workspace information from User Service.
 type WorkspaceInfo struct {
-	ID          string `json:"id"`
+	ID          string `json:"workspace_id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	OwnerID     string `json:"ownerId"`
+	OwnerID     string `json:"owner_id"`
 	IsPublic    bool   `json:"isPublic"`
 }
 

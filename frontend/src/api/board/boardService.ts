@@ -25,11 +25,11 @@ const USE_MOCK_DATA = true;
 // ============================================================================
 
 export interface ProjectResponse {
-  id: string;
+  project_id: string;
   name: string;
   description?: string;
-  workspaceId: string;
-  ownerId: string;
+  workspace_id: string;
+  owner_id: string;
   ownerName: string;
   ownerEmail: string;
   createdAt: string;
@@ -39,33 +39,33 @@ export interface ProjectResponse {
 // 목업: 프로젝트 목록
 let MOCK_PROJECTS: ProjectResponse[] = [
   {
-    id: 'project-1',
+    project_id: 'project-1',
     name: 'Wealist 서비스 개발',
     description: '칸반보드 기반 협업 툴 개발',
-    workspaceId: 'workspace-1',
-    ownerId: 'user-123',
+    workspace_id: 'workspace-1',
+    owner_id: 'user-123',
     ownerName: '김개발',
     ownerEmail: 'dev.kim@orangecloud.com',
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-15T00:00:00Z',
   },
   {
-    id: 'project-2',
+    project_id: 'project-2',
     name: 'Orange Cloud 디자인 시스템',
     description: 'UI/UX 컴포넌트 라이브러리 구축',
-    workspaceId: 'workspace-1',
-    ownerId: 'user-456',
+    workspace_id: 'workspace-1',
+    owner_id: 'user-456',
     ownerName: '이디자인',
     ownerEmail: 'design.lee@orangecloud.com',
     createdAt: '2024-01-05T00:00:00Z',
     updatedAt: '2024-01-20T00:00:00Z',
   },
   {
-    id: 'project-3',
+    project_id: 'project-3',
     name: '인프라 자동화',
     description: 'EKS 기반 CI/CD 파이프라인 구축',
-    workspaceId: 'workspace-1',
-    ownerId: 'user-202',
+    workspace_id: 'workspace-1',
+    owner_id: 'user-202',
     ownerName: '최데브옵스',
     ownerEmail: 'devops.choi@orangecloud.com',
     createdAt: '2024-01-10T00:00:00Z',
@@ -76,8 +76,8 @@ let MOCK_PROJECTS: ProjectResponse[] = [
 // 목업: Stage 데이터
 const MOCK_STAGES: CustomStageResponse[] = [
   {
-    id: 'stage-none',
-    projectId: 'project-1',
+    stage_id: 'stage-none',
+    project_id: 'project-1',
     name: '없음',
     color: '#94A3B8',
     displayOrder: 0,
@@ -86,8 +86,8 @@ const MOCK_STAGES: CustomStageResponse[] = [
     updatedAt: '2024-01-01T00:00:00Z',
   },
   {
-    id: 'stage-waiting',
-    projectId: 'project-1',
+    stage_id: 'stage-waiting',
+    project_id: 'project-1',
     name: '대기',
     color: '#F59E0B',
     displayOrder: 1,
@@ -96,8 +96,8 @@ const MOCK_STAGES: CustomStageResponse[] = [
     updatedAt: '2024-01-01T00:00:00Z',
   },
   {
-    id: 'stage-progress',
-    projectId: 'project-1',
+    stage_id: 'stage-progress',
+    project_id: 'project-1',
     name: '진행중',
     color: '#3B82F6',
     displayOrder: 2,
@@ -106,8 +106,8 @@ const MOCK_STAGES: CustomStageResponse[] = [
     updatedAt: '2024-01-01T00:00:00Z',
   },
   {
-    id: 'stage-done',
-    projectId: 'project-1',
+    stage_id: 'stage-done',
+    project_id: 'project-1',
     name: '완료',
     color: '#10B981',
     displayOrder: 3,
@@ -120,8 +120,8 @@ const MOCK_STAGES: CustomStageResponse[] = [
 // 목업: Role 데이터
 const MOCK_ROLES: CustomRoleResponse[] = [
   {
-    id: 'role-none',
-    projectId: 'project-1',
+    role_id: 'role-none',
+    project_id: 'project-1',
     name: '없음',
     color: '#94A3B8',
     displayOrder: 0,
@@ -130,8 +130,8 @@ const MOCK_ROLES: CustomRoleResponse[] = [
     updatedAt: '2024-01-01T00:00:00Z',
   },
   {
-    id: 'role-frontend',
-    projectId: 'project-1',
+    role_id: 'role-frontend',
+    project_id: 'project-1',
     name: '프론트엔드',
     color: '#8B5CF6',
     displayOrder: 1,
@@ -140,8 +140,8 @@ const MOCK_ROLES: CustomRoleResponse[] = [
     updatedAt: '2024-01-01T00:00:00Z',
   },
   {
-    id: 'role-backend',
-    projectId: 'project-1',
+    role_id: 'role-backend',
+    project_id: 'project-1',
     name: '백엔드',
     color: '#EC4899',
     displayOrder: 2,
@@ -150,8 +150,8 @@ const MOCK_ROLES: CustomRoleResponse[] = [
     updatedAt: '2024-01-01T00:00:00Z',
   },
   {
-    id: 'role-design',
-    projectId: 'project-1',
+    role_id: 'role-design',
+    project_id: 'project-1',
     name: '디자인',
     color: '#F59E0B',
     displayOrder: 3,
@@ -164,8 +164,8 @@ const MOCK_ROLES: CustomRoleResponse[] = [
 // 목업: Importance 데이터
 const MOCK_IMPORTANCES: CustomImportanceResponse[] = [
   {
-    id: 'importance-none',
-    projectId: 'project-1',
+    importance_id: 'importance-none',
+    project_id: 'project-1',
     name: '없음',
     color: '#94A3B8',
     displayOrder: 0,
@@ -174,8 +174,8 @@ const MOCK_IMPORTANCES: CustomImportanceResponse[] = [
     updatedAt: '2024-01-01T00:00:00Z',
   },
   {
-    id: 'importance-low',
-    projectId: 'project-1',
+    importance_id: 'importance-low',
+    project_id: 'project-1',
     name: '낮음',
     color: '#10B981',
     displayOrder: 1,
@@ -184,8 +184,8 @@ const MOCK_IMPORTANCES: CustomImportanceResponse[] = [
     updatedAt: '2024-01-01T00:00:00Z',
   },
   {
-    id: 'importance-medium',
-    projectId: 'project-1',
+    importance_id: 'importance-medium',
+    project_id: 'project-1',
     name: '보통',
     color: '#3B82F6',
     displayOrder: 2,
@@ -194,8 +194,8 @@ const MOCK_IMPORTANCES: CustomImportanceResponse[] = [
     updatedAt: '2024-01-01T00:00:00Z',
   },
   {
-    id: 'importance-high',
-    projectId: 'project-1',
+    importance_id: 'importance-high',
+    project_id: 'project-1',
     name: '높음',
     color: '#F59E0B',
     displayOrder: 3,
@@ -204,8 +204,8 @@ const MOCK_IMPORTANCES: CustomImportanceResponse[] = [
     updatedAt: '2024-01-01T00:00:00Z',
   },
   {
-    id: 'importance-urgent',
-    projectId: 'project-1',
+    importance_id: 'importance-urgent',
+    project_id: 'project-1',
     name: '긴급',
     color: '#EF4444',
     displayOrder: 4,
@@ -218,21 +218,21 @@ const MOCK_IMPORTANCES: CustomImportanceResponse[] = [
 // 목업: Board(카드) 데이터
 const MOCK_BOARDS: BoardResponse[] = [
   {
-    id: 'board-1',
-    projectId: 'project-1',
+    board_id: 'board-1',
+    project_id: 'project-1',
     title: '로그인 페이지 구현',
     content: 'JWT 인증 방식으로 로그인/로그아웃 기능 구현',
     stage: MOCK_STAGES.find((s) => s.name === '진행중'),
     roles: [MOCK_ROLES.find((r) => r.name === '프론트엔드')],
     importance: MOCK_IMPORTANCES.find((i) => i.name === '높음'),
     assignee: {
-      userId: 'user-123',
+      user_id: 'user-123',
       name: '김개발',
       email: 'dev.kim@orangecloud.com',
       isActive: true,
     },
     author: {
-      userId: 'user-123',
+      user_id: 'user-123',
       name: '김개발',
       email: 'dev.kim@orangecloud.com',
       isActive: true,
@@ -242,21 +242,21 @@ const MOCK_BOARDS: BoardResponse[] = [
     updatedAt: '2024-01-25T00:00:00Z',
   },
   {
-    id: 'board-2',
-    projectId: 'project-1',
+    board_id: 'board-2',
+    project_id: 'project-1',
     title: 'API 엔드포인트 설계',
     content: 'RESTful API 설계 및 Swagger 문서 작성',
     stage: MOCK_STAGES.find((s) => s.name === '완료'),
     roles: [MOCK_ROLES.find((r) => r.name === '백엔드')],
     importance: MOCK_IMPORTANCES.find((i) => i.name === '높음'),
     assignee: {
-      userId: 'user-456',
+      user_id: 'user-456',
       name: '이디자인',
       email: 'design.lee@orangecloud.com',
       isActive: true,
     },
     author: {
-      userId: 'user-456',
+      user_id: 'user-456',
       name: '이디자인',
       email: 'design.lee@orangecloud.com',
       isActive: true,
@@ -265,21 +265,21 @@ const MOCK_BOARDS: BoardResponse[] = [
     updatedAt: '2024-01-22T00:00:00Z',
   },
   {
-    id: 'board-3',
-    projectId: 'project-1',
+    board_id: 'board-3',
+    project_id: 'project-1',
     title: 'UI 컴포넌트 디자인',
     content: '버튼, 인풋, 모달 등 기본 컴포넌트 디자인',
     stage: MOCK_STAGES.find((s) => s.name === '대기'),
     roles: [MOCK_ROLES.find((r) => r.name === '디자인')],
     importance: MOCK_IMPORTANCES.find((i) => i.name === '보통'),
     assignee: {
-      userId: 'user-789',
+      user_id: 'user-789',
       name: '박프론트',
       email: 'front.park@orangecloud.com',
       isActive: true,
     },
     author: {
-      userId: 'user-123',
+      user_id: 'user-123',
       name: '김개발',
       email: 'dev.kim@orangecloud.com',
       isActive: true,
@@ -289,21 +289,21 @@ const MOCK_BOARDS: BoardResponse[] = [
     updatedAt: '2024-01-18T00:00:00Z',
   },
   {
-    id: 'board-4',
-    projectId: 'project-1',
+    board_id: 'board-4',
+    project_id: 'project-1',
     title: '데이터베이스 스키마 설계',
     content: 'PostgreSQL 테이블 구조 및 관계 정의',
     stage: MOCK_STAGES.find((s) => s.name === '완료'),
     roles: [MOCK_ROLES.find((r) => r.name === '백엔드')],
     importance: MOCK_IMPORTANCES.find((i) => i.name === '긴급'),
     assignee: {
-      userId: 'user-456',
+      user_id: 'user-456',
       name: '이디자인',
       email: 'design.lee@orangecloud.com',
       isActive: true,
     },
     author: {
-      userId: 'user-456',
+      user_id: 'user-456',
       name: '이디자인',
       email: 'design.lee@orangecloud.com',
       isActive: true,
@@ -312,21 +312,21 @@ const MOCK_BOARDS: BoardResponse[] = [
     updatedAt: '2024-01-20T00:00:00Z',
   },
   {
-    id: 'board-5',
-    projectId: 'project-1',
+    board_id: 'board-5',
+    project_id: 'project-1',
     title: 'CI/CD 파이프라인 구축',
     content: 'GitHub Actions를 이용한 자동 배포 설정',
     stage: MOCK_STAGES.find((s) => s.name === '진행중'),
     roles: [MOCK_ROLES.find((r) => r.name === '백엔드')],
     importance: MOCK_IMPORTANCES.find((i) => i.name === '보통'),
     assignee: {
-      userId: 'user-202',
+      user_id: 'user-202',
       name: '최데브옵스',
       email: 'devops.choi@orangecloud.com',
       isActive: true,
     },
     author: {
-      userId: 'user-202',
+      user_id: 'user-202',
       name: '최데브옵스',
       email: 'devops.choi@orangecloud.com',
       isActive: true,
@@ -336,15 +336,15 @@ const MOCK_BOARDS: BoardResponse[] = [
     updatedAt: '2024-01-26T00:00:00Z',
   },
   {
-    id: 'board-6',
-    projectId: 'project-1',
+    board_id: 'board-6',
+    project_id: 'project-1',
     title: '사용자 피드백 수집',
     content: '베타 테스트 사용자 의견 정리 및 분석',
     stage: MOCK_STAGES.find((s) => s.name === '대기'),
     roles: [MOCK_ROLES.find((r) => r.name === '디자인')],
     importance: MOCK_IMPORTANCES.find((i) => i.name === '낮음'),
     author: {
-      userId: 'user-789',
+      user_id: 'user-789',
       name: '박프론트',
       email: 'front.park@orangecloud.com',
       isActive: true,
@@ -357,7 +357,7 @@ const MOCK_BOARDS: BoardResponse[] = [
 export interface CreateProjectRequest {
   name: string;
   description?: string;
-  workspaceId: string;
+  workspace_id: string;
 }
 
 /**
@@ -368,14 +368,14 @@ export interface CreateProjectRequest {
  * @returns 프로젝트 배열
  */
 export const getProjects = async (
-  workspaceId: string,
+  workspace_id: string,
   token: string,
 ): Promise<ProjectResponse[]> => {
   if (USE_MOCK_DATA) {
     console.log('[MOCK] getProjects 호출:', workspaceId);
     return new Promise((resolve) => {
       setTimeout(() => {
-        const filtered = MOCK_PROJECTS.filter((p) => p.workspaceId === workspaceId);
+        const filtered = MOCK_PROJECTS.filter((p) => p.workspace_id === workspaceId);
         resolve(filtered);
       }, 300);
     });
@@ -400,7 +400,7 @@ export const getProjects = async (
  * @param token 액세스 토큰
  * @returns 프로젝트 정보
  */
-export const getProject = async (projectId: string, token: string): Promise<ProjectResponse> => {
+export const getProject = async (project_id: string, token: string): Promise<ProjectResponse> => {
   try {
     const response = await boardService.get(`/api/projects/${projectId}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -428,11 +428,11 @@ export const createProject = async (
     return new Promise((resolve) => {
       setTimeout(() => {
         const newProject: ProjectResponse = {
-          id: `project-${Date.now()}`,
+          project_id: `project-${Date.now()}`,
           name: data.name,
           description: data.description,
-          workspaceId: data.workspaceId,
-          ownerId: 'user-123',
+          workspace_id: data.workspace_id,
+          owner_id: 'user-123',
           ownerName: '김개발',
           ownerEmail: 'dev.kim@orangecloud.com',
           createdAt: new Date().toISOString(),
@@ -464,7 +464,7 @@ export const createProject = async (
  * @returns 업데이트된 프로젝트
  */
 export const updateProject = async (
-  projectId: string,
+  project_id: string,
   data: Partial<CreateProjectRequest>,
   token: string,
 ): Promise<ProjectResponse> => {
@@ -486,7 +486,7 @@ export const updateProject = async (
  * @param token 액세스 토큰
  * @returns 응답 메시지
  */
-export const deleteProject = async (projectId: string, token: string): Promise<any> => {
+export const deleteProject = async (project_id: string, token: string): Promise<any> => {
   try {
     const response = await boardService.delete(`/api/projects/${projectId}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -507,7 +507,7 @@ export const deleteProject = async (projectId: string, token: string): Promise<a
  * @returns 검색된 프로젝트 배열
  */
 export const searchProjects = async (
-  workspaceId: string,
+  workspace_id: string,
   query: string,
   token: string,
 ): Promise<ProjectResponse[]> => {
@@ -528,8 +528,8 @@ export const searchProjects = async (
 // ============================================================================
 
 export interface BoardResponse {
-  id: string;
-  projectId: string;
+  board_id: string;
+  project_id: string;
   title: string;
   content?: string;
   stage?: any;
@@ -544,13 +544,13 @@ export interface BoardResponse {
 }
 
 export interface CreateBoardRequest {
-  projectId: string;
+  project_id: string;
   title: string;
   content?: string;
-  stageId: string;
-  roleIds: string[];
-  importanceId?: string;
-  assigneeId?: string; // 단일 담당자 (하위 호환성)
+  stage_id: string;
+  role_ids: string[];
+  importance_id?: string;
+  assignee_id?: string; // 단일 담당자 (하위 호환성)
   assigneeIds?: string[]; // 복수 담당자
   dueDate?: string;
 }
@@ -571,7 +571,7 @@ export interface PaginatedBoardsResponse {
  * @returns 보드 배열
  */
 export const getBoards = async (
-  projectId: string,
+  project_id: string,
   token: string,
   filters?: {
     stageId?: string;
@@ -587,23 +587,23 @@ export const getBoards = async (
     console.log('[MOCK] getBoards 호출:', projectId, filters);
     return new Promise((resolve) => {
       setTimeout(() => {
-        let filtered = MOCK_BOARDS.filter((b) => b.projectId === projectId);
+        let filtered = MOCK_BOARDS.filter((b) => b.project_id === projectId);
 
         // 필터 적용
         if (filters?.stageId) {
-          filtered = filtered.filter((b) => b.stage?.id === filters.stageId);
+          filtered = filtered.filter((b) => b.stage?.stage_id === filters.stageId);
         }
         if (filters?.roleId) {
-          filtered = filtered.filter((b) => b.roles?.some((r) => r?.id === filters.roleId));
+          filtered = filtered.filter((b) => b.roles?.some((r) => r?.role_id === filters.roleId));
         }
         if (filters?.importanceId) {
-          filtered = filtered.filter((b) => b.importance?.id === filters.importanceId);
+          filtered = filtered.filter((b) => b.importance?.importance_id === filters.importanceId);
         }
         if (filters?.assigneeId) {
-          filtered = filtered.filter((b) => b.assignee?.userId === filters.assigneeId);
+          filtered = filtered.filter((b) => b.assignee?.user_id === filters.assigneeId);
         }
         if (filters?.authorId) {
-          filtered = filtered.filter((b) => b.author?.userId === filters.authorId);
+          filtered = filtered.filter((b) => b.author?.user_id === filters.authorId);
         }
 
         resolve({
@@ -641,7 +641,7 @@ export const getBoard = async (boardId: string, token: string): Promise<BoardRes
     console.log('[MOCK] getBoard 호출:', boardId);
     return new Promise((resolve, reject) => {
       setTimeout(() => {
-        const board = MOCK_BOARDS.find((b) => b.id === boardId);
+        const board = MOCK_BOARDS.find((b) => b.board_id === boardId);
         if (board) {
           resolve(board);
         } else {
@@ -732,8 +732,8 @@ export const deleteBoard = async (boardId: string, token: string): Promise<any> 
 // ============================================================================
 
 export interface CustomStageResponse {
-  id: string;
-  projectId: string;
+  stage_id: string;
+  project_id: string;
   name: string;
   color?: string;
   displayOrder: number;
@@ -743,8 +743,8 @@ export interface CustomStageResponse {
 }
 
 export interface CustomRoleResponse {
-  id: string;
-  projectId: string;
+  role_id: string;
+  project_id: string;
   name: string;
   color?: string;
   displayOrder: number;
@@ -754,8 +754,8 @@ export interface CustomRoleResponse {
 }
 
 export interface CustomImportanceResponse {
-  id: string;
-  projectId: string;
+  importance_id: string;
+  project_id: string;
   name: string;
   color?: string;
   displayOrder: number;
@@ -772,14 +772,14 @@ export interface CustomImportanceResponse {
  * @returns Stage 배열
  */
 export const getProjectStages = async (
-  projectId: string,
+  project_id: string,
   token: string,
 ): Promise<CustomStageResponse[]> => {
   if (USE_MOCK_DATA) {
     console.log('[MOCK] getProjectStages 호출:', projectId);
     return new Promise((resolve) => {
       setTimeout(() => {
-        const filtered = MOCK_STAGES.filter((s) => s.projectId === projectId);
+        const filtered = MOCK_STAGES.filter((s) => s.project_id === projectId);
         resolve(filtered);
       }, 200);
     });
@@ -804,14 +804,14 @@ export const getProjectStages = async (
  * @returns Role 배열
  */
 export const getProjectRoles = async (
-  projectId: string,
+  project_id: string,
   token: string,
 ): Promise<CustomRoleResponse[]> => {
   if (USE_MOCK_DATA) {
     console.log('[MOCK] getProjectRoles 호출:', projectId);
     return new Promise((resolve) => {
       setTimeout(() => {
-        const filtered = MOCK_ROLES.filter((r) => r.projectId === projectId);
+        const filtered = MOCK_ROLES.filter((r) => r.project_id === projectId);
         resolve(filtered);
       }, 200);
     });
@@ -836,14 +836,14 @@ export const getProjectRoles = async (
  * @returns Importance 배열
  */
 export const getProjectImportances = async (
-  projectId: string,
+  project_id: string,
   token: string,
 ): Promise<CustomImportanceResponse[]> => {
   if (USE_MOCK_DATA) {
     console.log('[MOCK] getProjectImportances 호출:', projectId);
     return new Promise((resolve) => {
       setTimeout(() => {
-        const filtered = MOCK_IMPORTANCES.filter((i) => i.projectId === projectId);
+        const filtered = MOCK_IMPORTANCES.filter((i) => i.project_id === projectId);
         resolve(filtered);
       }, 200);
     });
@@ -865,7 +865,7 @@ export const getProjectImportances = async (
 // ============================================================================
 
 export interface CreateCustomStageRequest {
-  projectId: string;
+  project_id: string;
   name: string;
   color: string;
 }
@@ -876,7 +876,7 @@ export interface UpdateCustomStageRequest {
 }
 
 export interface CreateCustomRoleRequest {
-  projectId: string;
+  project_id: string;
   name: string;
   color: string;
 }
@@ -887,7 +887,7 @@ export interface UpdateCustomRoleRequest {
 }
 
 export interface CreateCustomImportanceRequest {
-  projectId: string;
+  project_id: string;
   name: string;
   color: string;
   level: number; // 1-5
@@ -1066,8 +1066,8 @@ export const deleteImportance = async (importanceId: string, token: string): Pro
 // ============================================================================
 
 export interface CommentResponse {
-  id: string;
-  userId: string;
+  comment_id: string;
+  user_id: string;
   userName: string;
   userAvatar: string;
   content: string;
@@ -1076,7 +1076,7 @@ export interface CommentResponse {
 }
 
 export interface CreateCommentRequest {
-  boardId: string;
+  board_id: string;
   content: string;
 }
 
@@ -1175,7 +1175,7 @@ export const deleteComment = async (commentId: string, token: string): Promise<v
 // ============================================================================
 
 export interface RoleBasedBoardView {
-  projectId: string;
+  project_id: string;
   viewType: 'role';
   columns: Array<{
     customRoleId: string;
@@ -1191,7 +1191,7 @@ export interface RoleBasedBoardView {
 }
 
 export interface StageBasedBoardView {
-  projectId: string;
+  project_id: string;
   viewType: 'stage';
   columns: Array<{
     customStageId: string;
@@ -1214,7 +1214,7 @@ export interface StageBasedBoardView {
  * @returns Role 기반 보드 뷰
  */
 export const getRoleBasedBoardView = async (
-  projectId: string,
+  project_id: string,
   token: string,
 ): Promise<RoleBasedBoardView> => {
   try {
@@ -1236,7 +1236,7 @@ export const getRoleBasedBoardView = async (
  * @returns Stage 기반 보드 뷰
  */
 export const getStageBasedBoardView = async (
-  projectId: string,
+  project_id: string,
   token: string,
 ): Promise<StageBasedBoardView> => {
   try {
@@ -1258,7 +1258,7 @@ export const getStageBasedBoardView = async (
  * @param token 액세스 토큰
  */
 export const updateStageColumnOrder = async (
-  projectId: string,
+  project_id: string,
   stageIds: string[],
   token: string,
 ): Promise<void> => {
@@ -1283,7 +1283,7 @@ export const updateStageColumnOrder = async (
  * @param token 액세스 토큰
  */
 export const updateStageBoardOrder = async (
-  projectId: string,
+  project_id: string,
   stageId: string,
   boardIds: string[],
   token: string,

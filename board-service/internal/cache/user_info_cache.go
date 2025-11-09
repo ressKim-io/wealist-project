@@ -11,7 +11,7 @@ import (
 
 // UserInfo represents detailed user information (matches client.UserInfo)
 type UserInfo struct {
-	UserID   string `json:"userId"`
+	UserID   string `json:"user_id"`
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	IsActive bool   `json:"isActive"`
@@ -19,7 +19,7 @@ type UserInfo struct {
 
 // SimpleUser represents basic user information (matches client.SimpleUser)
 type SimpleUser struct {
-	ID        string `json:"id"`
+	ID        string `json:"user_id"`
 	Name      string `json:"name"`
 	AvatarURL string `json:"avatarUrl"`
 }
