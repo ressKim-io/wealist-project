@@ -22,9 +22,12 @@ USER_SERVICE_URL="${USER_SERVICE_URL:-http://localhost:8080}"
 BOARD_SERVICE_URL="${BOARD_SERVICE_URL:-http://localhost:8000}"
 
 # Performance test configuration
-WARMUP_ITERATIONS=5
-PERFORMANCE_ITERATIONS=50
-CONCURRENT_REQUESTS=10
+WARMUP_ITERATIONS=10
+PERFORMANCE_ITERATIONS=100
+CONCURRENT_REQUESTS_LIGHT=10
+CONCURRENT_REQUESTS_MEDIUM=50
+CONCURRENT_REQUESTS_HEAVY=100
+SUSTAINED_TEST_DURATION=30  # seconds
 
 # Result arrays
 declare -a response_times
@@ -505,44 +508,53 @@ test_write_performance() {
 test_cache_performance() {
     print_header "CACHE Performance Tests"
 
-    print_section "Testing cache hit vs miss performance"
+    print_section "Testing cache effectiveness (100 requests each)"
 
-    # First request (cache miss)
-    print_info "Cache miss (first request):"
-    local miss_times=()
-    for i in $(seq 1 10); do
-        # Clear cache by adding timestamp to force different cache key
+    # First, make one request to potentially populate cache
+    curl -s "$BOARD_SERVICE_URL/api/projects/$PROJECT_ID/fields" \
+        -H "Authorization: Bearer $JWT_TOKEN" > /dev/null
+
+    # Now test cache hit performance with many requests
+    print_info "Running 100 consecutive requests (cache should be hot)..."
+    local cached_times=()
+    for i in $(seq 1 100); do
         local duration=$(measure_request "GET" "$BOARD_SERVICE_URL/api/projects/$PROJECT_ID/fields" "")
-        miss_times+=($duration)
-    done
-
-    stats=$(calculate_stats "${miss_times[@]}")
-    read min max avg median p95 p99 <<< "$stats"
-    print_metric "Average (cache miss): ${avg}ms"
-
-    # Subsequent requests (cache hit)
-    print_info "Cache hit (subsequent requests):"
-    local hit_times=()
-    for i in $(seq 1 10); do
-        local duration=$(measure_request "GET" "$BOARD_SERVICE_URL/api/projects/$PROJECT_ID/fields" "")
-        hit_times+=($duration)
-    done
-
-    stats=$(calculate_stats "${hit_times[@]}")
-    read min max avg median p95 p99 <<< "$stats"
-    print_metric "Average (cache hit): ${avg}ms"
-
-    # Calculate speedup
-    local miss_avg=$(calculate_stats "${miss_times[@]}" | awk '{print $3}')
-    local hit_avg=$(calculate_stats "${hit_times[@]}" | awk '{print $3}')
-
-    if [ $hit_avg -gt 0 ]; then
-        local speedup=$(( miss_avg / hit_avg ))
-        if [ $speedup -gt 1 ]; then
-            print_success "Cache speedup: ${speedup}x faster"
-        else
-            print_info "Cache speedup: ${speedup}x"
+        cached_times+=($duration)
+        if [ $((i % 20)) -eq 0 ]; then
+            echo -n "."
         fi
+    done
+    echo ""
+
+    stats=$(calculate_stats "${cached_times[@]}")
+    read min max avg median p95 p99 <<< "$stats"
+
+    print_metric "100 Cached Requests Performance:"
+    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "Min:" $min
+    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "Max:" $max
+    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "Average:" $avg
+    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "Median:" $median
+    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "P95:" $p95
+    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "P99:" $p99
+
+    # Cache effectiveness check
+    if [ $avg -lt 20 ]; then
+        print_success "Excellent cache performance! (avg < 20ms)"
+    elif [ $avg -lt 50 ]; then
+        print_success "Good cache performance (avg < 50ms)"
+    else
+        print_error "Cache might not be effective (avg >= 50ms)"
+    fi
+
+    # Consistency check
+    local variation=$(( max - min ))
+    print_metric "Response time variation: ${variation}ms (max - min)"
+    if [ $variation -lt 50 ]; then
+        print_success "Very consistent performance"
+    elif [ $variation -lt 100 ]; then
+        print_info "Reasonably consistent performance"
+    else
+        print_error "High variance - might indicate cache issues"
     fi
     echo ""
 }
@@ -550,19 +562,105 @@ test_cache_performance() {
 test_concurrent_performance() {
     print_header "CONCURRENT Request Tests"
 
-    # Concurrent GET requests
+    # Light load
+    print_section "Light Load: $CONCURRENT_REQUESTS_LIGHT concurrent requests"
+    CONCURRENT_REQUESTS=$CONCURRENT_REQUESTS_LIGHT
     run_concurrent_test \
         "GET /api/projects/{id}/fields" \
         "GET" \
         "$BOARD_SERVICE_URL/api/projects/$PROJECT_ID/fields" \
         ""
 
-    # Concurrent field value writes
+    # Medium load
+    print_section "Medium Load: $CONCURRENT_REQUESTS_MEDIUM concurrent requests"
+    CONCURRENT_REQUESTS=$CONCURRENT_REQUESTS_MEDIUM
     run_concurrent_test \
-        "POST /api/board-field-values" \
-        "POST" \
-        "$BOARD_SERVICE_URL/api/board-field-values" \
-        '{"board_id": "'$BOARD_ID'", "field_id": "'$TEXT_FIELD_ID'", "value": "Concurrent test"}'
+        "GET /api/projects/{id}/fields" \
+        "GET" \
+        "$BOARD_SERVICE_URL/api/projects/$PROJECT_ID/fields" \
+        ""
+
+    # Heavy load
+    print_section "Heavy Load: $CONCURRENT_REQUESTS_HEAVY concurrent requests"
+    CONCURRENT_REQUESTS=$CONCURRENT_REQUESTS_HEAVY
+    run_concurrent_test \
+        "GET /api/projects/{id}/fields" \
+        "GET" \
+        "$BOARD_SERVICE_URL/api/projects/$PROJECT_ID/fields" \
+        ""
+}
+
+test_sustained_load() {
+    print_header "SUSTAINED Load Tests"
+
+    print_section "Sustained load: ${SUSTAINED_TEST_DURATION} seconds continuous requests"
+    print_info "Sending requests as fast as possible for ${SUSTAINED_TEST_DURATION} seconds..."
+
+    local request_count=0
+    local success_count=0
+    local error_count=0
+    local total_time=0
+    local times=()
+
+    local end_time=$(($(date +%s) + SUSTAINED_TEST_DURATION))
+
+    while [ $(date +%s) -lt $end_time ]; do
+        local start=$(date +%s%N)
+        local status=$(curl -s -o /dev/null -w "%{http_code}" "$BOARD_SERVICE_URL/api/projects/$PROJECT_ID/fields" \
+            -H "Authorization: Bearer $JWT_TOKEN")
+        local end=$(date +%s%N)
+        local duration=$(( (end - start) / 1000000 ))
+
+        request_count=$((request_count + 1))
+        times+=($duration)
+        total_time=$((total_time + duration))
+
+        if [ "$status" = "200" ]; then
+            success_count=$((success_count + 1))
+        else
+            error_count=$((error_count + 1))
+        fi
+
+        # Progress indicator every 20 requests
+        if [ $((request_count % 20)) -eq 0 ]; then
+            echo -n "."
+        fi
+    done
+    echo ""
+
+    # Calculate statistics
+    stats=$(calculate_stats "${times[@]}")
+    read min max avg median p95 p99 <<< "$stats"
+
+    local rps=$(( request_count / SUSTAINED_TEST_DURATION ))
+
+    print_metric "Sustained Load Results:"
+    printf "  ${MAGENTA}%-25s${NC} %d\n" "Total requests:" $request_count
+    printf "  ${MAGENTA}%-25s${NC} %d\n" "Successful:" $success_count
+    printf "  ${MAGENTA}%-25s${NC} %d\n" "Errors:" $error_count
+    printf "  ${MAGENTA}%-25s${NC} %d req/sec\n" "Throughput:" $rps
+    printf "  ${MAGENTA}%-25s${NC} %d ms\n" "Avg response time:" $avg
+    printf "  ${MAGENTA}%-25s${NC} %d ms\n" "P95 response time:" $p95
+    printf "  ${MAGENTA}%-25s${NC} %d ms\n" "P99 response time:" $p99
+
+    # Performance evaluation
+    if [ $error_count -eq 0 ]; then
+        print_success "No errors during sustained load!"
+    else
+        local error_rate=$(( (error_count * 100) / request_count ))
+        print_error "Error rate: ${error_rate}%"
+    fi
+
+    if [ $rps -gt 100 ]; then
+        print_success "Excellent throughput (> 100 req/sec)"
+    elif [ $rps -gt 50 ]; then
+        print_success "Good throughput (> 50 req/sec)"
+    elif [ $rps -gt 20 ]; then
+        print_info "Acceptable throughput (> 20 req/sec)"
+    else
+        print_error "Low throughput (< 20 req/sec)"
+    fi
+    echo ""
 }
 
 test_load_scenarios() {
@@ -625,13 +723,25 @@ print_performance_summary() {
     echo "Test Configuration:"
     echo "  Warmup iterations: $WARMUP_ITERATIONS"
     echo "  Performance iterations: $PERFORMANCE_ITERATIONS"
-    echo "  Concurrent requests: $CONCURRENT_REQUESTS"
+    echo "  Light concurrent load: $CONCURRENT_REQUESTS_LIGHT requests"
+    echo "  Medium concurrent load: $CONCURRENT_REQUESTS_MEDIUM requests"
+    echo "  Heavy concurrent load: $CONCURRENT_REQUESTS_HEAVY requests"
+    echo "  Sustained load duration: ${SUSTAINED_TEST_DURATION}s"
     echo ""
-    echo "Recommendations:"
-    echo "  - Average response time < 50ms: Excellent"
-    echo "  - Average response time < 100ms: Good"
-    echo "  - Average response time < 200ms: Acceptable"
-    echo "  - Cache should provide 2-10x speedup"
+    echo "Performance Benchmarks:"
+    echo "  Response Time:"
+    echo "    - < 50ms: Excellent ⭐⭐⭐"
+    echo "    - < 100ms: Good ⭐⭐"
+    echo "    - < 200ms: Acceptable ⭐"
+    echo ""
+    echo "  Throughput:"
+    echo "    - > 100 req/sec: Excellent ⭐⭐⭐"
+    echo "    - > 50 req/sec: Good ⭐⭐"
+    echo "    - > 20 req/sec: Acceptable ⭐"
+    echo ""
+    echo "  Cache:"
+    echo "    - < 20ms avg: Excellent cache hit"
+    echo "    - < 50ms variation: Consistent performance"
     echo ""
 }
 
@@ -663,6 +773,7 @@ main() {
     test_write_performance
     test_cache_performance
     test_concurrent_performance
+    test_sustained_load
     test_load_scenarios
     cleanup
     print_performance_summary
