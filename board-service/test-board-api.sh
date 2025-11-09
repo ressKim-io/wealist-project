@@ -233,7 +233,7 @@ print_info "Default Role ID: $ROLE_ID"
 custom_role_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/custom-fields/roles" \
     "Create Custom Role" \
     "{
-        \"projectId\": \"$PROJECT_ID\",
+        \"project_id\": \"$PROJECT_ID\",
         \"name\": \"Frontend Developer\",
         \"color\": \"#3B82F6\"
     }" \
@@ -270,7 +270,7 @@ print_info "Default Stage ID: $STAGE_ID"
 custom_stage_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/custom-fields/stages" \
     "Create Custom Stage" \
     "{
-        \"projectId\": \"$PROJECT_ID\",
+        \"project_id\": \"$PROJECT_ID\",
         \"name\": \"Code Review\",
         \"color\": \"#F59E0B\"
     }" \
@@ -292,7 +292,7 @@ print_info "Default Importance ID: $IMPORTANCE_ID"
 custom_importance_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/custom-fields/importance" \
     "Create Custom Importance" \
     "{
-        \"projectId\": \"$PROJECT_ID\",
+        \"project_id\": \"$PROJECT_ID\",
         \"name\": \"Critical\",
         \"color\": \"#DC2626\",
         \"level\": 5
@@ -311,12 +311,12 @@ print_header "Step 5: Test Board APIs"
 board_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/boards" \
     "Create Board" \
     "{
-        \"projectId\": \"$PROJECT_ID\",
+        \"project_id\": \"$PROJECT_ID\",
         \"title\": \"Implement Authentication\",
         \"content\": \"Add JWT authentication to the API\",
-        \"roleIds\": [\"$ROLE_ID\"],
-        \"stageId\": \"$STAGE_ID\",
-        \"importanceId\": \"$IMPORTANCE_ID\"
+        \"role_ids\": [\"$ROLE_ID\"],
+        \"stage_id\": \"$STAGE_ID\",
+        \"importance_id\": \"$IMPORTANCE_ID\"
     }" \
     201)
 
@@ -337,7 +337,7 @@ test_api "GET" "${BOARD_SERVICE_URL}/api/boards/${BOARD_ID}" \
     200
 
 # Get Boards by Project
-test_api "GET" "${BOARD_SERVICE_URL}/api/boards?projectId=${PROJECT_ID}" \
+test_api "GET" "${BOARD_SERVICE_URL}/api/boards?project_id=${PROJECT_ID}" \
     "Get Boards in Project" \
     "" \
     200
@@ -348,7 +348,7 @@ test_api "PUT" "${BOARD_SERVICE_URL}/api/boards/${BOARD_ID}" \
     "{
         \"title\": \"Implement JWT Authentication\",
         \"content\": \"Add JWT authentication and authorization\",
-        \"stageId\": \"$CUSTOM_STAGE_ID\"
+        \"stage_id\": \"$CUSTOM_STAGE_ID\"
     }" \
     200
 
@@ -361,7 +361,7 @@ print_header "Step 6: Test Comment APIs"
 comment_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/comments" \
     "Create Comment" \
     "{
-        \"boardId\": \"$BOARD_ID\",
+        \"board_id\": \"$BOARD_ID\",
         \"content\": \"This is a test comment for the board\"
     }" \
     201)
@@ -374,7 +374,7 @@ else
     print_info "Comment ID: $COMMENT_ID"
 
     # Get Comments by Board
-    test_api "GET" "${BOARD_SERVICE_URL}/api/comments?boardId=${BOARD_ID}" \
+    test_api "GET" "${BOARD_SERVICE_URL}/api/comments?board_id=${BOARD_ID}" \
         "Get Comments for Board" \
         "" \
         200
