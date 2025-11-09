@@ -241,7 +241,7 @@ test_field_crud() {
     body=$(echo "$response" | sed '$d')
 
     if print_result "$http_code" 201 "Create text field"; then
-        TEXT_FIELD_ID=$(echo "$body" | jq -r '.field_id')
+        TEXT_FIELD_ID=$(echo "$body" | jq -r '.data.field_id')
         echo "  Field ID: $TEXT_FIELD_ID"
     fi
 
@@ -263,7 +263,7 @@ test_field_crud() {
     body=$(echo "$response" | sed '$d')
 
     if print_result "$http_code" 201 "Create single_select field"; then
-        PRIORITY_FIELD_ID=$(echo "$body" | jq -r '.field_id')
+        PRIORITY_FIELD_ID=$(echo "$body" | jq -r '.data.field_id')
         echo "  Field ID: $PRIORITY_FIELD_ID"
     fi
 
@@ -285,7 +285,7 @@ test_field_crud() {
     body=$(echo "$response" | sed '$d')
 
     if print_result "$http_code" 201 "Create multi_select field"; then
-        TAGS_FIELD_ID=$(echo "$body" | jq -r '.field_id')
+        TAGS_FIELD_ID=$(echo "$body" | jq -r '.data.field_id')
         echo "  Field ID: $TAGS_FIELD_ID"
     fi
 
@@ -317,7 +317,7 @@ test_field_crud() {
     body=$(echo "$response" | sed '$d')
 
     if print_result "$http_code" 200 "Get all fields"; then
-        field_count=$(echo "$body" | jq '. | length')
+        field_count=$(echo "$body" | jq '.data | length')
         echo "  Found $field_count fields"
     fi
 
@@ -360,7 +360,7 @@ test_field_options() {
     body=$(echo "$response" | sed '$d')
 
     if print_result "$http_code" 201 "Create High priority option"; then
-        HIGH_OPTION_ID=$(echo "$body" | jq -r '.option_id')
+        HIGH_OPTION_ID=$(echo "$body" | jq -r '.data.option_id')
     fi
 
     # Medium priority
@@ -377,7 +377,7 @@ test_field_options() {
     body=$(echo "$response" | sed '$d')
 
     if print_result "$http_code" 201 "Create Medium priority option"; then
-        MEDIUM_OPTION_ID=$(echo "$body" | jq -r '.option_id')
+        MEDIUM_OPTION_ID=$(echo "$body" | jq -r '.data.option_id')
     fi
 
     # Low priority
@@ -402,7 +402,7 @@ test_field_options() {
     body=$(echo "$response" | sed '$d')
 
     if print_result "$http_code" 200 "Get field options"; then
-        option_count=$(echo "$body" | jq '. | length')
+        option_count=$(echo "$body" | jq '.data | length')
         echo "  Found $option_count options"
     fi
 
@@ -445,7 +445,7 @@ test_field_values() {
     body=$(echo "$response" | sed '$d')
 
     if print_result "$http_code" 201 "Create board"; then
-        BOARD_ID=$(echo "$body" | jq -r '.board_id')
+        BOARD_ID=$(echo "$body" | jq -r '.data.board_id')
         echo "  Board ID: $BOARD_ID"
     fi
 
@@ -484,8 +484,8 @@ test_field_values() {
     tags_response=$(curl -s "$BOARD_SERVICE_URL/api/fields/$TAGS_FIELD_ID/options" \
         -H "Authorization: Bearer $JWT_TOKEN")
 
-    FRONTEND_TAG=$(echo "$tags_response" | jq -r '.[] | select(.label=="Frontend") | .option_id')
-    BUG_TAG=$(echo "$tags_response" | jq -r '.[] | select(.label=="Bug") | .option_id')
+    FRONTEND_TAG=$(echo "$tags_response" | jq -r '.data[] | select(.label=="Frontend") | .option_id')
+    BUG_TAG=$(echo "$tags_response" | jq -r '.data[] | select(.label=="Bug") | .option_id')
 
     response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/field-values/multi-select" \
         -H "Authorization: Bearer $JWT_TOKEN" \
@@ -547,7 +547,7 @@ test_saved_views() {
     body=$(echo "$response" | sed '$d')
 
     if print_result "$http_code" 201 "Create saved view"; then
-        VIEW_ID=$(echo "$body" | jq -r '.view_id')
+        VIEW_ID=$(echo "$body" | jq -r '.data.view_id')
         echo "  View ID: $VIEW_ID"
     fi
 
@@ -560,7 +560,7 @@ test_saved_views() {
     body=$(echo "$response" | sed '$d')
 
     if print_result "$http_code" 200 "Get project views"; then
-        view_count=$(echo "$body" | jq '. | length')
+        view_count=$(echo "$body" | jq '.data | length')
         echo "  Found $view_count views"
     fi
 
@@ -573,8 +573,8 @@ test_saved_views() {
     body=$(echo "$response" | sed '$d')
 
     if print_result "$http_code" 200 "Apply view and get boards"; then
-        board_count=$(echo "$body" | jq '.boards | length')
-        total=$(echo "$body" | jq '.total')
+        board_count=$(echo "$body" | jq '.data.boards | length')
+        total=$(echo "$body" | jq '.data.total')
         echo "  Found $board_count boards (total: $total)"
     fi
 }
