@@ -45,38 +45,38 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "projectId",
+                        "name": "project_id",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Filter by Stage ID",
-                        "name": "stageId",
+                        "name": "stage_id",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "Filter by Role ID",
-                        "name": "roleId",
+                        "name": "role_id",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "Filter by Importance ID",
-                        "name": "importanceId",
+                        "name": "importance_id",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "Filter by Assignee ID",
-                        "name": "assigneeId",
+                        "name": "assignee_id",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "Filter by Author ID",
-                        "name": "authorId",
+                        "name": "author_id",
                         "in": "query"
                     },
                     {
@@ -193,7 +193,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/boards/{id}": {
+        "/api/boards/{board_id}": {
             "get": {
                 "security": [
                     {
@@ -215,7 +215,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Board ID",
-                        "name": "id",
+                        "name": "board_id",
                         "in": "path",
                         "required": true
                     }
@@ -274,7 +274,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Board ID",
-                        "name": "id",
+                        "name": "board_id",
                         "in": "path",
                         "required": true
                     },
@@ -348,7 +348,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Board ID",
-                        "name": "id",
+                        "name": "board_id",
                         "in": "path",
                         "required": true
                     }
@@ -432,7 +432,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/importance/{id}": {
+        "/api/custom-fields/importance/{importance_id}": {
             "get": {
                 "security": [
                     {
@@ -454,7 +454,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Importance ID",
-                        "name": "id",
+                        "name": "importance_id",
                         "in": "path",
                         "required": true
                     }
@@ -507,7 +507,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Importance ID",
-                        "name": "id",
+                        "name": "importance_id",
                         "in": "path",
                         "required": true
                     },
@@ -569,7 +569,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Importance ID",
-                        "name": "id",
+                        "name": "importance_id",
                         "in": "path",
                         "required": true
                     }
@@ -590,7 +590,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/projects/{projectId}/importance": {
+        "/api/custom-fields/projects/{project_id}/importance": {
             "get": {
                 "security": [
                     {
@@ -612,7 +612,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "projectId",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     }
@@ -648,7 +648,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/projects/{projectId}/importance/order": {
+        "/api/custom-fields/projects/{project_id}/importance/order": {
             "put": {
                 "security": [
                     {
@@ -670,7 +670,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "projectId",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
@@ -700,7 +700,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/projects/{projectId}/roles": {
+        "/api/custom-fields/projects/{project_id}/roles": {
             "get": {
                 "security": [
                     {
@@ -722,7 +722,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "projectId",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     }
@@ -758,7 +758,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/projects/{projectId}/roles/order": {
+        "/api/custom-fields/projects/{project_id}/roles/order": {
             "put": {
                 "security": [
                     {
@@ -780,7 +780,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "projectId",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
@@ -816,7 +816,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/projects/{projectId}/stages": {
+        "/api/custom-fields/projects/{project_id}/stages": {
             "get": {
                 "security": [
                     {
@@ -838,7 +838,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "projectId",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     }
@@ -874,7 +874,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/projects/{projectId}/stages/order": {
+        "/api/custom-fields/projects/{project_id}/stages/order": {
             "put": {
                 "security": [
                     {
@@ -896,7 +896,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "projectId",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
@@ -995,7 +995,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/roles/{id}": {
+        "/api/custom-fields/roles/{role_id}": {
             "get": {
                 "security": [
                     {
@@ -1017,7 +1017,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Role ID",
-                        "name": "id",
+                        "name": "role_id",
                         "in": "path",
                         "required": true
                     }
@@ -1070,7 +1070,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Role ID",
-                        "name": "id",
+                        "name": "role_id",
                         "in": "path",
                         "required": true
                     },
@@ -1144,7 +1144,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Role ID",
-                        "name": "id",
+                        "name": "role_id",
                         "in": "path",
                         "required": true
                     }
@@ -1234,7 +1234,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/stages/{id}": {
+        "/api/custom-fields/stages/{stage_id}": {
             "get": {
                 "security": [
                     {
@@ -1256,7 +1256,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Stage ID",
-                        "name": "id",
+                        "name": "stage_id",
                         "in": "path",
                         "required": true
                     }
@@ -1309,7 +1309,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Stage ID",
-                        "name": "id",
+                        "name": "stage_id",
                         "in": "path",
                         "required": true
                     },
@@ -1377,7 +1377,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Stage ID",
-                        "name": "id",
+                        "name": "stage_id",
                         "in": "path",
                         "required": true
                     }
@@ -1610,7 +1610,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/join-requests/{id}": {
+        "/api/projects/join-requests/{join_request_id}": {
             "put": {
                 "security": [
                     {
@@ -1632,7 +1632,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Join Request ID",
-                        "name": "id",
+                        "name": "join_request_id",
                         "in": "path",
                         "required": true
                     },
@@ -1708,7 +1708,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Workspace ID",
-                        "name": "workspaceId",
+                        "name": "workspace_id",
                         "in": "query",
                         "required": true
                     },
@@ -1766,7 +1766,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}": {
+        "/api/projects/{project_id}": {
             "get": {
                 "security": [
                     {
@@ -1788,7 +1788,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     }
@@ -1847,7 +1847,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
@@ -1921,7 +1921,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     }
@@ -1965,7 +1965,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/join-requests": {
+        "/api/projects/{project_id}/join-requests": {
             "get": {
                 "security": [
                     {
@@ -1987,7 +1987,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
@@ -2035,7 +2035,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/members": {
+        "/api/projects/{project_id}/members": {
             "get": {
                 "security": [
                     {
@@ -2057,7 +2057,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     }
@@ -2099,7 +2099,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/members/{memberId}": {
+        "/api/projects/{project_id}/members/{member_id}": {
             "delete": {
                 "security": [
                     {
@@ -2121,14 +2121,14 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Member ID",
-                        "name": "memberId",
+                        "name": "member_id",
                         "in": "path",
                         "required": true
                     }
@@ -2178,7 +2178,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/members/{memberId}/role": {
+        "/api/projects/{project_id}/members/{member_id}/role": {
             "put": {
                 "security": [
                     {
@@ -2200,14 +2200,14 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Member ID",
-                        "name": "memberId",
+                        "name": "member_id",
                         "in": "path",
                         "required": true
                     },
@@ -2261,7 +2261,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/orders/role-board": {
+        "/api/projects/{project_id}/orders/role-board": {
             "get": {
                 "security": [
                     {
@@ -2283,7 +2283,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     }
@@ -2322,7 +2322,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/orders/role-boards/{roleId}": {
+        "/api/projects/{project_id}/orders/role-boards/{role_id}": {
             "put": {
                 "security": [
                     {
@@ -2344,14 +2344,14 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Role ID",
-                        "name": "roleId",
+                        "name": "role_id",
                         "in": "path",
                         "required": true
                     },
@@ -2399,7 +2399,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/orders/role-columns": {
+        "/api/projects/{project_id}/orders/role-columns": {
             "put": {
                 "security": [
                     {
@@ -2421,7 +2421,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
@@ -2469,7 +2469,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/orders/stage-board": {
+        "/api/projects/{project_id}/orders/stage-board": {
             "get": {
                 "security": [
                     {
@@ -2491,7 +2491,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     }
@@ -2530,7 +2530,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/orders/stage-boards/{stageId}": {
+        "/api/projects/{project_id}/orders/stage-boards/{stage_id}": {
             "put": {
                 "security": [
                     {
@@ -2552,14 +2552,14 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Stage ID",
-                        "name": "stageId",
+                        "name": "stage_id",
                         "in": "path",
                         "required": true
                     },
@@ -2607,7 +2607,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{id}/orders/stage-columns": {
+        "/api/projects/{project_id}/orders/stage-columns": {
             "put": {
                 "security": [
                     {
@@ -2629,7 +2629,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true
                     },

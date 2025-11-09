@@ -529,28 +529,28 @@ paths:
       parameters:
       - description: Project ID
         in: query
-        name: projectId
+        name: project_id
         required: true
         type: string
       - description: Filter by Stage ID
         in: query
-        name: stageId
+        name: stage_id
         type: string
       - description: Filter by Role ID
         in: query
-        name: roleId
+        name: role_id
         type: string
       - description: Filter by Importance ID
         in: query
-        name: importanceId
+        name: importance_id
         type: string
       - description: Filter by Assignee ID
         in: query
-        name: assigneeId
+        name: assignee_id
         type: string
       - description: Filter by Author ID
         in: query
-        name: authorId
+        name: author_id
         type: string
       - description: 'Page number (default: 1)'
         in: query
@@ -625,7 +625,7 @@ paths:
       summary: Create board
       tags:
       - boards
-  /api/boards/{id}:
+  /api/boards/{board_id}:
     delete:
       consumes:
       - application/json
@@ -633,7 +633,7 @@ paths:
       parameters:
       - description: Board ID
         in: path
-        name: id
+        name: board_id
         required: true
         type: string
       produces:
@@ -663,7 +663,7 @@ paths:
       parameters:
       - description: Board ID
         in: path
-        name: id
+        name: board_id
         required: true
         type: string
       produces:
@@ -698,7 +698,7 @@ paths:
       parameters:
       - description: Board ID
         in: path
-        name: id
+        name: board_id
         required: true
         type: string
       - description: Board updates
@@ -769,7 +769,7 @@ paths:
       summary: Create custom importance
       tags:
       - custom-fields
-  /api/custom-fields/importance/{id}:
+  /api/custom-fields/importance/{importance_id}:
     delete:
       consumes:
       - application/json
@@ -778,7 +778,7 @@ paths:
       parameters:
       - description: Importance ID
         in: path
-        name: id
+        name: importance_id
         required: true
         type: string
       produces:
@@ -804,7 +804,7 @@ paths:
       parameters:
       - description: Importance ID
         in: path
-        name: id
+        name: importance_id
         required: true
         type: string
       produces:
@@ -836,7 +836,7 @@ paths:
       parameters:
       - description: Importance ID
         in: path
-        name: id
+        name: importance_id
         required: true
         type: string
       - description: Importance updates
@@ -866,7 +866,7 @@ paths:
       summary: Update custom importance
       tags:
       - custom-fields
-  /api/custom-fields/projects/{projectId}/importance:
+  /api/custom-fields/projects/{project_id}/importance:
     get:
       consumes:
       - application/json
@@ -874,7 +874,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: projectId
+        name: project_id
         required: true
         type: string
       produces:
@@ -900,7 +900,7 @@ paths:
       summary: Get custom importances
       tags:
       - custom-fields
-  /api/custom-fields/projects/{projectId}/importance/order:
+  /api/custom-fields/projects/{project_id}/importance/order:
     put:
       consumes:
       - application/json
@@ -908,7 +908,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: projectId
+        name: project_id
         required: true
         type: string
       - description: Importance orders
@@ -933,7 +933,7 @@ paths:
       summary: Update importance display order
       tags:
       - custom-fields
-  /api/custom-fields/projects/{projectId}/roles:
+  /api/custom-fields/projects/{project_id}/roles:
     get:
       consumes:
       - application/json
@@ -941,7 +941,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: projectId
+        name: project_id
         required: true
         type: string
       produces:
@@ -967,7 +967,7 @@ paths:
       summary: Get custom roles
       tags:
       - custom-fields
-  /api/custom-fields/projects/{projectId}/roles/order:
+  /api/custom-fields/projects/{project_id}/roles/order:
     put:
       consumes:
       - application/json
@@ -975,7 +975,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: projectId
+        name: project_id
         required: true
         type: string
       - description: Role orders
@@ -1004,7 +1004,7 @@ paths:
       summary: Update role display order
       tags:
       - custom-fields
-  /api/custom-fields/projects/{projectId}/stages:
+  /api/custom-fields/projects/{project_id}/stages:
     get:
       consumes:
       - application/json
@@ -1012,7 +1012,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: projectId
+        name: project_id
         required: true
         type: string
       produces:
@@ -1038,7 +1038,7 @@ paths:
       summary: Get custom stages
       tags:
       - custom-fields
-  /api/custom-fields/projects/{projectId}/stages/order:
+  /api/custom-fields/projects/{project_id}/stages/order:
     put:
       consumes:
       - application/json
@@ -1046,7 +1046,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: projectId
+        name: project_id
         required: true
         type: string
       - description: Stage orders
@@ -1112,7 +1112,7 @@ paths:
       summary: Create custom role
       tags:
       - custom-fields
-  /api/custom-fields/roles/{id}:
+  /api/custom-fields/roles/{role_id}:
     delete:
       consumes:
       - application/json
@@ -1120,7 +1120,7 @@ paths:
       parameters:
       - description: Role ID
         in: path
-        name: id
+        name: role_id
         required: true
         type: string
       produces:
@@ -1150,7 +1150,7 @@ paths:
       parameters:
       - description: Role ID
         in: path
-        name: id
+        name: role_id
         required: true
         type: string
       produces:
@@ -1181,7 +1181,7 @@ paths:
       parameters:
       - description: Role ID
         in: path
-        name: id
+        name: role_id
         required: true
         type: string
       - description: Role updates
@@ -1256,7 +1256,7 @@ paths:
       summary: Create custom stage
       tags:
       - custom-fields
-  /api/custom-fields/stages/{id}:
+  /api/custom-fields/stages/{stage_id}:
     delete:
       consumes:
       - application/json
@@ -1264,7 +1264,7 @@ paths:
       parameters:
       - description: Stage ID
         in: path
-        name: id
+        name: stage_id
         required: true
         type: string
       produces:
@@ -1290,7 +1290,7 @@ paths:
       parameters:
       - description: Stage ID
         in: path
-        name: id
+        name: stage_id
         required: true
         type: string
       produces:
@@ -1321,7 +1321,7 @@ paths:
       parameters:
       - description: Stage ID
         in: path
-        name: id
+        name: stage_id
         required: true
         type: string
       - description: Stage updates
@@ -1437,7 +1437,7 @@ paths:
       summary: Create project
       tags:
       - projects
-  /api/projects/{id}:
+  /api/projects/{project_id}:
     delete:
       consumes:
       - application/json
@@ -1445,7 +1445,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       produces:
@@ -1483,7 +1483,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       produces:
@@ -1518,7 +1518,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       - description: Updated project details
@@ -1556,7 +1556,7 @@ paths:
       summary: Update project
       tags:
       - projects
-  /api/projects/{id}/join-requests:
+  /api/projects/{project_id}/join-requests:
     get:
       consumes:
       - application/json
@@ -1564,7 +1564,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       - description: Filter by status (PENDING/APPROVED/REJECTED)
@@ -1598,7 +1598,7 @@ paths:
       summary: Get join requests
       tags:
       - projects
-  /api/projects/{id}/members:
+  /api/projects/{project_id}/members:
     get:
       consumes:
       - application/json
@@ -1606,7 +1606,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       produces:
@@ -1636,7 +1636,7 @@ paths:
       summary: Get project members
       tags:
       - projects
-  /api/projects/{id}/members/{memberId}:
+  /api/projects/{project_id}/members/{member_id}:
     delete:
       consumes:
       - application/json
@@ -1645,12 +1645,12 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       - description: Member ID
         in: path
-        name: memberId
+        name: member_id
         required: true
         type: string
       produces:
@@ -1685,7 +1685,7 @@ paths:
       summary: Remove member
       tags:
       - projects
-  /api/projects/{id}/members/{memberId}/role:
+  /api/projects/{project_id}/members/{member_id}/role:
     put:
       consumes:
       - application/json
@@ -1693,12 +1693,12 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       - description: Member ID
         in: path
-        name: memberId
+        name: member_id
         required: true
         type: string
       - description: New role
@@ -1736,7 +1736,7 @@ paths:
       summary: Update member role
       tags:
       - projects
-  /api/projects/{id}/orders/role-board:
+  /api/projects/{project_id}/orders/role-board:
     get:
       consumes:
       - application/json
@@ -1745,7 +1745,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       produces:
@@ -1773,7 +1773,7 @@ paths:
       summary: Get role-based board view
       tags:
       - user-orders
-  /api/projects/{id}/orders/role-boards/{roleId}:
+  /api/projects/{project_id}/orders/role-boards/{role_id}:
     put:
       consumes:
       - application/json
@@ -1782,12 +1782,12 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       - description: Role ID
         in: path
-        name: roleId
+        name: role_id
         required: true
         type: string
       - description: Order update details
@@ -1821,7 +1821,7 @@ paths:
       summary: Update board order in role column
       tags:
       - user-orders
-  /api/projects/{id}/orders/role-columns:
+  /api/projects/{project_id}/orders/role-columns:
     put:
       consumes:
       - application/json
@@ -1829,7 +1829,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       - description: Order update details
@@ -1863,7 +1863,7 @@ paths:
       summary: Update role column order
       tags:
       - user-orders
-  /api/projects/{id}/orders/stage-board:
+  /api/projects/{project_id}/orders/stage-board:
     get:
       consumes:
       - application/json
@@ -1872,7 +1872,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       produces:
@@ -1900,7 +1900,7 @@ paths:
       summary: Get stage-based board view
       tags:
       - user-orders
-  /api/projects/{id}/orders/stage-boards/{stageId}:
+  /api/projects/{project_id}/orders/stage-boards/{stage_id}:
     put:
       consumes:
       - application/json
@@ -1909,12 +1909,12 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       - description: Stage ID
         in: path
-        name: stageId
+        name: stage_id
         required: true
         type: string
       - description: Order update details
@@ -1948,7 +1948,7 @@ paths:
       summary: Update board order in stage column
       tags:
       - user-orders
-  /api/projects/{id}/orders/stage-columns:
+  /api/projects/{project_id}/orders/stage-columns:
     put:
       consumes:
       - application/json
@@ -1956,7 +1956,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: id
+        name: project_id
         required: true
         type: string
       - description: Order update details
@@ -2035,7 +2035,7 @@ paths:
       summary: Create join request
       tags:
       - projects
-  /api/projects/join-requests/{id}:
+  /api/projects/join-requests/{join_request_id}:
     put:
       consumes:
       - application/json
@@ -2043,7 +2043,7 @@ paths:
       parameters:
       - description: Join Request ID
         in: path
-        name: id
+        name: join_request_id
         required: true
         type: string
       - description: Status update
@@ -2089,7 +2089,7 @@ paths:
       parameters:
       - description: Workspace ID
         in: query
-        name: workspaceId
+        name: workspace_id
         required: true
         type: string
       - description: Search query
