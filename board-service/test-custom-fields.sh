@@ -107,18 +107,40 @@ get_test_token() {
 create_test_project() {
     print_header "Creating Test Project"
 
-    # Get workspace first
-    workspaces_response=$(curl -s "$USER_SERVICE_URL/api/workspace" \
+    # Get or create workspace
+    print_section "Get or Create Workspace"
+    workspaces_response=$(curl -s "$USER_SERVICE_URL/api/workspaces" \
         -H "Authorization: Bearer $JWT_TOKEN")
 
-    WORKSPACE_ID=$(echo "$workspaces_response" | jq -r '.data[0].id' 2>/dev/null)
+    WORKSPACE_ID=$(echo "$workspaces_response" | jq -r '.[0].id // .data[0].id' 2>/dev/null)
 
     if [ -z "$WORKSPACE_ID" ] || [ "$WORKSPACE_ID" = "null" ]; then
-        print_error "No workspace found! Please create a workspace first."
-        exit 1
+        print_info "No workspace found. Creating new workspace..."
+
+        create_ws_response=$(curl -s -w "\n%{http_code}" -X POST "$USER_SERVICE_URL/api/workspaces" \
+            -H "Authorization: Bearer $JWT_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+                "name": "Custom Fields Test Workspace",
+                "description": "Workspace for custom fields testing"
+            }')
+
+        http_code=$(echo "$create_ws_response" | tail -n1)
+        ws_body=$(echo "$create_ws_response" | sed '$d')
+
+        if [ "$http_code" -eq 201 ] || [ "$http_code" -eq 200 ]; then
+            WORKSPACE_ID=$(echo "$ws_body" | jq -r '.id')
+            print_success "Created workspace: $WORKSPACE_ID"
+        else
+            print_error "Failed to create workspace (HTTP $http_code)"
+            echo "$ws_body" | jq '.'
+            exit 1
+        fi
+    else
+        print_success "Using existing workspace: $WORKSPACE_ID"
     fi
 
-    print_info "Using workspace: $WORKSPACE_ID"
+    export WORKSPACE_ID
 
     # Create project
     project_response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/projects" \
