@@ -39,7 +39,7 @@ type GetBoardsRequest struct {
 // ==================== Response DTOs ====================
 
 type BoardResponse struct {
-	ID         string                     `json:"board_id"`
+	ID         string                     `json:"id"`
 	ProjectID  string                     `json:"project_id"`
 	Title      string                     `json:"title"`
 	Content    string                     `json:"content"`

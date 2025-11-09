@@ -35,7 +35,7 @@ type FieldOrder struct {
 
 // FieldResponse represents a custom field
 type FieldResponse struct {
-	FieldID         string                 `json:"field_id"`
+	FieldID         string                 `json:"id"`
 	ProjectID       string                 `json:"project_id"`
 	Name            string                 `json:"name"`
 	FieldType       string                 `json:"fieldType"`
@@ -78,7 +78,7 @@ type OptionOrder struct {
 
 // OptionResponse represents a field option
 type OptionResponse struct {
-	OptionID     string    `json:"option_id"`
+	OptionID     string    `json:"id"`
 	FieldID      string    `json:"field_id"`
 	Label        string    `json:"label"`
 	Color        string    `json:"color"`
@@ -112,7 +112,7 @@ type OrderedValue struct {
 
 // FieldValueResponse represents a board field value
 type FieldValueResponse struct {
-	ValueID       string      `json:"value_id"`
+	ValueID       string      `json:"id"`
 	BoardID       string      `json:"board_id"`
 	FieldID       string      `json:"field_id"`
 	Value         interface{} `json:"value"`  // Actual value (text, number, date, boolean, option object, user object)
@@ -156,7 +156,7 @@ type UpdateViewRequest struct {
 
 // ViewResponse represents a saved view
 type ViewResponse struct {
-	ViewID         string                 `json:"view_id"`
+	ViewID         string                 `json:"id"`
 	ProjectID      string                 `json:"project_id"`
 	CreatedBy      string                 `json:"created_by"`
 	Name           string                 `json:"name"`
