@@ -244,20 +244,6 @@ Response:
 
 All `/api/*` endpoints require JWT authentication via `Authorization: Bearer <token>` header.
 
-#### Workspaces
-- `POST /api/workspaces` - Create workspace
-- `GET /api/workspaces/search` - Search workspaces
-- `GET /api/workspaces/:id` - Get workspace details
-- `PUT /api/workspaces/:id` - Update workspace
-- `DELETE /api/workspaces/:id` - Delete workspace (soft)
-- `POST /api/workspaces/join-requests` - Create join request
-- `GET /api/workspaces/:id/join-requests` - List join requests
-- `PUT /api/workspaces/join-requests/:id` - Approve/reject join request
-- `GET /api/workspaces/:id/members` - List workspace members
-- `PUT /api/workspaces/:id/members/:memberId/role` - Update member role
-- `DELETE /api/workspaces/:id/members/:memberId` - Remove member
-- `POST /api/workspaces/default` - Set default workspace
-
 #### Projects
 - `POST /api/projects` - Create project
 - `GET /api/projects/search` - Search projects
@@ -486,20 +472,37 @@ The service uses structured JSON logging in production and console logging in de
 
 ## Recent Updates
 
+### v1.1.0 - API Field Name Standardization (2025-11-09)
+
+**Major Changes:**
+- **Standardized all ID field names to snake_case** for consistency with database schema
+- Updated all DTO request/response structs:
+  - `projectId` → `project_id`
+  - `workspaceId` → `workspace_id`
+  - `boardId` → `board_id`
+  - `stageId` → `stage_id`
+  - `roleId`/`roleIds` → `role_id`/`role_ids`
+  - `importanceId` → `importance_id`
+  - `assigneeId` → `assignee_id`
+  - `userId` → `user_id`
+- Response ID fields made explicit:
+  - Generic `id` → specific `board_id`, `project_id`, `stage_id`, `role_id`, `importance_id`, `comment_id`
+- Updated frontend TypeScript interfaces to match backend schema
+- Regenerated Swagger documentation with new field names
+
+**Benefits:**
+- Clear and explicit field naming
+- Direct alignment with PostgreSQL column names
+- Improved API contract clarity
+- Easier debugging and maintenance
+
 ### v1.0.1 - Soft Delete Unification (2025-01-06)
 
 **Major Changes:**
 - Unified all domain models to inherit from `BaseModel` with `is_deleted` field
-- Refactored `Board`, `BoardRole`, and all `UserOrder` models to use `BaseModel`
-- Fixed composite UNIQUE constraints on user order tables
-- Updated all repository queries from `deleted_at IS NULL` to `is_deleted = false`
 - Renamed API entity from "Kanban" to "Board" throughout codebase
 - Updated endpoints: `/api/kanbans` → `/api/boards`
 - Updated user order endpoints: `/stage-kanbans` → `/stage-boards`, `/role-kanbans` → `/role-boards`
-
-**Testing:**
-- All 13 integration tests passing
-- Health check, CRUD operations, board views, and ordering functionality verified
 
 **Exception:** `Comment` table continues to use `gorm.DeletedAt` for historical consistency.
 
