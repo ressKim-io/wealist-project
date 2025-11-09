@@ -309,11 +309,30 @@ setup_test_environment() {
     fi
 
     if [ -z "$WORKSPACE_ID" ] || [ "$WORKSPACE_ID" = "null" ]; then
-        print_error "No workspace found. Please create a workspace first."
-        exit 1
-    fi
+        print_info "No workspace found. Creating new workspace..."
 
-    print_success "Using workspace: $WORKSPACE_ID"
+        create_ws_response=$(curl -s -w "\n%{http_code}" -X POST "$USER_SERVICE_URL/api/workspaces" \
+            -H "Authorization: Bearer $JWT_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+                "name": "Performance Test Workspace",
+                "description": "Workspace for performance testing"
+            }')
+
+        http_code=$(echo "$create_ws_response" | tail -n1)
+        ws_body=$(echo "$create_ws_response" | sed '$d')
+
+        if [ "$http_code" -eq 201 ] || [ "$http_code" -eq 200 ]; then
+            WORKSPACE_ID=$(echo "$ws_body" | jq -r '.id')
+            print_success "Created workspace: $WORKSPACE_ID"
+        else
+            print_error "Failed to create workspace (HTTP $http_code)"
+            echo "$ws_body" | jq '.'
+            exit 1
+        fi
+    else
+        print_success "Using existing workspace: $WORKSPACE_ID"
+    fi
 
     # Create test project
     print_section "Creating Test Project"
