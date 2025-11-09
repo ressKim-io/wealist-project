@@ -18,7 +18,7 @@ const boardService = axios.create({
  * USE_MOCK_DATA = true: 목업 데이터 사용
  * USE_MOCK_DATA = false: 실제 API 호출
  */
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 // ============================================================================
 // 프로젝트 관련 API
@@ -372,10 +372,10 @@ export const getProjects = async (
   token: string,
 ): Promise<ProjectResponse[]> => {
   if (USE_MOCK_DATA) {
-    console.log('[MOCK] getProjects 호출:', workspaceId);
+    console.log('[MOCK] getProjects 호출:', workspace_id);
     return new Promise((resolve) => {
       setTimeout(() => {
-        const filtered = MOCK_PROJECTS.filter((p) => p.workspace_id === workspaceId);
+        const filtered = MOCK_PROJECTS.filter((p) => p.workspace_id === workspace_id);
         resolve(filtered);
       }, 300);
     });
@@ -383,7 +383,7 @@ export const getProjects = async (
 
   try {
     const response = await boardService.get('/api/projects', {
-      params: { workspace_id: workspaceId },
+      params: { workspace_id: workspace_id },
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data?.projects || [];
@@ -402,7 +402,7 @@ export const getProjects = async (
  */
 export const getProject = async (project_id: string, token: string): Promise<ProjectResponse> => {
   try {
-    const response = await boardService.get(`/api/projects/${projectId}`, {
+    const response = await boardService.get(`/api/projects/${project_id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -469,7 +469,7 @@ export const updateProject = async (
   token: string,
 ): Promise<ProjectResponse> => {
   try {
-    const response = await boardService.put(`/api/projects/${projectId}`, data, {
+    const response = await boardService.put(`/api/projects/${project_id}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -488,7 +488,7 @@ export const updateProject = async (
  */
 export const deleteProject = async (project_id: string, token: string): Promise<any> => {
   try {
-    const response = await boardService.delete(`/api/projects/${projectId}`, {
+    const response = await boardService.delete(`/api/projects/${project_id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data;
@@ -584,7 +584,7 @@ export const getBoards = async (
   },
 ): Promise<PaginatedBoardsResponse> => {
   if (USE_MOCK_DATA) {
-    console.log('[MOCK] getBoards 호출:', projectId, filters);
+    console.log('[MOCK] getBoards 호출:', project_id, filters);
     return new Promise((resolve) => {
       setTimeout(() => {
         let filtered = MOCK_BOARDS.filter((b) => b.project_id === projectId);
@@ -617,7 +617,7 @@ export const getBoards = async (
   }
 
   try {
-    const params = { projectId, ...filters };
+    const params = { project_id, ...filters };
     const response = await boardService.get('/api/boards', {
       params,
       headers: { Authorization: `Bearer ${token}` },
@@ -636,7 +636,7 @@ export const getBoards = async (
  * @param token 액세스 토큰
  * @returns 보드 정보
  */
-export const getBoard = async (boardId: string, token: string): Promise<BoardResponse> => {
+export const getBoard = async (board_id: string, token: string): Promise<BoardResponse> => {
   if (USE_MOCK_DATA) {
     console.log('[MOCK] getBoard 호출:', boardId);
     return new Promise((resolve, reject) => {
@@ -652,7 +652,7 @@ export const getBoard = async (boardId: string, token: string): Promise<BoardRes
   }
 
   try {
-    const response = await boardService.get(`/api/boards/${boardId}`, {
+    const response = await boardService.get(`/api/boards/${board_id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -693,12 +693,12 @@ export const createBoard = async (
  * @returns 업데이트된 보드
  */
 export const updateBoard = async (
-  boardId: string,
+  board_id: string,
   data: Partial<CreateBoardRequest>,
   token: string,
 ): Promise<BoardResponse> => {
   try {
-    const response = await boardService.put(`/api/boards/${boardId}`, data, {
+    const response = await boardService.put(`/api/boards/${board_id}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -715,9 +715,9 @@ export const updateBoard = async (
  * @param token 액세스 토큰
  * @returns 응답 메시지
  */
-export const deleteBoard = async (boardId: string, token: string): Promise<any> => {
+export const deleteBoard = async (board_id: string, token: string): Promise<any> => {
   try {
-    const response = await boardService.delete(`/api/boards/${boardId}`, {
+    const response = await boardService.delete(`/api/boards/${board_id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data;
@@ -786,7 +786,7 @@ export const getProjectStages = async (
   }
 
   try {
-    const response = await boardService.get(`/api/custom-fields/projects/${projectId}/stages`, {
+    const response = await boardService.get(`/api/custom-fields/projects/${project_id}/stages`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data || [];
@@ -818,7 +818,7 @@ export const getProjectRoles = async (
   }
 
   try {
-    const response = await boardService.get(`/api/custom-fields/projects/${projectId}/roles`, {
+    const response = await boardService.get(`/api/custom-fields/projects/${project_id}/roles`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data || [];
@@ -850,7 +850,7 @@ export const getProjectImportances = async (
   }
 
   try {
-    const response = await boardService.get(`/api/custom-fields/projects/${projectId}/importance`, {
+    const response = await boardService.get(`/api/custom-fields/projects/${project_id}/importance`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data || [];
@@ -923,12 +923,12 @@ export const createStage = async (
  * PUT /api/custom-fields/stages/{id}
  */
 export const updateStage = async (
-  stageId: string,
+  stage_id: string,
   data: UpdateCustomStageRequest,
   token: string,
 ): Promise<CustomStageResponse> => {
   try {
-    const response = await boardService.put(`/api/custom-fields/stages/${stageId}`, data, {
+    const response = await boardService.put(`/api/custom-fields/stages/${stage_id}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -942,9 +942,9 @@ export const updateStage = async (
  * Stage를 삭제합니다.
  * DELETE /api/custom-fields/stages/{id}
  */
-export const deleteStage = async (stageId: string, token: string): Promise<void> => {
+export const deleteStage = async (stage_id: string, token: string): Promise<void> => {
   try {
-    await boardService.delete(`/api/custom-fields/stages/${stageId}`, {
+    await boardService.delete(`/api/custom-fields/stages/${stage_id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
   } catch (error) {
@@ -977,12 +977,12 @@ export const createRole = async (
  * PUT /api/custom-fields/roles/{id}
  */
 export const updateRole = async (
-  roleId: string,
+  role_id: string,
   data: UpdateCustomRoleRequest,
   token: string,
 ): Promise<CustomRoleResponse> => {
   try {
-    const response = await boardService.put(`/api/custom-fields/roles/${roleId}`, data, {
+    const response = await boardService.put(`/api/custom-fields/roles/${role_id}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -996,9 +996,9 @@ export const updateRole = async (
  * Role을 삭제합니다.
  * DELETE /api/custom-fields/roles/{id}
  */
-export const deleteRole = async (roleId: string, token: string): Promise<void> => {
+export const deleteRole = async (role_id: string, token: string): Promise<void> => {
   try {
-    await boardService.delete(`/api/custom-fields/roles/${roleId}`, {
+    await boardService.delete(`/api/custom-fields/roles/${role_id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
   } catch (error) {
@@ -1031,12 +1031,12 @@ export const createImportance = async (
  * PUT /api/custom-fields/importance/{id}
  */
 export const updateImportance = async (
-  importanceId: string,
+  importance_id: string,
   data: UpdateCustomImportanceRequest,
   token: string,
 ): Promise<CustomImportanceResponse> => {
   try {
-    const response = await boardService.put(`/api/custom-fields/importance/${importanceId}`, data, {
+    const response = await boardService.put(`/api/custom-fields/importance/${importance_id}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -1050,9 +1050,9 @@ export const updateImportance = async (
  * Importance를 삭제합니다.
  * DELETE /api/custom-fields/importance/{id}
  */
-export const deleteImportance = async (importanceId: string, token: string): Promise<void> => {
+export const deleteImportance = async (importance_id: string, token: string): Promise<void> => {
   try {
-    await boardService.delete(`/api/custom-fields/importance/${importanceId}`, {
+    await boardService.delete(`/api/custom-fields/importance/${importance_id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
   } catch (error) {
@@ -1092,12 +1092,12 @@ export interface UpdateCommentRequest {
  * @returns 댓글 배열
  */
 export const getComments = async (
-  boardId: string,
+  board_id: string,
   token: string,
 ): Promise<CommentResponse[]> => {
   try {
     const response = await boardService.get('/api/comments', {
-      params: { boardId },
+      params: { board_id },
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data || [];
@@ -1183,7 +1183,7 @@ export interface RoleBasedBoardView {
     roleColor: string;
     displayOrder: number;
     boards: Array<{
-      boardId: string;
+      board_id: string;
       title: string;
       displayOrder: number;
     }>;
@@ -1199,7 +1199,7 @@ export interface StageBasedBoardView {
     stageColor: string;
     displayOrder: number;
     boards: Array<{
-      boardId: string;
+      board_id: string;
       title: string;
       displayOrder: number;
     }>;
@@ -1218,7 +1218,7 @@ export const getRoleBasedBoardView = async (
   token: string,
 ): Promise<RoleBasedBoardView> => {
   try {
-    const response = await boardService.get(`/api/projects/${projectId}/orders/role-board`, {
+    const response = await boardService.get(`/api/projects/${project_id}/orders/role-board`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -1240,7 +1240,7 @@ export const getStageBasedBoardView = async (
   token: string,
 ): Promise<StageBasedBoardView> => {
   try {
-    const response = await boardService.get(`/api/projects/${projectId}/orders/stage-board`, {
+    const response = await boardService.get(`/api/projects/${project_id}/orders/stage-board`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -1264,7 +1264,7 @@ export const updateStageColumnOrder = async (
 ): Promise<void> => {
   try {
     await boardService.put(
-      `/api/projects/${projectId}/orders/stage-columns`,
+      `/api/projects/${project_id}/orders/stage-columns`,
       { itemIds: stageIds },
       { headers: { Authorization: `Bearer ${token}` } },
     );
@@ -1284,13 +1284,13 @@ export const updateStageColumnOrder = async (
  */
 export const updateStageBoardOrder = async (
   project_id: string,
-  stageId: string,
+  stage_id: string,
   boardIds: string[],
   token: string,
 ): Promise<void> => {
   try {
     await boardService.put(
-      `/api/projects/${projectId}/orders/stage-boards/${stageId}`,
+      `/api/projects/${project_id}/orders/stage-boards/${stage_id}`,
       { itemIds: boardIds },
       { headers: { Authorization: `Bearer ${token}` } },
     );

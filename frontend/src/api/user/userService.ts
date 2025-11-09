@@ -12,7 +12,7 @@ import { AxiosResponse } from 'axios';
  *
  * 백엔드 API 구현 후 아래 플래그를 false로 변경하세요.
  */
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 // --- DTO Interfaces ---
 
