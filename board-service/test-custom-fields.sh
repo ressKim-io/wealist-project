@@ -430,6 +430,53 @@ test_field_options() {
 test_field_values() {
     print_header "TEST 3: Board and Field Values"
 
+    # 3.0 Create Stage and Role for Board
+    print_section "3.0 Setup Stage and Role"
+
+    # Create a default stage
+    stage_response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/custom-fields/stages" \
+        -H "Authorization: Bearer $JWT_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d '{
+            "project_id": "'$PROJECT_ID'",
+            "name": "To Do",
+            "color": "#808080"
+        }')
+
+    stage_http_code=$(echo "$stage_response" | tail -n1)
+    stage_body=$(echo "$stage_response" | sed '$d')
+
+    if [ "$stage_http_code" -eq 201 ] || [ "$stage_http_code" -eq 200 ]; then
+        STAGE_ID=$(echo "$stage_body" | jq -r '.data.stage_id // .data.id // .stage_id // .id')
+        print_success "Created stage: $STAGE_ID"
+    else
+        print_error "Failed to create stage (HTTP $stage_http_code)"
+        echo "$stage_body" | jq '.' 2>/dev/null || echo "$stage_body"
+        exit 1
+    fi
+
+    # Create a default role
+    role_response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/custom-fields/roles" \
+        -H "Authorization: Bearer $JWT_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d '{
+            "project_id": "'$PROJECT_ID'",
+            "name": "Developer",
+            "color": "#0000FF"
+        }')
+
+    role_http_code=$(echo "$role_response" | tail -n1)
+    role_body=$(echo "$role_response" | sed '$d')
+
+    if [ "$role_http_code" -eq 201 ] || [ "$role_http_code" -eq 200 ]; then
+        ROLE_ID=$(echo "$role_body" | jq -r '.data.role_id // .data.id // .role_id // .id')
+        print_success "Created role: $ROLE_ID"
+    else
+        print_error "Failed to create role (HTTP $role_http_code)"
+        echo "$role_body" | jq '.' 2>/dev/null || echo "$role_body"
+        exit 1
+    fi
+
     # 3.1 Create a board first
     print_section "3.1 Create Test Board"
     response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/boards" \
@@ -438,7 +485,9 @@ test_field_values() {
         -d '{
             "project_id": "'$PROJECT_ID'",
             "title": "Test Task #1",
-            "description": "Testing custom fields"
+            "content": "Testing custom fields",
+            "stage_id": "'$STAGE_ID'",
+            "role_ids": ["'$ROLE_ID'"]
         }')
 
     http_code=$(echo "$response" | tail -n1)
