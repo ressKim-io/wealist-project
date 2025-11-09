@@ -19,7 +19,7 @@ type UpdateCommentRequest struct {
 
 // CommentResponse defines the structure for a comment response.
 type CommentResponse struct {
-	ID          uuid.UUID `json:"id"`
+	ID          uuid.UUID `json:"comment_id"`
 	UserID      uuid.UUID `json:"user_id"`
 	UserName    string    `json:"userName"`
 	UserAvatar  string    `json:"userAvatar"`

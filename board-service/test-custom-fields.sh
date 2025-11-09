@@ -156,7 +156,7 @@ create_test_project() {
     response_body=$(echo "$project_response" | sed '$d')
 
     if [ "$http_code" -eq 201 ]; then
-        PROJECT_ID=$(echo "$response_body" | jq -r '.id')
+        PROJECT_ID=$(echo \"$response_body\" | jq -r '.project_id')
         print_success "Project created: $PROJECT_ID"
         export PROJECT_ID
         return 0
@@ -396,7 +396,7 @@ test_field_values() {
     body=$(echo "$response" | sed '$d')
 
     if print_result "$http_code" 201 "Create board"; then
-        BOARD_ID=$(echo "$body" | jq -r '.id')
+        BOARD_ID=$(echo "$body" | jq -r '.board_id')
         echo "  Board ID: $BOARD_ID"
     fi
 

@@ -37,7 +37,7 @@ type UpdateProjectMemberRoleRequest struct {
 // Response DTOs
 
 type ProjectResponse struct {
-	ID          string    `json:"id"`
+	ID          string    `json:"project_id"`
 	WorkspaceID string    `json:"workspace_id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
@@ -49,7 +49,7 @@ type ProjectResponse struct {
 }
 
 type ProjectMemberResponse struct {
-	ID        string    `json:"id"`
+	ID        string    `json:"member_id"`
 	ProjectID string    `json:"project_id"`
 	UserID    string    `json:"user_id"`
 	UserName  string    `json:"userName"`
@@ -59,7 +59,7 @@ type ProjectMemberResponse struct {
 }
 
 type ProjectJoinRequestResponse struct {
-	ID          string    `json:"id"`
+	ID          string    `json:"request_id"`
 	ProjectID   string    `json:"project_id"`
 	UserID      string    `json:"user_id"`
 	UserName    string    `json:"userName"`

@@ -27,7 +27,7 @@ type RoleOrder struct {
 
 // Response DTOs
 type CustomRoleResponse struct {
-	ID              string    `json:"id"`
+	ID              string    `json:"role_id"`
 	ProjectID       string    `json:"project_id"`
 	Name            string    `json:"name"`
 	Color           string    `json:"color"`
@@ -62,7 +62,7 @@ type StageOrder struct {
 
 // Response DTOs
 type CustomStageResponse struct {
-	ID              string    `json:"id"`
+	ID              string    `json:"stage_id"`
 	ProjectID       string    `json:"project_id"`
 	Name            string    `json:"name"`
 	Color           string    `json:"color"`
@@ -97,7 +97,7 @@ type ImportanceOrder struct {
 
 // Response DTOs
 type CustomImportanceResponse struct {
-	ID              string    `json:"id"`
+	ID              string    `json:"importance_id"`
 	ProjectID       string    `json:"project_id"`
 	Name            string    `json:"name"`
 	Color           string    `json:"color"`
