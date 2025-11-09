@@ -10,7 +10,7 @@ DROP TABLE IF EXISTS project_fields CASCADE;
 
 -- Remove JSONB cache column from boards
 ALTER TABLE boards DROP COLUMN IF EXISTS custom_fields_cache;
-DROP INDEX IF EXISTS idx_boards_custom_fields;
+DROP INDEX IF EXISTS idx_boards_custom_fields_gin;
 
 -- Remove schema version
 DELETE FROM schema_versions WHERE version = '20250110120000';

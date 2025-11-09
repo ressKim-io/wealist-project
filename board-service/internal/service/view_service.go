@@ -589,14 +589,14 @@ func (s *viewService) applyCustomFieldFilter(query *gorm.DB, fieldID uuid.UUID, 
 	switch operator {
 	case "contains":
 		if strVal, ok := value.(string); ok {
-			return query.Where("custom_fields_cache::jsonb->? LIKE ?", fieldKey, "%"+strVal+"%")
+			return query.Where("custom_fields_cache->? LIKE ?", fieldKey, "%"+strVal+"%")
 		}
 	case "in":
 		if arr, ok := value.([]interface{}); ok {
-			return query.Where("custom_fields_cache::jsonb->? ?| ARRAY[?]", fieldKey, arr)
+			return query.Where("custom_fields_cache->? ?| ARRAY[?]", fieldKey, arr)
 		}
 	case "eq":
-		return query.Where("custom_fields_cache::jsonb->>? = ?", fieldKey, value)
+		return query.Where("custom_fields_cache->>? = ?", fieldKey, value)
 	}
 
 	return query

@@ -133,13 +133,12 @@ COMMENT ON COLUMN board_field_values.display_order IS 'Order for multi-select an
 -- ==================== 4. Boards: Add JSONB cache column ====================
 
 -- Add JSONB cache column to boards table for fast querying
-ALTER TABLE boards ADD COLUMN IF NOT EXISTS custom_fields_cache TEXT DEFAULT '{}';
+ALTER TABLE boards ADD COLUMN IF NOT EXISTS custom_fields_cache JSONB DEFAULT '{}'::jsonb;
 
--- GIN index for JSONB queries (PostgreSQL optimizes JSON queries)
--- Note: Using TEXT column to store JSON (GORM handles serialization)
-CREATE INDEX IF NOT EXISTS idx_boards_custom_fields ON boards(custom_fields_cache) WHERE custom_fields_cache != '{}';
+-- GIN index for JSONB queries (PostgreSQL optimizes JSONB operations)
+CREATE INDEX IF NOT EXISTS idx_boards_custom_fields_gin ON boards USING GIN(custom_fields_cache) WHERE custom_fields_cache IS NOT NULL AND custom_fields_cache != '{}'::jsonb;
 
-COMMENT ON COLUMN boards.custom_fields_cache IS 'JSON cache of all field values for fast filtering (updated on field value changes)';
+COMMENT ON COLUMN boards.custom_fields_cache IS 'JSONB cache of all field values for fast filtering (updated on field value changes)';
 
 -- ==================== 5. Saved Views (Filters + Grouping) ====================
 

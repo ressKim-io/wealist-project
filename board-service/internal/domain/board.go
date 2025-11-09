@@ -17,8 +17,8 @@ type Board struct {
 	CreatedBy          uuid.UUID  `gorm:"type:uuid;not null;index" json:"created_by"`
 	DueDate            *time.Time `gorm:"index" json:"due_date"`
 
-	// Custom fields cache (JSON stored as string for fast filtering)
-	CustomFieldsCache  string     `gorm:"type:text;default:'{}'" json:"custom_fields_cache"`
+	// Custom fields cache (JSONB for fast filtering with GIN index)
+	CustomFieldsCache  string     `gorm:"type:jsonb;default:'{}'" json:"custom_fields_cache"`
 }
 
 func (Board) TableName() string {
