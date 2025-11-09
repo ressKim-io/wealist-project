@@ -18,7 +18,7 @@ NC='\033[0m'
 
 # Service URLs
 USER_SERVICE_URL="${USER_SERVICE_URL:-http://localhost:8080}"
-BOARD_SERVICE_URL="${BOARD_SERVICE_URL:-http://localhost:8081}"
+BOARD_SERVICE_URL="${BOARD_SERVICE_URL:-http://localhost:8000}"
 
 # Test counters
 TESTS_PASSED=0
