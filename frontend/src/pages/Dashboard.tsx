@@ -71,15 +71,15 @@ const AvatarStack: React.FC<AvatarStackProps> = ({ members }) => {
     <div className="flex -space-x-1.5 p-1 pr-0 overflow-hidden">
       {displayMembers.map((member, index) => (
         <div
-          key={member.user_id}
+          key={member.userId}
           className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-white overflow-hidden"
           style={{ zIndex: members.length - index }}
-          title={`${member.name} (${member.role})`}
+          title={`${member.userName} (${member.roleName})`}
         >
           {member.profileImageUrl ? (
             <img
               src={member.profileImageUrl}
-              alt={member.name}
+              alt={member.userName}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -88,7 +88,7 @@ const AvatarStack: React.FC<AvatarStackProps> = ({ members }) => {
                 index,
               )}`}
             >
-              {member.name[0]}
+              {member.userName[0]}
             </div>
           )}
         </div>

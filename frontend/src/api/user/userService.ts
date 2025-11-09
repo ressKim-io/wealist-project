@@ -64,9 +64,9 @@ export type WorkspaceMemberRole = 'OWNER' | 'ADMIN' | 'MEMBER';
 
 export interface WorkspaceMember {
   userId: string;
-  name: string;
-  email: string;
-  role: WorkspaceMemberRole;
+  userName: string;  // Changed from 'name' to match backend DTO
+  userEmail: string;  // Changed from 'email' to match backend DTO
+  roleName: WorkspaceMemberRole;  // Changed from 'role' to match backend DTO
   profileImageUrl?: string | null;
   joinedAt: string;
 }
@@ -190,41 +190,41 @@ let MOCK_WORKSPACE_MEMBERS: Record<string, WorkspaceMember[]> = {
   'workspace-1': [
     {
       userId: 'user-123',
-      name: '김개발',
-      email: 'dev.kim@orangecloud.com',
-      role: 'OWNER',
+      userName: '김개발',
+      userEmail: 'dev.kim@orangecloud.com',
+      roleName: 'OWNER',
       profileImageUrl: 'https://i.pravatar.cc/150?img=12',
       joinedAt: '2024-01-01T00:00:00Z',
     },
     {
       userId: 'user-456',
-      name: '이디자인',
-      email: 'design.lee@orangecloud.com',
-      role: 'ADMIN',
+      userName: '이디자인',
+      userEmail: 'design.lee@orangecloud.com',
+      roleName: 'ADMIN',
       profileImageUrl: 'https://i.pravatar.cc/150?img=5',
       joinedAt: '2024-01-05T00:00:00Z',
     },
     {
       userId: 'user-789',
-      name: '박프론트',
-      email: 'frontend.park@orangecloud.com',
-      role: 'MEMBER',
+      userName: '박프론트',
+      userEmail: 'frontend.park@orangecloud.com',
+      roleName: 'MEMBER',
       profileImageUrl: null,
       joinedAt: '2024-01-10T00:00:00Z',
     },
     {
       userId: 'user-101',
-      name: '정백엔드',
-      email: 'backend.jung@orangecloud.com',
-      role: 'MEMBER',
+      userName: '정백엔드',
+      userEmail: 'backend.jung@orangecloud.com',
+      roleName: 'MEMBER',
       profileImageUrl: 'https://i.pravatar.cc/150?img=33',
       joinedAt: '2024-01-12T00:00:00Z',
     },
     {
       userId: 'user-202',
-      name: '최데브옵스',
-      email: 'devops.choi@orangecloud.com',
-      role: 'MEMBER',
+      userName: '최데브옵스',
+      userEmail: 'devops.choi@orangecloud.com',
+      roleName: 'MEMBER',
       profileImageUrl: null,
       joinedAt: '2024-01-15T00:00:00Z',
     },
@@ -652,9 +652,9 @@ export const approveMember = async (
       const members = MOCK_WORKSPACE_MEMBERS[workspaceId] || [];
       members.push({
         userId: member.userId,
-        name: member.name,
-        email: member.email,
-        role: 'MEMBER',
+        userName: member.name,
+        userEmail: member.email,
+        roleName: 'MEMBER',
         joinedAt: new Date().toISOString(),
       });
       MOCK_WORKSPACE_MEMBERS[workspaceId] = members;
@@ -724,7 +724,7 @@ export const updateMemberRole = async (
     const members = MOCK_WORKSPACE_MEMBERS[workspaceId] || [];
     const member = members.find((m) => m.userId === userId);
     if (member) {
-      member.role = role;
+      member.roleName = role;
     }
     return new Promise((resolve) => {
       setTimeout(() => resolve(), 300);
@@ -733,7 +733,7 @@ export const updateMemberRole = async (
 
   await userRepoClient.put(
     `/api/workspaces/${workspaceId}/members/${userId}/role`,
-    { role },
+    { roleName: role },
     {
       headers: { Authorization: `Bearer ${accessToken}` },
     },
@@ -836,9 +836,9 @@ export const inviteUser = async (
         const members = MOCK_WORKSPACE_MEMBERS[workspaceId] || [];
         members.push({
           userId: user.userId,
-          name: user.name,
-          email: user.email,
-          role: 'MEMBER',
+          userName: user.name,
+          userEmail: user.email,
+          roleName: 'MEMBER',
           joinedAt: new Date().toISOString(),
         });
         MOCK_WORKSPACE_MEMBERS[workspaceId] = members;
