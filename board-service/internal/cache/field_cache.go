@@ -125,27 +125,39 @@ func (c *fieldCache) GetViewResults(ctx context.Context, viewID, filterHash stri
 }
 
 func (c *fieldCache) SetViewResults(ctx context.Context, viewID, filterHash string, resultsJSON []byte, ttl time.Duration) error {
-	key := fmt.Sprintf("view:%s:results:%s", viewID, filterHash)
-	return c.client.Set(ctx, key, resultsJSON, ttl).Err()
+	resultKey := fmt.Sprintf("view:%s:results:%s", viewID, filterHash)
+	trackingSetKey := fmt.Sprintf("view:%s:result_keys", viewID)
+
+	// Use pipeline for atomic operations
+	pipe := c.client.Pipeline()
+
+	// 1. Set the result cache
+	pipe.Set(ctx, resultKey, resultsJSON, ttl)
+
+	// 2. Track this key in a set (for later invalidation)
+	pipe.SAdd(ctx, trackingSetKey, resultKey)
+
+	// 3. Set TTL on tracking set (slightly longer than result TTL)
+	pipe.Expire(ctx, trackingSetKey, ttl+time.Hour)
+
+	_, err := pipe.Exec(ctx)
+	return err
 }
 
 func (c *fieldCache) InvalidateViewResults(ctx context.Context, viewID string) error {
-	// Delete all view results for this view
-	pattern := fmt.Sprintf("view:%s:results:*", viewID)
-	iter := c.client.Scan(ctx, 0, pattern, 100).Iterator()
+	trackingSetKey := fmt.Sprintf("view:%s:result_keys", viewID)
 
-	var keys []string
-	for iter.Next(ctx) {
-		keys = append(keys, iter.Val())
-	}
-
-	if err := iter.Err(); err != nil {
+	// Get all cached result keys for this view
+	keys, err := c.client.SMembers(ctx, trackingSetKey).Result()
+	if err != nil {
 		return err
 	}
 
-	if len(keys) > 0 {
-		return c.client.Del(ctx, keys...).Err()
+	if len(keys) == 0 {
+		return nil
 	}
 
-	return nil
+	// Delete all result keys + tracking set
+	keysToDelete := append(keys, trackingSetKey)
+	return c.client.Del(ctx, keysToDelete...).Err()
 }

@@ -2,15 +2,19 @@ package service
 
 import (
 	"board-service/internal/apperrors"
+	"board-service/internal/cache"
 	"board-service/internal/domain"
 	"board-service/internal/dto"
 	"board-service/internal/repository"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -36,6 +40,7 @@ type FieldService interface {
 type fieldService struct {
 	repo        repository.FieldRepository
 	projectRepo repository.ProjectRepository
+	cache       cache.FieldCache
 	logger      *zap.Logger
 	db          *gorm.DB
 }
@@ -43,12 +48,14 @@ type fieldService struct {
 func NewFieldService(
 	repo repository.FieldRepository,
 	projectRepo repository.ProjectRepository,
+	cache cache.FieldCache,
 	logger *zap.Logger,
 	db *gorm.DB,
 ) FieldService {
 	return &fieldService{
 		repo:        repo,
 		projectRepo: projectRepo,
+		cache:       cache,
 		logger:      logger,
 		db:          db,
 	}
@@ -114,6 +121,12 @@ func (s *fieldService) CreateField(userID string, req *dto.CreateFieldRequest) (
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "필드 생성 실패", 500)
 	}
 
+	// Invalidate cache
+	ctx := context.Background()
+	if err := s.cache.InvalidateProjectFields(ctx, req.ProjectID); err != nil {
+		s.logger.Warn("Failed to invalidate project fields cache", zap.Error(err))
+	}
+
 	return s.buildFieldResponse(field), nil
 }
 
@@ -137,7 +150,16 @@ func (s *fieldService) GetFieldsByProject(userID, projectID string) ([]dto.Field
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
 	}
 
-	// Fetch fields
+	// Try to get from cache first
+	ctx := context.Background()
+	if cachedData, err := s.cache.GetProjectFields(ctx, projectID); err == nil {
+		var responses []dto.FieldResponse
+		if json.Unmarshal(cachedData, &responses) == nil {
+			return responses, nil
+		}
+	}
+
+	// Fetch fields from DB
 	fields, err := s.repo.FindFieldsByProject(projectUUID)
 	if err != nil {
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "필드 조회 실패", 500)
@@ -146,6 +168,13 @@ func (s *fieldService) GetFieldsByProject(userID, projectID string) ([]dto.Field
 	responses := make([]dto.FieldResponse, 0, len(fields))
 	for i := range fields {
 		responses = append(responses, *s.buildFieldResponse(&fields[i]))
+	}
+
+	// Cache the result (TTL: 5 minutes)
+	if data, err := json.Marshal(responses); err == nil {
+		if err := s.cache.SetProjectFields(ctx, projectID, data, 5*time.Minute); err != nil {
+			s.logger.Warn("Failed to cache project fields", zap.Error(err))
+		}
 	}
 
 	return responses, nil
@@ -242,6 +271,12 @@ func (s *fieldService) UpdateField(userID, fieldID string, req *dto.UpdateFieldR
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "필드 수정 실패", 500)
 	}
 
+	// Invalidate cache
+	ctx := context.Background()
+	if err := s.cache.InvalidateProjectFields(ctx, field.ProjectID.String()); err != nil {
+		s.logger.Warn("Failed to invalidate project fields cache", zap.Error(err))
+	}
+
 	return s.buildFieldResponse(field), nil
 }
 
@@ -288,6 +323,12 @@ func (s *fieldService) DeleteField(userID, fieldID string) error {
 		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "필드 삭제 실패", 500)
 	}
 
+	// Invalidate cache
+	ctx := context.Background()
+	if err := s.cache.InvalidateProjectFields(ctx, field.ProjectID.String()); err != nil {
+		s.logger.Warn("Failed to invalidate project fields cache", zap.Error(err))
+	}
+
 	return nil
 }
 
@@ -328,6 +369,12 @@ func (s *fieldService) UpdateFieldOrder(userID, projectID string, req *dto.Updat
 	// Batch update
 	if err := s.repo.BatchUpdateFieldOrders(orders); err != nil {
 		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "필드 순서 업데이트 실패", 500)
+	}
+
+	// Invalidate cache
+	ctx := context.Background()
+	if err := s.cache.InvalidateProjectFields(ctx, projectID); err != nil {
+		s.logger.Warn("Failed to invalidate project fields cache", zap.Error(err))
 	}
 
 	return nil
@@ -393,6 +440,12 @@ func (s *fieldService) CreateOption(userID string, req *dto.CreateOptionRequest)
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "옵션 생성 실패", 500)
 	}
 
+	// Invalidate cache
+	ctx := context.Background()
+	if err := s.cache.InvalidateFieldOptions(ctx, req.FieldID); err != nil {
+		s.logger.Warn("Failed to invalidate field options cache", zap.Error(err))
+	}
+
 	return s.buildOptionResponse(option), nil
 }
 
@@ -425,7 +478,16 @@ func (s *fieldService) GetOptionsByField(userID, fieldID string) ([]dto.OptionRe
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
 	}
 
-	// Fetch options
+	// Try to get from cache first
+	ctx := context.Background()
+	if cachedData, err := s.cache.GetFieldOptions(ctx, fieldID); err == nil {
+		var responses []dto.OptionResponse
+		if json.Unmarshal(cachedData, &responses) == nil {
+			return responses, nil
+		}
+	}
+
+	// Fetch options from DB
 	options, err := s.repo.FindOptionsByField(fieldUUID)
 	if err != nil {
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "옵션 조회 실패", 500)
@@ -434,6 +496,13 @@ func (s *fieldService) GetOptionsByField(userID, fieldID string) ([]dto.OptionRe
 	responses := make([]dto.OptionResponse, 0, len(options))
 	for i := range options {
 		responses = append(responses, *s.buildOptionResponse(&options[i]))
+	}
+
+	// Cache the result (TTL: 5 minutes)
+	if data, err := json.Marshal(responses); err == nil {
+		if err := s.cache.SetFieldOptions(ctx, fieldID, data, 5*time.Minute); err != nil {
+			s.logger.Warn("Failed to cache field options", zap.Error(err))
+		}
 	}
 
 	return responses, nil
@@ -530,6 +599,12 @@ func (s *fieldService) UpdateOption(userID, optionID string, req *dto.UpdateOpti
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "옵션 수정 실패", 500)
 	}
 
+	// Invalidate cache
+	ctx := context.Background()
+	if err := s.cache.InvalidateFieldOptions(ctx, option.FieldID.String()); err != nil {
+		s.logger.Warn("Failed to invalidate field options cache", zap.Error(err))
+	}
+
 	return s.buildOptionResponse(option), nil
 }
 
@@ -574,6 +649,12 @@ func (s *fieldService) DeleteOption(userID, optionID string) error {
 	// Soft delete
 	if err := s.repo.DeleteOption(optionUUID); err != nil {
 		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "옵션 삭제 실패", 500)
+	}
+
+	// Invalidate cache
+	ctx := context.Background()
+	if err := s.cache.InvalidateFieldOptions(ctx, option.FieldID.String()); err != nil {
+		s.logger.Warn("Failed to invalidate field options cache", zap.Error(err))
 	}
 
 	return nil
@@ -625,6 +706,12 @@ func (s *fieldService) UpdateOptionOrder(userID, fieldID string, req *dto.Update
 	// Batch update
 	if err := s.repo.BatchUpdateOptionOrders(orders); err != nil {
 		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "옵션 순서 업데이트 실패", 500)
+	}
+
+	// Invalidate cache
+	ctx := context.Background()
+	if err := s.cache.InvalidateFieldOptions(ctx, fieldID); err != nil {
+		s.logger.Warn("Failed to invalidate field options cache", zap.Error(err))
 	}
 
 	return nil

@@ -2,9 +2,11 @@ package service
 
 import (
 	"board-service/internal/apperrors"
+	"board-service/internal/cache"
 	"board-service/internal/domain"
 	"board-service/internal/dto"
 	"board-service/internal/repository"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -35,6 +37,7 @@ type viewService struct {
 	repo        repository.FieldRepository
 	boardRepo   repository.BoardRepository
 	projectRepo repository.ProjectRepository
+	cache       cache.FieldCache
 	logger      *zap.Logger
 	db          *gorm.DB
 }
@@ -43,6 +46,7 @@ func NewViewService(
 	repo repository.FieldRepository,
 	boardRepo repository.BoardRepository,
 	projectRepo repository.ProjectRepository,
+	cache cache.FieldCache,
 	logger *zap.Logger,
 	db *gorm.DB,
 ) ViewService {
@@ -50,6 +54,7 @@ func NewViewService(
 		repo:        repo,
 		boardRepo:   boardRepo,
 		projectRepo: projectRepo,
+		cache:       cache,
 		logger:      logger,
 		db:          db,
 	}
@@ -302,6 +307,12 @@ func (s *viewService) DeleteView(userID, viewID string) error {
 
 	if err := s.repo.DeleteView(viewUUID); err != nil {
 		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "뷰 삭제 실패", 500)
+	}
+
+	// Invalidate view results cache
+	ctx := context.Background()
+	if err := s.cache.InvalidateViewResults(ctx, viewID); err != nil {
+		s.logger.Warn("Failed to invalidate view results cache", zap.Error(err))
 	}
 
 	return nil

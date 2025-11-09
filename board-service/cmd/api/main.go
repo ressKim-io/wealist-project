@@ -98,9 +98,9 @@ func main() {
 	userOrderService := service.NewUserOrderService(userOrderRepo, projectRepo, customFieldRepo, boardRepo, userOrderCache, log)
 	commentService := service.NewCommentService(commentRepo, boardRepo, projectRepo, userClient, userInfoCache, log, db) // Add CommentService
 	// Custom fields services
-	fieldService := service.NewFieldService(fieldRepo, projectRepo, log, db)
-	fieldValueService := service.NewFieldValueService(fieldRepo, boardRepo, projectRepo, log, db)
-	viewService := service.NewViewService(fieldRepo, boardRepo, projectRepo, log, db)
+	fieldService := service.NewFieldService(fieldRepo, projectRepo, fieldCache, log, db)
+	fieldValueService := service.NewFieldValueService(fieldRepo, boardRepo, projectRepo, fieldCache, log, db)
+	viewService := service.NewViewService(fieldRepo, boardRepo, projectRepo, fieldCache, log, db)
 
 	// 6. Configure Gin mode
 	if cfg.Server.Env == "prod" {

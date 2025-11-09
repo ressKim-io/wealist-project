@@ -2,9 +2,11 @@ package service
 
 import (
 	"board-service/internal/apperrors"
+	"board-service/internal/cache"
 	"board-service/internal/domain"
 	"board-service/internal/dto"
 	"board-service/internal/repository"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +14,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -35,6 +38,7 @@ type fieldValueService struct {
 	repo         repository.FieldRepository
 	boardRepo    repository.BoardRepository
 	projectRepo  repository.ProjectRepository
+	cache        cache.FieldCache
 	logger       *zap.Logger
 	db           *gorm.DB
 }
@@ -43,6 +47,7 @@ func NewFieldValueService(
 	repo repository.FieldRepository,
 	boardRepo repository.BoardRepository,
 	projectRepo repository.ProjectRepository,
+	cache cache.FieldCache,
 	logger *zap.Logger,
 	db *gorm.DB,
 ) FieldValueService {
@@ -50,6 +55,7 @@ func NewFieldValueService(
 		repo:        repo,
 		boardRepo:   boardRepo,
 		projectRepo: projectRepo,
+		cache:       cache,
 		logger:      logger,
 		db:          db,
 	}
@@ -662,7 +668,17 @@ func (s *fieldValueService) updateBoardCache(boardID uuid.UUID) error {
 	}
 
 	// Update board's custom_fields_cache
-	return s.db.Model(&domain.Board{}).
+	if err := s.db.Model(&domain.Board{}).
 		Where("id = ?", boardID).
-		Update("custom_fields_cache", string(cacheJSON)).Error
+		Update("custom_fields_cache", string(cacheJSON)).Error; err != nil {
+		return err
+	}
+
+	// Invalidate Redis cache
+	ctx := context.Background()
+	if err := s.cache.InvalidateBoardFieldValues(ctx, boardID.String()); err != nil {
+		s.logger.Warn("Failed to invalidate board field values cache", zap.Error(err))
+	}
+
+	return nil
 }
