@@ -126,22 +126,22 @@ print_stats() {
     read min max avg median p95 p99 <<< "$stats"
 
     printf "${BLUE}%-50s${NC}\n" "$endpoint"
-    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "Min:" $min
-    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "Max:" $max
-    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "Average:" $avg
-    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "Median:" $median
+    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "최소:" $min
+    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "최대:" $max
+    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "평균:" $avg
+    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "중간값:" $median
     printf "  ${MAGENTA}%-15s${NC} %d ms\n" "P95:" $p95
     printf "  ${MAGENTA}%-15s${NC} %d ms\n" "P99:" $p99
 
     # Performance evaluation
     if [ $avg -lt 50 ]; then
-        print_success "Excellent performance (avg < 50ms)"
+        print_success "우수한 성능 (평균 < 50ms)"
     elif [ $avg -lt 100 ]; then
-        print_success "Good performance (avg < 100ms)"
+        print_success "좋은 성능 (평균 < 100ms)"
     elif [ $avg -lt 200 ]; then
-        print_info "Acceptable performance (avg < 200ms)"
+        print_info "적절한 성능 (평균 < 200ms)"
     else
-        print_error "Poor performance (avg >= 200ms)"
+        print_error "낮은 성능 (평균 >= 200ms)"
     fi
     echo ""
 }
@@ -180,13 +180,13 @@ run_performance_test() {
     print_section "$test_name"
 
     # Warmup
-    print_info "Warming up ($WARMUP_ITERATIONS requests)..."
+    print_info "워밍업 중 ($WARMUP_ITERATIONS 요청)..."
     for i in $(seq 1 $WARMUP_ITERATIONS); do
         measure_request "$method" "$url" "$data" > /dev/null
     done
 
     # Actual performance test
-    print_info "Running performance test ($PERFORMANCE_ITERATIONS requests)..."
+    print_info "성능 테스트 실행 중 ($PERFORMANCE_ITERATIONS 요청)..."
 
     local times=()
     local progress_step=$((PERFORMANCE_ITERATIONS / 10))
@@ -213,12 +213,12 @@ run_concurrent_test() {
     local url=$3
     local data=$4
 
-    print_section "$test_name (Concurrent: $CONCURRENT_REQUESTS)"
+    print_section "$test_name (동시: $CONCURRENT_REQUESTS)"
 
     local pids=()
     local tmpdir=$(mktemp -d)
 
-    print_info "Starting $CONCURRENT_REQUESTS concurrent requests..."
+    print_info "$CONCURRENT_REQUESTS개 동시 요청 시작..."
     local start=$(date +%s%N)
 
     for i in $(seq 1 $CONCURRENT_REQUESTS); do
@@ -262,20 +262,20 @@ run_concurrent_test() {
     stats=$(calculate_stats "${times[@]}")
     read min max avg median p95 p99 <<< "$stats"
 
-    print_metric "Total time: ${total_duration}ms"
-    print_metric "Requests/sec: $(( (CONCURRENT_REQUESTS * 1000) / total_duration ))"
-    print_metric "Individual request stats:"
-    printf "    ${MAGENTA}%-15s${NC} %d ms\n" "Min:" $min
-    printf "    ${MAGENTA}%-15s${NC} %d ms\n" "Max:" $max
-    printf "    ${MAGENTA}%-15s${NC} %d ms\n" "Average:" $avg
-    printf "    ${MAGENTA}%-15s${NC} %d ms\n" "Median:" $median
+    print_metric "총 소요 시간: ${total_duration}ms"
+    print_metric "초당 요청 수: $(( (CONCURRENT_REQUESTS * 1000) / total_duration ))"
+    print_metric "개별 요청 통계:"
+    printf "    ${MAGENTA}%-15s${NC} %d ms\n" "최소:" $min
+    printf "    ${MAGENTA}%-15s${NC} %d ms\n" "최대:" $max
+    printf "    ${MAGENTA}%-15s${NC} %d ms\n" "평균:" $avg
+    printf "    ${MAGENTA}%-15s${NC} %d ms\n" "중간값:" $median
 
     if [ $total_duration -lt 500 ]; then
-        print_success "Excellent concurrent performance"
+        print_success "우수한 동시 처리 성능"
     elif [ $total_duration -lt 1000 ]; then
-        print_success "Good concurrent performance"
+        print_success "좋은 동시 처리 성능"
     else
-        print_info "Acceptable concurrent performance"
+        print_info "적절한 동시 처리 성능"
     fi
     echo ""
 }
@@ -285,23 +285,23 @@ run_concurrent_test() {
 # =============================================================================
 
 setup_test_environment() {
-    print_header "Setting Up Test Environment"
+    print_header "테스트 환경 설정"
 
     # Get test token
-    print_section "Getting Test Token"
+    print_section "테스트 토큰 가져오기"
     response=$(curl -s "$USER_SERVICE_URL/api/auth/test")
 
     if echo "$response" | jq -e '.accessToken' > /dev/null 2>&1; then
         JWT_TOKEN=$(echo "$response" | jq -r '.accessToken')
         USER_ID=$(echo "$response" | jq -r '.userId')
-        print_success "Token received"
+        print_success "토큰 수신 완료"
     else
-        print_error "Failed to get test token"
+        print_error "테스트 토큰 가져오기 실패"
         exit 1
     fi
 
     # Get or create workspace
-    print_section "Setting Up Workspace"
+    print_section "워크스페이스 설정"
     workspaces_response=$(curl -s "$USER_SERVICE_URL/api/workspaces" \
         -H "Authorization: Bearer $JWT_TOKEN")
 
@@ -312,14 +312,14 @@ setup_test_environment() {
     fi
 
     if [ -z "$WORKSPACE_ID" ] || [ "$WORKSPACE_ID" = "null" ]; then
-        print_info "No workspace found. Creating new workspace..."
+        print_info "워크스페이스를 찾을 수 없습니다. 새 워크스페이스 생성 중..."
 
         create_ws_response=$(curl -s -w "\n%{http_code}" -X POST "$USER_SERVICE_URL/api/workspaces" \
             -H "Authorization: Bearer $JWT_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
-                "name": "Performance Test Workspace",
-                "description": "Workspace for performance testing"
+                "name": "성능 테스트 워크스페이스",
+                "description": "성능 테스트용 워크스페이스"
             }')
 
         http_code=$(echo "$create_ws_response" | tail -n1)
@@ -327,25 +327,25 @@ setup_test_environment() {
 
         if [ "$http_code" -eq 201 ] || [ "$http_code" -eq 200 ]; then
             WORKSPACE_ID=$(echo "$ws_body" | jq -r '.id')
-            print_success "Created workspace: $WORKSPACE_ID"
+            print_success "워크스페이스 생성 완료: $WORKSPACE_ID"
         else
-            print_error "Failed to create workspace (HTTP $http_code)"
+            print_error "워크스페이스 생성 실패 (HTTP $http_code)"
             echo "$ws_body" | jq '.'
             exit 1
         fi
     else
-        print_success "Using existing workspace: $WORKSPACE_ID"
+        print_success "기존 워크스페이스 사용: $WORKSPACE_ID"
     fi
 
     # Create test project
-    print_section "Creating Test Project"
+    print_section "테스트 프로젝트 생성"
     project_response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/projects" \
         -H "Authorization: Bearer $JWT_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{
             "workspace_id": "'$WORKSPACE_ID'",
-            "name": "Performance Test Project",
-            "description": "Project for performance testing"
+            "name": "성능 테스트 프로젝트",
+            "description": "성능 테스트용 프로젝트"
         }')
 
     http_code=$(echo "$project_response" | tail -n1)
@@ -353,14 +353,14 @@ setup_test_environment() {
 
     if [ "$http_code" -eq 201 ]; then
         PROJECT_ID=$(echo "$response_body" | jq -r '.data.project_id')
-        print_success "Project created: $PROJECT_ID"
+        print_success "프로젝트 생성 완료: $PROJECT_ID"
     else
-        print_error "Failed to create project"
+        print_error "프로젝트 생성 실패"
         exit 1
     fi
 
     # Create fields for testing
-    print_section "Creating Test Fields"
+    print_section "테스트 필드 생성"
 
     # Text field
     field_response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/fields" \
@@ -448,14 +448,14 @@ setup_test_environment() {
         }')
     VIEW_ID=$(echo "$view_response" | jq -r '.data.view_id')
 
-    print_success "Test environment ready"
+    print_success "테스트 환경 준비 완료"
     echo ""
-    echo "Test Data IDs:"
-    echo "  Project: $PROJECT_ID"
-    echo "  Text Field: $TEXT_FIELD_ID"
-    echo "  Priority Field: $PRIORITY_FIELD_ID"
-    echo "  Board: $BOARD_ID"
-    echo "  View: $VIEW_ID"
+    echo "테스트 데이터 ID:"
+    echo "  프로젝트: $PROJECT_ID"
+    echo "  텍스트 필드: $TEXT_FIELD_ID"
+    echo "  우선순위 필드: $PRIORITY_FIELD_ID"
+    echo "  보드: $BOARD_ID"
+    echo "  뷰: $VIEW_ID"
 }
 
 # =============================================================================
@@ -463,7 +463,7 @@ setup_test_environment() {
 # =============================================================================
 
 test_read_performance() {
-    print_header "READ Performance Tests"
+    print_header "읽기 성능 테스트"
 
     # Get fields
     run_performance_test \
@@ -495,27 +495,27 @@ test_read_performance() {
 }
 
 test_write_performance() {
-    print_header "WRITE Performance Tests"
+    print_header "쓰기 성능 테스트"
 
     # Set field value
     run_performance_test \
         "POST /api/board-field-values" \
         "POST" \
         "$BOARD_SERVICE_URL/api/board-field-values" \
-        '{"board_id": "'$BOARD_ID'", "field_id": "'$TEXT_FIELD_ID'", "value": "Performance test value"}'
+        '{"board_id": "'$BOARD_ID'", "field_id": "'$TEXT_FIELD_ID'", "value": "성능 테스트 값"}'
 }
 
 test_cache_performance() {
-    print_header "CACHE Performance Tests"
+    print_header "캐시 성능 테스트"
 
-    print_section "Testing cache effectiveness (100 requests each)"
+    print_section "캐시 효과 테스트 (100번 요청)"
 
     # First, make one request to potentially populate cache
     curl -s "$BOARD_SERVICE_URL/api/projects/$PROJECT_ID/fields" \
         -H "Authorization: Bearer $JWT_TOKEN" > /dev/null
 
     # Now test cache hit performance with many requests
-    print_info "Running 100 consecutive requests (cache should be hot)..."
+    print_info "100번 연속 요청 실행 중 (캐시가 활성화되어야 함)..."
     local cached_times=()
     for i in $(seq 1 100); do
         local duration=$(measure_request "GET" "$BOARD_SERVICE_URL/api/projects/$PROJECT_ID/fields" "")
@@ -529,41 +529,41 @@ test_cache_performance() {
     stats=$(calculate_stats "${cached_times[@]}")
     read min max avg median p95 p99 <<< "$stats"
 
-    print_metric "100 Cached Requests Performance:"
-    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "Min:" $min
-    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "Max:" $max
-    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "Average:" $avg
-    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "Median:" $median
+    print_metric "100번 캐시 요청 성능:"
+    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "최소:" $min
+    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "최대:" $max
+    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "평균:" $avg
+    printf "  ${MAGENTA}%-15s${NC} %d ms\n" "중간값:" $median
     printf "  ${MAGENTA}%-15s${NC} %d ms\n" "P95:" $p95
     printf "  ${MAGENTA}%-15s${NC} %d ms\n" "P99:" $p99
 
     # Cache effectiveness check
     if [ $avg -lt 20 ]; then
-        print_success "Excellent cache performance! (avg < 20ms)"
+        print_success "우수한 캐시 성능! (평균 < 20ms)"
     elif [ $avg -lt 50 ]; then
-        print_success "Good cache performance (avg < 50ms)"
+        print_success "좋은 캐시 성능 (평균 < 50ms)"
     else
-        print_error "Cache might not be effective (avg >= 50ms)"
+        print_error "캐시가 효과적이지 않을 수 있음 (평균 >= 50ms)"
     fi
 
     # Consistency check
     local variation=$(( max - min ))
-    print_metric "Response time variation: ${variation}ms (max - min)"
+    print_metric "응답 시간 변동폭: ${variation}ms (최대 - 최소)"
     if [ $variation -lt 50 ]; then
-        print_success "Very consistent performance"
+        print_success "매우 일관된 성능"
     elif [ $variation -lt 100 ]; then
-        print_info "Reasonably consistent performance"
+        print_info "적절히 일관된 성능"
     else
-        print_error "High variance - might indicate cache issues"
+        print_error "높은 변동성 - 캐시 문제 가능성"
     fi
     echo ""
 }
 
 test_concurrent_performance() {
-    print_header "CONCURRENT Request Tests"
+    print_header "동시 요청 테스트"
 
     # Light load
-    print_section "Light Load: $CONCURRENT_REQUESTS_LIGHT concurrent requests"
+    print_section "가벼운 부하: $CONCURRENT_REQUESTS_LIGHT개 동시 요청"
     CONCURRENT_REQUESTS=$CONCURRENT_REQUESTS_LIGHT
     run_concurrent_test \
         "GET /api/projects/{id}/fields" \
@@ -572,7 +572,7 @@ test_concurrent_performance() {
         ""
 
     # Medium load
-    print_section "Medium Load: $CONCURRENT_REQUESTS_MEDIUM concurrent requests"
+    print_section "중간 부하: $CONCURRENT_REQUESTS_MEDIUM개 동시 요청"
     CONCURRENT_REQUESTS=$CONCURRENT_REQUESTS_MEDIUM
     run_concurrent_test \
         "GET /api/projects/{id}/fields" \
@@ -581,7 +581,7 @@ test_concurrent_performance() {
         ""
 
     # Heavy load
-    print_section "Heavy Load: $CONCURRENT_REQUESTS_HEAVY concurrent requests"
+    print_section "높은 부하: $CONCURRENT_REQUESTS_HEAVY개 동시 요청"
     CONCURRENT_REQUESTS=$CONCURRENT_REQUESTS_HEAVY
     run_concurrent_test \
         "GET /api/projects/{id}/fields" \
@@ -591,10 +591,10 @@ test_concurrent_performance() {
 }
 
 test_sustained_load() {
-    print_header "SUSTAINED Load Tests"
+    print_header "지속 부하 테스트"
 
-    print_section "Sustained load: ${SUSTAINED_TEST_DURATION} seconds continuous requests"
-    print_info "Sending requests as fast as possible for ${SUSTAINED_TEST_DURATION} seconds..."
+    print_section "지속 부하: ${SUSTAINED_TEST_DURATION}초 동안 연속 요청"
+    print_info "${SUSTAINED_TEST_DURATION}초 동안 최대한 빠르게 요청 전송 중..."
 
     local request_count=0
     local success_count=0
@@ -634,40 +634,40 @@ test_sustained_load() {
 
     local rps=$(( request_count / SUSTAINED_TEST_DURATION ))
 
-    print_metric "Sustained Load Results:"
-    printf "  ${MAGENTA}%-25s${NC} %d\n" "Total requests:" $request_count
-    printf "  ${MAGENTA}%-25s${NC} %d\n" "Successful:" $success_count
-    printf "  ${MAGENTA}%-25s${NC} %d\n" "Errors:" $error_count
-    printf "  ${MAGENTA}%-25s${NC} %d req/sec\n" "Throughput:" $rps
-    printf "  ${MAGENTA}%-25s${NC} %d ms\n" "Avg response time:" $avg
-    printf "  ${MAGENTA}%-25s${NC} %d ms\n" "P95 response time:" $p95
-    printf "  ${MAGENTA}%-25s${NC} %d ms\n" "P99 response time:" $p99
+    print_metric "지속 부하 결과:"
+    printf "  ${MAGENTA}%-25s${NC} %d\n" "총 요청 수:" $request_count
+    printf "  ${MAGENTA}%-25s${NC} %d\n" "성공:" $success_count
+    printf "  ${MAGENTA}%-25s${NC} %d\n" "에러:" $error_count
+    printf "  ${MAGENTA}%-25s${NC} %d req/sec\n" "처리량:" $rps
+    printf "  ${MAGENTA}%-25s${NC} %d ms\n" "평균 응답 시간:" $avg
+    printf "  ${MAGENTA}%-25s${NC} %d ms\n" "P95 응답 시간:" $p95
+    printf "  ${MAGENTA}%-25s${NC} %d ms\n" "P99 응답 시간:" $p99
 
     # Performance evaluation
     if [ $error_count -eq 0 ]; then
-        print_success "No errors during sustained load!"
+        print_success "지속 부하 중 에러 없음!"
     else
         local error_rate=$(( (error_count * 100) / request_count ))
-        print_error "Error rate: ${error_rate}%"
+        print_error "에러율: ${error_rate}%"
     fi
 
     if [ $rps -gt 100 ]; then
-        print_success "Excellent throughput (> 100 req/sec)"
+        print_success "우수한 처리량 (> 100 req/sec)"
     elif [ $rps -gt 50 ]; then
-        print_success "Good throughput (> 50 req/sec)"
+        print_success "좋은 처리량 (> 50 req/sec)"
     elif [ $rps -gt 20 ]; then
-        print_info "Acceptable throughput (> 20 req/sec)"
+        print_info "적절한 처리량 (> 20 req/sec)"
     else
-        print_error "Low throughput (< 20 req/sec)"
+        print_error "낮은 처리량 (< 20 req/sec)"
     fi
     echo ""
 }
 
 test_load_scenarios() {
-    print_header "LOAD Scenario Tests"
+    print_header "부하 시나리오 테스트"
 
-    print_section "Scenario 1: Typical User Workflow"
-    print_info "Simulating: View project → View board → Update field value"
+    print_section "시나리오 1: 일반 사용자 워크플로우"
+    print_info "시뮬레이션: 프로젝트 조회 → 보드 조회 → 필드 값 업데이트"
 
     local workflow_start=$(date +%s%N)
 
@@ -684,14 +684,14 @@ test_load_scenarios() {
     local workflow_end=$(date +%s%N)
     local workflow_duration=$(( (workflow_end - workflow_start) / 1000000 ))
 
-    print_metric "Total workflow time: ${workflow_duration}ms"
+    print_metric "총 워크플로우 시간: ${workflow_duration}ms"
 
     if [ $workflow_duration -lt 200 ]; then
-        print_success "Excellent user experience (< 200ms)"
+        print_success "우수한 사용자 경험 (< 200ms)"
     elif [ $workflow_duration -lt 500 ]; then
-        print_success "Good user experience (< 500ms)"
+        print_success "좋은 사용자 경험 (< 500ms)"
     else
-        print_info "Acceptable user experience"
+        print_info "적절한 사용자 경험"
     fi
     echo ""
 }
@@ -701,14 +701,14 @@ test_load_scenarios() {
 # =============================================================================
 
 cleanup() {
-    print_header "Cleanup"
-    print_info "Cleaning up test data..."
+    print_header "정리"
+    print_info "테스트 데이터 정리 중..."
 
     # Delete project (cascades to all related data)
     curl -s -X DELETE "$BOARD_SERVICE_URL/api/projects/$PROJECT_ID" \
         -H "Authorization: Bearer $JWT_TOKEN" > /dev/null
 
-    print_success "Test data cleaned up"
+    print_success "테스트 데이터 정리 완료"
 }
 
 # =============================================================================
@@ -716,32 +716,32 @@ cleanup() {
 # =============================================================================
 
 print_performance_summary() {
-    print_header "PERFORMANCE TEST SUMMARY"
+    print_header "성능 테스트 요약"
 
-    echo -e "${GREEN}All performance tests completed!${NC}"
+    echo -e "${GREEN}모든 성능 테스트 완료!${NC}"
     echo ""
-    echo "Test Configuration:"
-    echo "  Warmup iterations: $WARMUP_ITERATIONS"
-    echo "  Performance iterations: $PERFORMANCE_ITERATIONS"
-    echo "  Light concurrent load: $CONCURRENT_REQUESTS_LIGHT requests"
-    echo "  Medium concurrent load: $CONCURRENT_REQUESTS_MEDIUM requests"
-    echo "  Heavy concurrent load: $CONCURRENT_REQUESTS_HEAVY requests"
-    echo "  Sustained load duration: ${SUSTAINED_TEST_DURATION}s"
+    echo "테스트 설정:"
+    echo "  워밍업 반복: $WARMUP_ITERATIONS"
+    echo "  성능 테스트 반복: $PERFORMANCE_ITERATIONS"
+    echo "  가벼운 동시 부하: $CONCURRENT_REQUESTS_LIGHT 요청"
+    echo "  중간 동시 부하: $CONCURRENT_REQUESTS_MEDIUM 요청"
+    echo "  높은 동시 부하: $CONCURRENT_REQUESTS_HEAVY 요청"
+    echo "  지속 부하 시간: ${SUSTAINED_TEST_DURATION}초"
     echo ""
-    echo "Performance Benchmarks:"
-    echo "  Response Time:"
-    echo "    - < 50ms: Excellent ⭐⭐⭐"
-    echo "    - < 100ms: Good ⭐⭐"
-    echo "    - < 200ms: Acceptable ⭐"
+    echo "성능 기준:"
+    echo "  응답 시간:"
+    echo "    - < 50ms: 우수 ⭐⭐⭐"
+    echo "    - < 100ms: 좋음 ⭐⭐"
+    echo "    - < 200ms: 적절 ⭐"
     echo ""
-    echo "  Throughput:"
-    echo "    - > 100 req/sec: Excellent ⭐⭐⭐"
-    echo "    - > 50 req/sec: Good ⭐⭐"
-    echo "    - > 20 req/sec: Acceptable ⭐"
+    echo "  처리량:"
+    echo "    - > 100 req/sec: 우수 ⭐⭐⭐"
+    echo "    - > 50 req/sec: 좋음 ⭐⭐"
+    echo "    - > 20 req/sec: 적절 ⭐"
     echo ""
-    echo "  Cache:"
-    echo "    - < 20ms avg: Excellent cache hit"
-    echo "    - < 50ms variation: Consistent performance"
+    echo "  캐시:"
+    echo "    - < 20ms 평균: 우수한 캐시 히트"
+    echo "    - < 50ms 변동: 일관된 성능"
     echo ""
 }
 
@@ -752,18 +752,18 @@ print_performance_summary() {
 main() {
     echo ""
     echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║   Custom Fields System - Performance Test Suite              ║${NC}"
+    echo -e "${CYAN}║       커스텀 필드 시스템 - 성능 테스트 스위트                 ║${NC}"
     echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
     # Check if services are running
     if ! curl -s "$USER_SERVICE_URL/health" > /dev/null 2>&1; then
-        print_error "User service is not running at $USER_SERVICE_URL"
+        print_error "User 서비스가 $USER_SERVICE_URL 에서 실행되지 않습니다"
         exit 1
     fi
 
     if ! curl -s "$BOARD_SERVICE_URL/health" > /dev/null 2>&1; then
-        print_error "Board service is not running at $BOARD_SERVICE_URL"
+        print_error "Board 서비스가 $BOARD_SERVICE_URL 에서 실행되지 않습니다"
         exit 1
     fi
 
