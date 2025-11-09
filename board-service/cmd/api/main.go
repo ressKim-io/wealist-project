@@ -87,6 +87,7 @@ func main() {
 	boardRepo := repository.NewBoardRepository(db)
 	userOrderRepo := repository.NewUserOrderRepository(db)
 	commentRepo := repository.NewCommentRepository(db) // Add CommentRepository
+	fieldRepo := repository.NewFieldRepository(db)     // Custom fields repository
 
 	// 5.7. Initialize services
 	// Note: customFieldService needs boardRepo (for Phase 4 TODO), then injected into projectService
@@ -95,6 +96,9 @@ func main() {
 	projectService := service.NewProjectService(projectRepo, roleRepo, userOrderRepo, customFieldService, userClient, workspaceCache, userInfoCache, log, db)
 	userOrderService := service.NewUserOrderService(userOrderRepo, projectRepo, customFieldRepo, boardRepo, userOrderCache, log)
 	commentService := service.NewCommentService(commentRepo, boardRepo, projectRepo, userClient, userInfoCache, log, db) // Add CommentService
+	// Custom fields services
+	fieldService := service.NewFieldService(fieldRepo, projectRepo, log, db)
+	fieldValueService := service.NewFieldValueService(fieldRepo, boardRepo, projectRepo, log, db)
 
 	// 6. Configure Gin mode
 	if cfg.Server.Env == "prod" {
@@ -135,6 +139,7 @@ func main() {
 		boardHandler := handler.NewBoardHandler(boardService)
 		userOrderHandler := handler.NewUserOrderHandler(userOrderService)
 		commentHandler := handler.NewCommentHandler(commentService) // Add CommentHandler
+		fieldHandler := handler.NewFieldHandler(fieldService, fieldValueService) // Custom fields (Jira-style)
 
 		// Project routes
 		projects := api.Group("/projects")
@@ -212,6 +217,27 @@ func main() {
 			comments.PUT("/:id", commentHandler.UpdateComment)
 			comments.DELETE("/:id", commentHandler.DeleteComment)
 		}
+
+		// Custom Fields routes (Jira-style) - NEW SYSTEM
+		// Field CRUD
+		api.POST("/fields", fieldHandler.CreateField)
+		api.GET("/fields/:field_id", fieldHandler.GetField)
+		api.PATCH("/fields/:field_id", fieldHandler.UpdateField)
+		api.DELETE("/fields/:field_id", fieldHandler.DeleteField)
+		projects.GET("/:project_id/fields", fieldHandler.GetFieldsByProject) // Under projects
+		projects.PUT("/:project_id/fields/order", fieldHandler.UpdateFieldOrder)
+
+		// Field Options
+		api.POST("/field-options", fieldHandler.CreateOption)
+		api.GET("/fields/:field_id/options", fieldHandler.GetOptionsByField)
+		api.PATCH("/field-options/:option_id", fieldHandler.UpdateOption)
+		api.DELETE("/field-options/:option_id", fieldHandler.DeleteOption)
+		api.PUT("/fields/:field_id/options/order", fieldHandler.UpdateOptionOrder)
+
+		// Board Field Values
+		api.POST("/board-field-values", fieldHandler.SetFieldValue)
+		api.GET("/boards/:board_id/field-values", fieldHandler.GetBoardFieldValues)
+		api.DELETE("/boards/:board_id/field-values/:field_id", fieldHandler.DeleteFieldValue)
 	}
 
 	// 12. Start server
