@@ -5,6 +5,51 @@
 
 ---
 
+## [v0.4.0] - 2025-11-09
+
+### 🔄 Changed - API Field Name Standardization
+
+#### Backend (Go)
+- **모든 ID 필드를 snake_case로 통일**
+  - `projectId` → `project_id`
+  - `workspaceId` → `workspace_id`
+  - `boardId` → `board_id`
+  - `stageId` → `stage_id`
+  - `roleId`/`roleIds` → `role_id`/`role_ids`
+  - `importanceId` → `importance_id`
+  - `assigneeId` → `assignee_id`
+  - `userId` → `user_id`
+
+- **Response ID 필드 명확화**
+  - Generic `id` → 명시적 `board_id`, `project_id`, `stage_id`, `role_id`, `importance_id`, `comment_id`
+
+#### Frontend (TypeScript)
+- 모든 API 인터페이스 및 타입을 snake_case로 업데이트
+- boardService.ts의 모든 request/response 타입 변경
+- 컴포넌트들의 필드 참조 업데이트 (Dashboard, BoardDetailModal, CreateBoardModal, ProjectModal)
+
+#### Documentation
+- Swagger 문서 재생성
+- README 업데이트 (Workspace API 섹션 제거, v1.1.0 릴리즈 노트 추가)
+- API 레퍼런스 문서 최신화
+- Migration 예제 코드 업데이트 (`kanban_id` → `board_id`)
+
+**Benefits:**
+- DB 스키마와 API 필드명 완벽 일치
+- 명확하고 직관적인 필드 이름
+- 디버깅 및 유지보수 용이성 향상
+
+**파일 변경**:
+- `board-service/internal/dto/*.go` (7 files)
+- `board-service/internal/client/user_client.go`
+- `board-service/internal/cache/user_info_cache.go`
+- `frontend/src/api/board/boardService.ts`
+- `frontend/src/components/modals/*.tsx` (4 files)
+- `frontend/src/pages/Dashboard.tsx`
+- Documentation files (README.md, API references)
+
+---
+
 ## [v0.3.0] - 2025-11-08
 
 ### ✨ Added - Custom Field Management System
