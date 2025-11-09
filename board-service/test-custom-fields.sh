@@ -44,14 +44,14 @@ print_section() {
 
 print_success() {
     echo -e "${GREEN}✓ $1${NC}"
-    ((TESTS_PASSED++))
-    ((TESTS_TOTAL++))
+    TESTS_PASSED=$((TESTS_PASSED + 1))
+    TESTS_TOTAL=$((TESTS_TOTAL + 1))
 }
 
 print_error() {
     echo -e "${RED}✗ $1${NC}"
-    ((TESTS_FAILED++))
-    ((TESTS_TOTAL++))
+    TESTS_FAILED=$((TESTS_FAILED + 1))
+    TESTS_TOTAL=$((TESTS_TOTAL + 1))
 }
 
 print_info() {

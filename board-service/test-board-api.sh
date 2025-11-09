@@ -166,7 +166,7 @@ PROJECT_NAME="Test Project $(date +%s)"
 project_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/projects" \
     "Create Project" \
     "{
-        \"workspaceId\": \"$WORKSPACE_ID\",
+        \"workspace_id\": \"$WORKSPACE_ID\",
         \"name\": \"$PROJECT_NAME\",
         \"description\": \"Test project for API testing\"
     }" \
