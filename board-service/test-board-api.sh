@@ -172,7 +172,7 @@ project_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/projects" \
     }" \
     201)
 
-PROJECT_ID=$(echo \"$project_data\" | jq -r '.data.project_id' 2>/dev/null)
+PROJECT_ID=$(echo "$project_data" | jq -r '.data.project_id' 2>/dev/null)
 
 if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
     print_error "Failed to get project ID from response"
@@ -226,7 +226,7 @@ roles_response=$(test_api "GET" "${BOARD_SERVICE_URL}/api/custom-fields/projects
     "" \
     200)
 
-ROLE_ID=$(echo \"$roles_response\" | jq -r '.data[0].role_id' 2>/dev/null)
+ROLE_ID=$(echo "$roles_response" | jq -r '.data[0].role_id' 2>/dev/null)
 print_info "Default Role ID: $ROLE_ID"
 
 # Create Custom Role
@@ -239,7 +239,7 @@ custom_role_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/custom-fields/roles
     }" \
     201)
 
-CUSTOM_ROLE_ID=$(echo \"$custom_role_data\" | jq -r '.data.role_id' 2>/dev/null)
+CUSTOM_ROLE_ID=$(echo "$custom_role_data" | jq -r '.data.role_id' 2>/dev/null)
 print_info "Custom Role ID: $CUSTOM_ROLE_ID"
 
 # Get Custom Role
@@ -263,7 +263,7 @@ stages_response=$(test_api "GET" "${BOARD_SERVICE_URL}/api/custom-fields/project
     "" \
     200)
 
-STAGE_ID=$(echo \"$stages_response\" | jq -r '.data[0].stage_id' 2>/dev/null)
+STAGE_ID=$(echo "$stages_response" | jq -r '.data[0].stage_id' 2>/dev/null)
 print_info "Default Stage ID: $STAGE_ID"
 
 # Create Custom Stage
@@ -276,7 +276,7 @@ custom_stage_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/custom-fields/stag
     }" \
     201)
 
-CUSTOM_STAGE_ID=$(echo \"$custom_stage_data\" | jq -r '.data.stage_id' 2>/dev/null)
+CUSTOM_STAGE_ID=$(echo "$custom_stage_data" | jq -r '.data.stage_id' 2>/dev/null)
 print_info "Custom Stage ID: $CUSTOM_STAGE_ID"
 
 # Get Custom Importance (should have defaults)
@@ -285,7 +285,7 @@ importance_response=$(test_api "GET" "${BOARD_SERVICE_URL}/api/custom-fields/pro
     "" \
     200)
 
-IMPORTANCE_ID=$(echo \"$importance_response\" | jq -r '.data[0].importance_id' 2>/dev/null)
+IMPORTANCE_ID=$(echo "$importance_response" | jq -r '.data[0].importance_id' 2>/dev/null)
 print_info "Default Importance ID: $IMPORTANCE_ID"
 
 # Create Custom Importance
@@ -299,7 +299,7 @@ custom_importance_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/custom-fields
     }" \
     201)
 
-CUSTOM_IMPORTANCE_ID=$(echo \"$custom_importance_data\" | jq -r '.data.importance_id' 2>/dev/null)
+CUSTOM_IMPORTANCE_ID=$(echo "$custom_importance_data" | jq -r '.data.importance_id' 2>/dev/null)
 print_info "Custom Importance ID: $CUSTOM_IMPORTANCE_ID"
 
 # ============================================================================
@@ -320,7 +320,7 @@ board_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/boards" \
     }" \
     201)
 
-BOARD_ID=$(echo \"$board_data\" | jq -r '.data.board_id' 2>/dev/null)
+BOARD_ID=$(echo "$board_data" | jq -r '.data.board_id' 2>/dev/null)
 
 if [ -z "$BOARD_ID" ] || [ "$BOARD_ID" = "null" ]; then
     print_error "Failed to get board ID from response"
@@ -366,7 +366,7 @@ comment_data=$(test_api "POST" "${BOARD_SERVICE_URL}/api/comments" \
     }" \
     201)
 
-COMMENT_ID=$(echo \"$comment_data\" | jq -r '.data.comment_id' 2>/dev/null)
+COMMENT_ID=$(echo "$comment_data" | jq -r '.data.comment_id' 2>/dev/null)
 
 if [ -z "$COMMENT_ID" ] || [ "$COMMENT_ID" = "null" ]; then
     print_error "Failed to get comment ID from response"
