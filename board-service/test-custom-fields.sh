@@ -174,26 +174,44 @@ create_test_project() {
     export WORKSPACE_ID
 
     # Create project
-    project_response=$(curl -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/projects" \
+    print_section "Create Project"
+    echo "DEBUG: BOARD_SERVICE_URL=$BOARD_SERVICE_URL"
+    echo "DEBUG: WORKSPACE_ID=$WORKSPACE_ID"
+    echo "DEBUG: Calling create project API..."
+
+    project_response=$(curl --max-time 10 -s -w "\n%{http_code}" -X POST "$BOARD_SERVICE_URL/api/projects" \
         -H "Authorization: Bearer $JWT_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{
             "workspace_id": "'$WORKSPACE_ID'",
             "name": "Custom Fields Test Project",
             "description": "Test project for custom fields system"
-        }')
+        }' 2>&1)
+    curl_exit=$?
+
+    echo "DEBUG: curl exit code: $curl_exit"
+
+    if [ $curl_exit -ne 0 ]; then
+        echo "ERROR: curl failed with exit code $curl_exit"
+        echo "Response: $project_response"
+        exit 1
+    fi
 
     http_code=$(echo "$project_response" | tail -n1)
     response_body=$(echo "$project_response" | sed '$d')
 
+    echo "DEBUG: HTTP code: $http_code"
+    echo "DEBUG: Response body: $response_body"
+
     if [ "$http_code" -eq 201 ]; then
         PROJECT_ID=$(echo "$response_body" | jq -r '.data.project_id')
+        echo "DEBUG: Extracted PROJECT_ID: $PROJECT_ID"
         print_success "Project created: $PROJECT_ID"
         export PROJECT_ID
         return 0
     else
         print_error "Failed to create project (HTTP $http_code)"
-        echo "$response_body" | jq '.'
+        echo "$response_body" | jq '.' || echo "$response_body"
         exit 1
     fi
 }
