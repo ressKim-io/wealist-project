@@ -180,7 +180,8 @@ func (r *projectRepository) FindMembersByProject(projectID uuid.UUID) ([]domain.
 
 func (r *projectRepository) FindMemberByUserAndProject(userID, projectID uuid.UUID) (*domain.ProjectMember, error) {
 	var member domain.ProjectMember
-	if err := r.db.Where("user_id = ? AND project_id = ?", userID, projectID).
+	if err := r.db.Preload("Role").
+		Where("user_id = ? AND project_id = ?", userID, projectID).
 		First(&member).Error; err != nil {
 		return nil, err
 	}

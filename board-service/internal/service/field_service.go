@@ -83,8 +83,8 @@ func (s *fieldService) CreateField(userID string, req *dto.CreateFieldRequest) (
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
 	}
 
-	// Only ADMIN and OWNER can create fields
-	if member.RoleID != 1 && member.RoleID != 2 { // Assuming 1=OWNER, 2=ADMIN
+	// Only ADMIN and OWNER can create fields (Level >= 50)
+	if member.Role == nil || member.Role.Level < 50 {
 		return nil, apperrors.New(apperrors.ErrCodeForbidden, "필드 생성 권한이 없습니다 (ADMIN 이상)", 403)
 	}
 
@@ -241,7 +241,7 @@ func (s *fieldService) UpdateField(userID, fieldID string, req *dto.UpdateFieldR
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
 	}
 
-	if member.RoleID != 1 && member.RoleID != 2 {
+	if member.Role == nil || member.Role.Level < 50 {
 		return nil, apperrors.New(apperrors.ErrCodeForbidden, "필드 수정 권한이 없습니다 (ADMIN 이상)", 403)
 	}
 
@@ -309,7 +309,7 @@ func (s *fieldService) DeleteField(userID, fieldID string) error {
 		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
 	}
 
-	if member.RoleID != 1 && member.RoleID != 2 {
+	if member.Role == nil || member.Role.Level < 50 {
 		return apperrors.New(apperrors.ErrCodeForbidden, "필드 삭제 권한이 없습니다 (ADMIN 이상)", 403)
 	}
 
@@ -352,7 +352,7 @@ func (s *fieldService) UpdateFieldOrder(userID, projectID string, req *dto.Updat
 		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
 	}
 
-	if member.RoleID != 1 && member.RoleID != 2 {
+	if member.Role == nil || member.Role.Level < 50 {
 		return apperrors.New(apperrors.ErrCodeForbidden, "필드 순서 변경 권한이 없습니다 (ADMIN 이상)", 403)
 	}
 
@@ -416,7 +416,7 @@ func (s *fieldService) CreateOption(userID string, req *dto.CreateOptionRequest)
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
 	}
 
-	if member.RoleID != 1 && member.RoleID != 2 {
+	if member.Role == nil || member.Role.Level < 50 {
 		return nil, apperrors.New(apperrors.ErrCodeForbidden, "옵션 생성 권한이 없습니다 (ADMIN 이상)", 403)
 	}
 
@@ -579,7 +579,7 @@ func (s *fieldService) UpdateOption(userID, optionID string, req *dto.UpdateOpti
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
 	}
 
-	if member.RoleID != 1 && member.RoleID != 2 {
+	if member.Role == nil || member.Role.Level < 50 {
 		return nil, apperrors.New(apperrors.ErrCodeForbidden, "옵션 수정 권한이 없습니다 (ADMIN 이상)", 403)
 	}
 
@@ -642,7 +642,7 @@ func (s *fieldService) DeleteOption(userID, optionID string) error {
 		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
 	}
 
-	if member.RoleID != 1 && member.RoleID != 2 {
+	if member.Role == nil || member.Role.Level < 50 {
 		return apperrors.New(apperrors.ErrCodeForbidden, "옵션 삭제 권한이 없습니다 (ADMIN 이상)", 403)
 	}
 
@@ -689,7 +689,7 @@ func (s *fieldService) UpdateOptionOrder(userID, fieldID string, req *dto.Update
 		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
 	}
 
-	if member.RoleID != 1 && member.RoleID != 2 {
+	if member.Role == nil || member.Role.Level < 50 {
 		return apperrors.New(apperrors.ErrCodeForbidden, "옵션 순서 변경 권한이 없습니다 (ADMIN 이상)", 403)
 	}
 
