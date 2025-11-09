@@ -240,7 +240,7 @@ test_field_crud() {
     http_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
 
-    if print_result "$http_code" 200 "Create text field"; then
+    if print_result "$http_code" 201 "Create text field"; then
         TEXT_FIELD_ID=$(echo "$body" | jq -r '.field_id')
         echo "  Field ID: $TEXT_FIELD_ID"
     fi
@@ -262,7 +262,7 @@ test_field_crud() {
     http_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
 
-    if print_result "$http_code" 200 "Create single_select field"; then
+    if print_result "$http_code" 201 "Create single_select field"; then
         PRIORITY_FIELD_ID=$(echo "$body" | jq -r '.field_id')
         echo "  Field ID: $PRIORITY_FIELD_ID"
     fi
@@ -284,7 +284,7 @@ test_field_crud() {
     http_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
 
-    if print_result "$http_code" 200 "Create multi_select field"; then
+    if print_result "$http_code" 201 "Create multi_select field"; then
         TAGS_FIELD_ID=$(echo "$body" | jq -r '.field_id')
         echo "  Field ID: $TAGS_FIELD_ID"
     fi
@@ -306,7 +306,7 @@ test_field_crud() {
     http_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
 
-    print_result "$http_code" 200 "Create number field"
+    print_result "$http_code" 201 "Create number field"
 
     # 1.5 Get all fields
     print_section "1.5 Get All Fields for Project"
@@ -359,7 +359,7 @@ test_field_options() {
     http_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
 
-    if print_result "$http_code" 200 "Create High priority option"; then
+    if print_result "$http_code" 201 "Create High priority option"; then
         HIGH_OPTION_ID=$(echo "$body" | jq -r '.option_id')
     fi
 
@@ -376,7 +376,7 @@ test_field_options() {
     http_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
 
-    if print_result "$http_code" 200 "Create Medium priority option"; then
+    if print_result "$http_code" 201 "Create Medium priority option"; then
         MEDIUM_OPTION_ID=$(echo "$body" | jq -r '.option_id')
     fi
 
@@ -391,7 +391,7 @@ test_field_options() {
         }')
 
     http_code=$(echo "$response" | tail -n1)
-    print_result "$http_code" 200 "Create Low priority option"
+    print_result "$http_code" 201 "Create Low priority option"
 
     # 2.2 Get options
     print_section "2.2 Get Field Options"
@@ -546,7 +546,7 @@ test_saved_views() {
     http_code=$(echo "$response" | tail -n1)
     body=$(echo "$response" | sed '$d')
 
-    if print_result "$http_code" 200 "Create saved view"; then
+    if print_result "$http_code" 201 "Create saved view"; then
         VIEW_ID=$(echo "$body" | jq -r '.view_id')
         echo "  View ID: $VIEW_ID"
     fi
