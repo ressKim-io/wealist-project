@@ -64,17 +64,17 @@ func (h *ViewHandler) CreateView(c *gin.Context) {
 // @Tags Views
 // @Accept json
 // @Produce json
-// @Param project_id path string true "Project ID"
+// @Param projectId path string true "Project ID"
 // @Success 200 {object} dto.Success{data=[]dto.ViewResponse}
 // @Failure 400 {object} dto.Error
 // @Failure 401 {object} dto.Error
 // @Failure 403 {object} dto.Error
 // @Failure 500 {object} dto.Error
-// @Router /projects/{project_id}/views [get]
+// @Router /projects/{projectId}/views [get]
 // @Security BearerAuth
 func (h *ViewHandler) GetViewsByProject(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
-	projectID := c.Param("project_id")
+	projectID := c.Param("projectId")
 
 	views, err := h.viewService.GetViewsByProject(userID, projectID)
 	if err != nil {
@@ -95,18 +95,18 @@ func (h *ViewHandler) GetViewsByProject(c *gin.Context) {
 // @Tags Views
 // @Accept json
 // @Produce json
-// @Param view_id path string true "View ID"
+// @Param viewId path string true "View ID"
 // @Success 200 {object} dto.Success{data=dto.ViewResponse}
 // @Failure 400 {object} dto.Error
 // @Failure 401 {object} dto.Error
 // @Failure 403 {object} dto.Error
 // @Failure 404 {object} dto.Error
 // @Failure 500 {object} dto.Error
-// @Router /views/{view_id} [get]
+// @Router /views/{viewId} [get]
 // @Security BearerAuth
 func (h *ViewHandler) GetView(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
-	viewID := c.Param("view_id")
+	viewID := c.Param("viewId")
 
 	view, err := h.viewService.GetView(userID, viewID)
 	if err != nil {
@@ -127,7 +127,7 @@ func (h *ViewHandler) GetView(c *gin.Context) {
 // @Tags Views
 // @Accept json
 // @Produce json
-// @Param view_id path string true "View ID"
+// @Param viewId path string true "View ID"
 // @Param request body dto.UpdateViewRequest true "View update request"
 // @Success 200 {object} dto.Success{data=dto.ViewResponse}
 // @Failure 400 {object} dto.Error
@@ -135,11 +135,11 @@ func (h *ViewHandler) GetView(c *gin.Context) {
 // @Failure 403 {object} dto.Error
 // @Failure 404 {object} dto.Error
 // @Failure 500 {object} dto.Error
-// @Router /views/{view_id} [patch]
+// @Router /views/{viewId} [patch]
 // @Security BearerAuth
 func (h *ViewHandler) UpdateView(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
-	viewID := c.Param("view_id")
+	viewID := c.Param("viewId")
 
 	var req dto.UpdateViewRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -167,18 +167,18 @@ func (h *ViewHandler) UpdateView(c *gin.Context) {
 // @Tags Views
 // @Accept json
 // @Produce json
-// @Param view_id path string true "View ID"
+// @Param viewId path string true "View ID"
 // @Success 204
 // @Failure 400 {object} dto.Error
 // @Failure 401 {object} dto.Error
 // @Failure 403 {object} dto.Error
 // @Failure 404 {object} dto.Error
 // @Failure 500 {object} dto.Error
-// @Router /views/{view_id} [delete]
+// @Router /views/{viewId} [delete]
 // @Security BearerAuth
 func (h *ViewHandler) DeleteView(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
-	viewID := c.Param("view_id")
+	viewID := c.Param("viewId")
 
 	if err := h.viewService.DeleteView(userID, viewID); err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
@@ -200,7 +200,7 @@ func (h *ViewHandler) DeleteView(c *gin.Context) {
 // @Tags Views
 // @Accept json
 // @Produce json
-// @Param view_id path string true "View ID"
+// @Param viewId path string true "View ID"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20)
 // @Success 200 {object} dto.Success{data=object}
@@ -209,11 +209,11 @@ func (h *ViewHandler) DeleteView(c *gin.Context) {
 // @Failure 403 {object} dto.Error
 // @Failure 404 {object} dto.Error
 // @Failure 500 {object} dto.Error
-// @Router /views/{view_id}/boards [get]
+// @Router /views/{viewId}/boards [get]
 // @Security BearerAuth
 func (h *ViewHandler) ApplyView(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
-	viewID := c.Param("view_id")
+	viewID := c.Param("viewId")
 
 	// Get pagination params
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))

@@ -67,17 +67,17 @@ func (h *FieldHandler) CreateField(c *gin.Context) {
 // @Tags Fields
 // @Accept json
 // @Produce json
-// @Param project_id path string true "Project ID"
+// @Param projectId path string true "Project ID"
 // @Success 200 {object} dto.Success{data=[]dto.FieldResponse}
 // @Failure 400 {object} dto.Error
 // @Failure 401 {object} dto.Error
 // @Failure 403 {object} dto.Error
 // @Failure 500 {object} dto.Error
-// @Router /projects/{project_id}/fields [get]
+// @Router /projects/{projectId}/fields [get]
 // @Security BearerAuth
 func (h *FieldHandler) GetFieldsByProject(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
-	projectID := c.Param("project_id")
+	projectID := c.Param("projectId")
 
 	fields, err := h.fieldService.GetFieldsByProject(userID, projectID)
 	if err != nil {
@@ -98,18 +98,18 @@ func (h *FieldHandler) GetFieldsByProject(c *gin.Context) {
 // @Tags Fields
 // @Accept json
 // @Produce json
-// @Param field_id path string true "Field ID"
+// @Param fieldId path string true "Field ID"
 // @Success 200 {object} dto.Success{data=dto.FieldResponse}
 // @Failure 400 {object} dto.Error
 // @Failure 401 {object} dto.Error
 // @Failure 403 {object} dto.Error
 // @Failure 404 {object} dto.Error
 // @Failure 500 {object} dto.Error
-// @Router /fields/{field_id} [get]
+// @Router /fields/{fieldId} [get]
 // @Security BearerAuth
 func (h *FieldHandler) GetField(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
-	fieldID := c.Param("field_id")
+	fieldID := c.Param("fieldId")
 
 	field, err := h.fieldService.GetField(userID, fieldID)
 	if err != nil {
@@ -130,7 +130,7 @@ func (h *FieldHandler) GetField(c *gin.Context) {
 // @Tags Fields
 // @Accept json
 // @Produce json
-// @Param field_id path string true "Field ID"
+// @Param fieldId path string true "Field ID"
 // @Param request body dto.UpdateFieldRequest true "Field update request"
 // @Success 200 {object} dto.Success{data=dto.FieldResponse}
 // @Failure 400 {object} dto.Error
@@ -138,11 +138,11 @@ func (h *FieldHandler) GetField(c *gin.Context) {
 // @Failure 403 {object} dto.Error
 // @Failure 404 {object} dto.Error
 // @Failure 500 {object} dto.Error
-// @Router /fields/{field_id} [patch]
+// @Router /fields/{fieldId} [patch]
 // @Security BearerAuth
 func (h *FieldHandler) UpdateField(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
-	fieldID := c.Param("field_id")
+	fieldID := c.Param("fieldId")
 
 	var req dto.UpdateFieldRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -170,18 +170,18 @@ func (h *FieldHandler) UpdateField(c *gin.Context) {
 // @Tags Fields
 // @Accept json
 // @Produce json
-// @Param field_id path string true "Field ID"
+// @Param fieldId path string true "Field ID"
 // @Success 204
 // @Failure 400 {object} dto.Error
 // @Failure 401 {object} dto.Error
 // @Failure 403 {object} dto.Error
 // @Failure 404 {object} dto.Error
 // @Failure 500 {object} dto.Error
-// @Router /fields/{field_id} [delete]
+// @Router /fields/{fieldId} [delete]
 // @Security BearerAuth
 func (h *FieldHandler) DeleteField(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
-	fieldID := c.Param("field_id")
+	fieldID := c.Param("fieldId")
 
 	if err := h.fieldService.DeleteField(userID, fieldID); err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
@@ -201,18 +201,18 @@ func (h *FieldHandler) DeleteField(c *gin.Context) {
 // @Tags Fields
 // @Accept json
 // @Produce json
-// @Param project_id path string true "Project ID"
+// @Param projectId path string true "Project ID"
 // @Param request body dto.UpdateFieldOrderRequest true "Field order update request"
 // @Success 204
 // @Failure 400 {object} dto.Error
 // @Failure 401 {object} dto.Error
 // @Failure 403 {object} dto.Error
 // @Failure 500 {object} dto.Error
-// @Router /projects/{project_id}/fields/order [put]
+// @Router /projects/{projectId}/fields/order [put]
 // @Security BearerAuth
 func (h *FieldHandler) UpdateFieldOrder(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
-	projectID := c.Param("project_id")
+	projectID := c.Param("projectId")
 
 	var req dto.UpdateFieldOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -278,17 +278,17 @@ func (h *FieldHandler) CreateOption(c *gin.Context) {
 // @Tags Field Options
 // @Accept json
 // @Produce json
-// @Param field_id path string true "Field ID"
+// @Param fieldId path string true "Field ID"
 // @Success 200 {object} dto.Success{data=[]dto.OptionResponse}
 // @Failure 400 {object} dto.Error
 // @Failure 401 {object} dto.Error
 // @Failure 403 {object} dto.Error
 // @Failure 500 {object} dto.Error
-// @Router /fields/{field_id}/options [get]
+// @Router /fields/{fieldId}/options [get]
 // @Security BearerAuth
 func (h *FieldHandler) GetOptionsByField(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
-	fieldID := c.Param("field_id")
+	fieldID := c.Param("fieldId")
 
 	options, err := h.fieldService.GetOptionsByField(userID, fieldID)
 	if err != nil {
@@ -309,7 +309,7 @@ func (h *FieldHandler) GetOptionsByField(c *gin.Context) {
 // @Tags Field Options
 // @Accept json
 // @Produce json
-// @Param option_id path string true "Option ID"
+// @Param optionId path string true "Option ID"
 // @Param request body dto.UpdateOptionRequest true "Option update request"
 // @Success 200 {object} dto.Success{data=dto.OptionResponse}
 // @Failure 400 {object} dto.Error
@@ -317,11 +317,11 @@ func (h *FieldHandler) GetOptionsByField(c *gin.Context) {
 // @Failure 403 {object} dto.Error
 // @Failure 404 {object} dto.Error
 // @Failure 500 {object} dto.Error
-// @Router /field-options/{option_id} [patch]
+// @Router /field-options/{optionId} [patch]
 // @Security BearerAuth
 func (h *FieldHandler) UpdateOption(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
-	optionID := c.Param("option_id")
+	optionID := c.Param("optionId")
 
 	var req dto.UpdateOptionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -349,18 +349,18 @@ func (h *FieldHandler) UpdateOption(c *gin.Context) {
 // @Tags Field Options
 // @Accept json
 // @Produce json
-// @Param option_id path string true "Option ID"
+// @Param optionId path string true "Option ID"
 // @Success 204
 // @Failure 400 {object} dto.Error
 // @Failure 401 {object} dto.Error
 // @Failure 403 {object} dto.Error
 // @Failure 404 {object} dto.Error
 // @Failure 500 {object} dto.Error
-// @Router /field-options/{option_id} [delete]
+// @Router /field-options/{optionId} [delete]
 // @Security BearerAuth
 func (h *FieldHandler) DeleteOption(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
-	optionID := c.Param("option_id")
+	optionID := c.Param("optionId")
 
 	if err := h.fieldService.DeleteOption(userID, optionID); err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
@@ -380,18 +380,18 @@ func (h *FieldHandler) DeleteOption(c *gin.Context) {
 // @Tags Field Options
 // @Accept json
 // @Produce json
-// @Param field_id path string true "Field ID"
+// @Param fieldId path string true "Field ID"
 // @Param request body dto.UpdateOptionOrderRequest true "Option order update request"
 // @Success 204
 // @Failure 400 {object} dto.Error
 // @Failure 401 {object} dto.Error
 // @Failure 403 {object} dto.Error
 // @Failure 500 {object} dto.Error
-// @Router /fields/{field_id}/options/order [put]
+// @Router /fields/{fieldId}/options/order [put]
 // @Security BearerAuth
 func (h *FieldHandler) UpdateOptionOrder(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
-	fieldID := c.Param("field_id")
+	fieldID := c.Param("fieldId")
 
 	var req dto.UpdateOptionOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -456,18 +456,18 @@ func (h *FieldHandler) SetFieldValue(c *gin.Context) {
 // @Tags Field Values
 // @Accept json
 // @Produce json
-// @Param board_id path string true "Board ID"
+// @Param boardId path string true "Board ID"
 // @Success 200 {object} dto.Success{data=dto.BoardFieldValuesResponse}
 // @Failure 400 {object} dto.Error
 // @Failure 401 {object} dto.Error
 // @Failure 403 {object} dto.Error
 // @Failure 404 {object} dto.Error
 // @Failure 500 {object} dto.Error
-// @Router /boards/{board_id}/field-values [get]
+// @Router /boards/{boardId}/field-values [get]
 // @Security BearerAuth
 func (h *FieldHandler) GetBoardFieldValues(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
-	boardID := c.Param("board_id")
+	boardID := c.Param("boardId")
 
 	values, err := h.fieldValueService.GetBoardFieldValues(userID, boardID)
 	if err != nil {
@@ -488,19 +488,19 @@ func (h *FieldHandler) GetBoardFieldValues(c *gin.Context) {
 // @Tags Field Values
 // @Accept json
 // @Produce json
-// @Param board_id path string true "Board ID"
-// @Param field_id path string true "Field ID"
+// @Param boardId path string true "Board ID"
+// @Param fieldId path string true "Field ID"
 // @Success 204
 // @Failure 400 {object} dto.Error
 // @Failure 401 {object} dto.Error
 // @Failure 403 {object} dto.Error
 // @Failure 500 {object} dto.Error
-// @Router /boards/{board_id}/field-values/{field_id} [delete]
+// @Router /boards/{boardId}/field-values/{fieldId} [delete]
 // @Security BearerAuth
 func (h *FieldHandler) DeleteFieldValue(c *gin.Context) {
 	userID := c.GetString(middleware.UserIDKey)
-	boardID := c.Param("board_id")
-	fieldID := c.Param("field_id")
+	boardID := c.Param("boardId")
+	fieldID := c.Param("fieldId")
 
 	if err := h.fieldValueService.DeleteFieldValue(userID, boardID, fieldID); err != nil {
 		if appErr, ok := err.(*apperrors.AppError); ok {
