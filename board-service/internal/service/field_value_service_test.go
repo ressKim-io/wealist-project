@@ -1,9 +1,11 @@
 package service_test
 
 import (
+	"board-service/internal/domain"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 

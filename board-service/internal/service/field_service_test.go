@@ -570,22 +570,22 @@ func BenchmarkGetFieldsByProject_CacheHit(b *testing.B) {
 	// Simulate cache data
 	cachedFields := []*domain.ProjectField{
 		{
-			BaseModel:   domain.BaseModel{ID: uuid.New()},
-			ProjectID:   projectID,
-			Name:        "Status",
-			FieldType:   "single_select",
-			IsRequired:  true,
-			Position:    "1000",
-			Description: "Task status",
+			BaseModel:    domain.BaseModel{ID: uuid.New()},
+			ProjectID:    projectID,
+			Name:         "Status",
+			FieldType:    "single_select",
+			IsRequired:   true,
+			DisplayOrder: 1,
+			Description:  "Task status",
 		},
 		{
-			BaseModel:   domain.BaseModel{ID: uuid.New()},
-			ProjectID:   projectID,
-			Name:        "Priority",
-			FieldType:   "single_select",
-			IsRequired:  false,
-			Position:    "2000",
-			Description: "Task priority",
+			BaseModel:    domain.BaseModel{ID: uuid.New()},
+			ProjectID:    projectID,
+			Name:         "Priority",
+			FieldType:    "single_select",
+			IsRequired:   false,
+			DisplayOrder: 2,
+			Description:  "Task priority",
 		},
 	}
 
@@ -606,22 +606,22 @@ func BenchmarkGetFieldsByProject_CacheMiss(b *testing.B) {
 		// Simulate DB query and cache set
 		fields := []*domain.ProjectField{
 			{
-				BaseModel:   domain.BaseModel{ID: uuid.New()},
-				ProjectID:   projectID,
-				Name:        "Status",
-				FieldType:   "single_select",
-				IsRequired:  true,
-				Position:    "1000",
-				Description: "Task status",
+				BaseModel:    domain.BaseModel{ID: uuid.New()},
+				ProjectID:    projectID,
+				Name:         "Status",
+				FieldType:    "single_select",
+				IsRequired:   true,
+				DisplayOrder: 1,
+				Description:  "Task status",
 			},
 			{
-				BaseModel:   domain.BaseModel{ID: uuid.New()},
-				ProjectID:   projectID,
-				Name:        "Priority",
-				FieldType:   "single_select",
-				IsRequired:  false,
-				Position:    "2000",
-				Description: "Task priority",
+				BaseModel:    domain.BaseModel{ID: uuid.New()},
+				ProjectID:    projectID,
+				Name:         "Priority",
+				FieldType:    "single_select",
+				IsRequired:   false,
+				DisplayOrder: 2,
+				Description:  "Task priority",
 			},
 		}
 
