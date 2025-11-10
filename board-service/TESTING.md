@@ -179,13 +179,32 @@ export TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
 echo $TOKEN
 ```
 
-#### Step 2: 프로젝트 생성
+#### Step 2: 워크스페이스 생성 (User Service)
+
+먼저 User Service에서 워크스페이스를 생성합니다:
+
+```bash
+WORKSPACE_ID=$(curl -s -X POST http://localhost:8080/api/workspaces \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Test Workspace",
+    "description": "Workspace for testing"
+  }' | jq -r '.id')
+
+echo $WORKSPACE_ID
+```
+
+#### Step 3: 프로젝트 생성 (Board Service)
+
+워크스페이스 ID를 사용하여 프로젝트를 생성합니다:
 
 ```bash
 PROJECT_ID=$(curl -s -X POST http://localhost:8000/api/projects \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
+    "workspace_id": "'$WORKSPACE_ID'",
     "name": "Test Project",
     "description": "Testing fractional indexing"
   }' | jq -r '.data.project_id')
@@ -193,7 +212,7 @@ PROJECT_ID=$(curl -s -X POST http://localhost:8000/api/projects \
 echo $PROJECT_ID
 ```
 
-#### Step 3: Custom Field 생성
+#### Step 4: Custom Field 생성
 
 ```bash
 FIELD_ID=$(curl -s -X POST http://localhost:8000/api/custom-fields \
@@ -208,7 +227,7 @@ FIELD_ID=$(curl -s -X POST http://localhost:8000/api/custom-fields \
 echo $FIELD_ID
 ```
 
-#### Step 4: Field Options 생성
+#### Step 5: Field Options 생성
 
 ```bash
 # Todo
@@ -229,7 +248,7 @@ echo "Todo: $TODO_ID"
 echo "In Progress: $PROGRESS_ID"
 ```
 
-#### Step 5: Saved View 생성
+#### Step 6: Saved View 생성
 
 ```bash
 VIEW_ID=$(curl -s -X POST http://localhost:8000/api/views \
@@ -244,7 +263,7 @@ VIEW_ID=$(curl -s -X POST http://localhost:8000/api/views \
 echo $VIEW_ID
 ```
 
-#### Step 6: 보드 생성
+#### Step 7: 보드 생성
 
 ```bash
 BOARD_1=$(curl -s -X POST http://localhost:8000/api/boards \
@@ -279,7 +298,7 @@ echo "Board 2: $BOARD_2"
 echo "Board 3: $BOARD_3"
 ```
 
-#### Step 7: Custom Field 값 설정
+#### Step 8: Custom Field 값 설정
 
 ```bash
 # 모든 보드를 Todo로 설정
@@ -295,7 +314,7 @@ for BOARD in $BOARD_1 $BOARD_2 $BOARD_3; do
 done
 ```
 
-#### Step 8: 보드 순서 확인
+#### Step 9: 보드 순서 확인
 
 ```bash
 curl -s -X GET "http://localhost:8000/api/views/$VIEW_ID/boards" \
@@ -310,7 +329,7 @@ Task 2: position=a1
 Task 3: position=a2
 ```
 
-#### Step 9: 보드 이동 테스트
+#### Step 10: 보드 이동 테스트
 
 **Task 2를 맨 앞으로 이동** (before Task 1):
 
@@ -355,7 +374,7 @@ curl -s -X POST http://localhost:8000/api/boards/$BOARD_1/move \
   }' | jq '.'
 ```
 
-#### Step 10: 최종 순서 확인
+#### Step 11: 최종 순서 확인
 
 ```bash
 curl -s -X GET "http://localhost:8000/api/views/$VIEW_ID/boards" \

@@ -104,9 +104,30 @@ setup_test_data() {
     print_success "Got test user token"
     print_info "User ID: $USER_ID"
 
-    # Create project
+    # Create workspace first (in User Service)
+    print_step "Creating test workspace"
+    workspace_response=$(curl -s -X POST "$USER_SERVICE_URL/api/workspaces" \
+        -H "Authorization: Bearer $ACCESS_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d '{
+            "name": "Fractional Indexing Test Workspace",
+            "description": "Workspace for testing fractional indexing"
+        }')
+
+    WORKSPACE_ID=$(extract_field "$workspace_response" '.id')
+
+    if [ -z "$WORKSPACE_ID" ] || [ "$WORKSPACE_ID" = "null" ]; then
+        print_error "Failed to create workspace"
+        echo "Response: $workspace_response"
+        exit 1
+    fi
+
+    print_success "Created workspace: $WORKSPACE_ID"
+
+    # Create project (in Board Service)
     print_step "Creating test project"
     project_response=$(call_api POST "$BOARD_SERVICE_URL/api/projects" '{
+        "workspace_id": "'"$WORKSPACE_ID"'",
         "name": "Fractional Indexing Test Project",
         "description": "Testing fractional indexing for board ordering"
     }')
@@ -461,6 +482,13 @@ cleanup() {
         print_step "Deleting test project"
         call_api DELETE "$BOARD_SERVICE_URL/api/projects/$PROJECT_ID" > /dev/null
         print_success "Project deleted"
+    fi
+
+    if [ -n "$WORKSPACE_ID" ]; then
+        print_step "Deleting test workspace"
+        curl -s -X DELETE "$USER_SERVICE_URL/api/workspaces/$WORKSPACE_ID" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" > /dev/null
+        print_success "Workspace deleted"
     fi
 }
 
