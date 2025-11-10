@@ -96,13 +96,13 @@ func (s *viewService) CreateView(userID string, req *dto.CreateViewRequest) (*dt
 			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 그룹핑 필드 ID", 400)
 		}
 
-		// Verify field exists and is multi-select
+		// Verify field exists and is single-select or multi-select
 		field, err := s.repo.FindFieldByID(fieldUUID)
 		if err != nil {
 			return nil, apperrors.New(apperrors.ErrCodeBadRequest, "그룹핑 필드를 찾을 수 없습니다", 400)
 		}
-		if field.FieldType != domain.FieldTypeMultiSelect {
-			return nil, apperrors.New(apperrors.ErrCodeBadRequest, "Multi-select 필드만 그룹핑에 사용할 수 있습니다", 400)
+		if field.FieldType != domain.FieldTypeSingleSelect && field.FieldType != domain.FieldTypeMultiSelect {
+			return nil, apperrors.New(apperrors.ErrCodeBadRequest, "Single-select 또는 Multi-select 필드만 그룹핑에 사용할 수 있습니다", 400)
 		}
 		groupByFieldID = &fieldUUID
 	}
@@ -465,14 +465,26 @@ func (s *viewService) ApplyViewWithFilters(userID, projectID string, filters map
 	// Return paginated results
 	boardResponses := make([]dto.BoardResponse, 0, len(boards))
 	for _, board := range boards {
+		// Parse custom_fields_cache
+		var customFields map[string]interface{}
+		if board.CustomFieldsCache != "" && board.CustomFieldsCache != "{}" {
+			if err := json.Unmarshal([]byte(board.CustomFieldsCache), &customFields); err != nil {
+				s.logger.Warn("Failed to parse custom_fields_cache", zap.Error(err), zap.String("board_id", board.ID.String()))
+				customFields = make(map[string]interface{})
+			}
+		} else {
+			customFields = make(map[string]interface{})
+		}
+
 		// Simplified board response (can be enhanced with full details)
 		boardResponses = append(boardResponses, dto.BoardResponse{
-			ID:        board.ID.String(),
-			ProjectID: board.ProjectID.String(),
-			Title:     board.Title,
-			Content:   board.Description,
-			CreatedAt: board.CreatedAt,
-			UpdatedAt: board.UpdatedAt,
+			ID:           board.ID.String(),
+			ProjectID:    board.ProjectID.String(),
+			Title:        board.Title,
+			Content:      board.Description,
+			CustomFields: customFields,
+			CreatedAt:    board.CreatedAt,
+			UpdatedAt:    board.UpdatedAt,
 		})
 	}
 
@@ -524,10 +536,10 @@ func (s *viewService) UpdateBoardOrder(userID string, req *dto.UpdateBoardOrderR
 		}
 
 		orders = append(orders, domain.UserBoardOrder{
-			ViewID:       viewUUID,
-			UserID:       userUUID,
-			BoardID:      boardUUID,
-			DisplayOrder: item.DisplayOrder,
+			ViewID:   viewUUID,
+			UserID:   userUUID,
+			BoardID:  boardUUID,
+			Position: item.Position,
 		})
 	}
 
@@ -645,24 +657,26 @@ func (s *viewService) applyGrouping(boards []domain.Board, groupByFieldID string
 						for _, optionID := range arr {
 							optionIDStr := fmt.Sprintf("%v", optionID)
 							groups[optionIDStr] = append(groups[optionIDStr], dto.BoardResponse{
-								ID:        board.ID.String(),
-								ProjectID: board.ProjectID.String(),
-								Title:     board.Title,
-								Content:   board.Description,
-								CreatedAt: board.CreatedAt,
-								UpdatedAt: board.UpdatedAt,
+								ID:           board.ID.String(),
+								ProjectID:    board.ProjectID.String(),
+								Title:        board.Title,
+								Content:      board.Description,
+								CustomFields: cache,
+								CreatedAt:    board.CreatedAt,
+								UpdatedAt:    board.UpdatedAt,
 							})
 						}
 					} else {
 						// Single value
 						optionIDStr := fmt.Sprintf("%v", fieldVal)
 						groups[optionIDStr] = append(groups[optionIDStr], dto.BoardResponse{
-							ID:        board.ID.String(),
-							ProjectID: board.ProjectID.String(),
-							Title:     board.Title,
-							Content:   board.Description,
-							CreatedAt: board.CreatedAt,
-							UpdatedAt: board.UpdatedAt,
+							ID:           board.ID.String(),
+							ProjectID:    board.ProjectID.String(),
+							Title:        board.Title,
+							Content:      board.Description,
+							CustomFields: cache,
+							CreatedAt:    board.CreatedAt,
+							UpdatedAt:    board.UpdatedAt,
 						})
 					}
 				}

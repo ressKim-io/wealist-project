@@ -7,6 +7,7 @@ import (
 	"board-service/internal/domain"
 	"board-service/internal/dto"
 	"board-service/internal/repository"
+	"board-service/internal/util"
 	"context"
 	"errors"
 	"time"
@@ -22,6 +23,7 @@ type BoardService interface {
 	GetBoards(userID string, req *dto.GetBoardsRequest) (*dto.PaginatedBoardsResponse, error)
 	UpdateBoard(boardID, userID string, req *dto.UpdateBoardRequest) (*dto.BoardResponse, error)
 	DeleteBoard(boardID, userID string) error
+	MoveBoard(userID, boardID string, req *dto.MoveBoardRequest) (*dto.MoveBoardResponse, error)
 }
 
 type boardService struct {
@@ -29,6 +31,7 @@ type boardService struct {
 	projectRepo     repository.ProjectRepository
 	customFieldRepo repository.CustomFieldRepository
 	roleRepo        repository.RoleRepository
+	fieldRepo       repository.FieldRepository // For custom fields system
 	userClient      client.UserClient
 	userInfoCache   cache.UserInfoCache
 	logger          *zap.Logger
@@ -40,6 +43,7 @@ func NewBoardService(
 	projectRepo repository.ProjectRepository,
 	customFieldRepo repository.CustomFieldRepository,
 	roleRepo repository.RoleRepository,
+	fieldRepo repository.FieldRepository,
 	userClient client.UserClient,
 	userInfoCache cache.UserInfoCache,
 	logger *zap.Logger,
@@ -50,6 +54,7 @@ func NewBoardService(
 		projectRepo:     projectRepo,
 		customFieldRepo: customFieldRepo,
 		roleRepo:        roleRepo,
+		fieldRepo:       fieldRepo,
 		userClient:      userClient,
 		userInfoCache:   userInfoCache,
 		logger:          logger,
@@ -79,22 +84,27 @@ func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
 	}
 
-	// 2. Validate Stage (required)
-	stageUUID, err := uuid.Parse(req.StageID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 진행단계 ID", 400)
-	}
-
-	stage, err := s.customFieldRepo.FindCustomStageByID(stageUUID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, "진행단계를 찾을 수 없습니다", 404)
+	// 2. Validate Stage (optional, legacy)
+	var stage *domain.CustomStage
+	var stageUUID *uuid.UUID
+	if req.StageID != nil && *req.StageID != "" {
+		parsedStageUUID, err := uuid.Parse(*req.StageID)
+		if err != nil {
+			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 진행단계 ID", 400)
 		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "진행단계 조회 실패", 500)
-	}
+		stageUUID = &parsedStageUUID
 
-	if stage.ProjectID != projectUUID {
-		return nil, apperrors.New(apperrors.ErrCodeForbidden, "다른 프로젝트의 진행단계입니다", 403)
+		stage, err = s.customFieldRepo.FindCustomStageByID(parsedStageUUID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, apperrors.New(apperrors.ErrCodeNotFound, "진행단계를 찾을 수 없습니다", 404)
+			}
+			return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "진행단계 조회 실패", 500)
+		}
+
+		if stage.ProjectID != projectUUID {
+			return nil, apperrors.New(apperrors.ErrCodeForbidden, "다른 프로젝트의 진행단계입니다", 403)
+		}
 	}
 
 	// 3. Validate Importance (optional)
@@ -120,29 +130,31 @@ func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (
 		}
 	}
 
-	// 4. Validate Roles (required, at least 1)
+	// 4. Validate Roles (optional, legacy)
 	roleUUIDs := make([]uuid.UUID, 0, len(req.RoleIDs))
 	roles := make([]*domain.CustomRole, 0, len(req.RoleIDs))
-	for _, roleID := range req.RoleIDs {
-		roleUUID, err := uuid.Parse(roleID)
-		if err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 역할 ID", 400)
-		}
-
-		role, err := s.customFieldRepo.FindCustomRoleByID(roleUUID)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, apperrors.New(apperrors.ErrCodeNotFound, "역할을 찾을 수 없습니다", 404)
+	if len(req.RoleIDs) > 0 {
+		for _, roleID := range req.RoleIDs {
+			roleUUID, err := uuid.Parse(roleID)
+			if err != nil {
+				return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 역할 ID", 400)
 			}
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "역할 조회 실패", 500)
-		}
 
-		if role.ProjectID != projectUUID {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "다른 프로젝트의 역할입니다", 403)
-		}
+			role, err := s.customFieldRepo.FindCustomRoleByID(roleUUID)
+			if err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return nil, apperrors.New(apperrors.ErrCodeNotFound, "역할을 찾을 수 없습니다", 404)
+				}
+				return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "역할 조회 실패", 500)
+			}
 
-		roleUUIDs = append(roleUUIDs, roleUUID)
-		roles = append(roles, role)
+			if role.ProjectID != projectUUID {
+				return nil, apperrors.New(apperrors.ErrCodeForbidden, "다른 프로젝트의 역할입니다", 403)
+			}
+
+			roleUUIDs = append(roleUUIDs, roleUUID)
+			roles = append(roles, role)
+		}
 	}
 
 	// 5. Validate Assignee (optional)
@@ -192,10 +204,12 @@ func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (
 			return err
 		}
 
-		// Create board_roles (many-to-many)
-		if err := s.repo.CreateBoardRoles(board.ID, roleUUIDs); err != nil {
-			s.logger.Error("Failed to create board roles", zap.Error(err))
-			return err
+		// Create board_roles (many-to-many) - only if roles provided (legacy)
+		if len(roleUUIDs) > 0 {
+			if err := s.repo.CreateBoardRoles(board.ID, roleUUIDs); err != nil {
+				s.logger.Error("Failed to create board roles", zap.Error(err))
+				return err
+			}
 		}
 
 		return nil
@@ -241,9 +255,12 @@ func (s *boardService) GetBoard(boardID, userID string) (*dto.BoardResponse, err
 	}
 
 	// 3. Fetch related data
-	stage, err := s.customFieldRepo.FindCustomStageByID(board.CustomStageID)
-	if err != nil {
-		s.logger.Warn("Failed to fetch stage", zap.Error(err), zap.String("stage_id", board.CustomStageID.String()))
+	var stage *domain.CustomStage
+	if board.CustomStageID != nil {
+		stage, err = s.customFieldRepo.FindCustomStageByID(*board.CustomStageID)
+		if err != nil {
+			s.logger.Warn("Failed to fetch stage", zap.Error(err), zap.String("stage_id", board.CustomStageID.String()))
+		}
 	}
 
 	var importance *domain.CustomImportance
@@ -359,7 +376,9 @@ func (s *boardService) GetBoards(userID string, req *dto.GetBoardsRequest) (*dto
 	userIDs := make([]string, 0, len(boards)*2)
 
 	for _, board := range boards {
-		stageIDs = append(stageIDs, board.CustomStageID)
+		if board.CustomStageID != nil {
+			stageIDs = append(stageIDs, *board.CustomStageID)
+		}
 		if board.CustomImportanceID != nil {
 			importanceIDs = append(importanceIDs, *board.CustomImportanceID)
 		}
@@ -434,7 +453,10 @@ func (s *boardService) GetBoards(userID string, req *dto.GetBoardsRequest) (*dto
 	// 9. Build responses
 	responses := make([]dto.BoardResponse, 0, len(boards))
 	for _, board := range boards {
-		stage := stagesMap[board.CustomStageID]
+		var stage *domain.CustomStage
+		if board.CustomStageID != nil {
+			stage = stagesMap[*board.CustomStageID]
+		}
 		var importance *domain.CustomImportance
 		if board.CustomImportanceID != nil {
 			importance = importancesMap[*board.CustomImportanceID]
@@ -505,8 +527,8 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 		board.Description = req.Content
 	}
 
-	if req.StageID != "" {
-		stageUUID, err := uuid.Parse(req.StageID)
+	if req.StageID != nil && *req.StageID != "" {
+		stageUUID, err := uuid.Parse(*req.StageID)
 		if err != nil {
 			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 진행단계 ID", 400)
 		}
@@ -515,7 +537,7 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 		if err != nil || stage.ProjectID != board.ProjectID {
 			return nil, apperrors.New(apperrors.ErrCodeNotFound, "진행단계를 찾을 수 없습니다", 404)
 		}
-		board.CustomStageID = stageUUID
+		board.CustomStageID = &stageUUID
 	}
 
 	if req.ImportanceID != nil {
@@ -923,4 +945,146 @@ func (s *boardService) getUserInfoBatch(ctx context.Context, userIDs []string) m
 	}
 
 	return userMap
+}
+
+// ==================== Move Board (Integrated API) ====================
+
+// MoveBoard moves a board to a different column/group in a view
+// This API combines field value change + position update in a single transaction
+// Uses fractional indexing for O(1) operations - only 1 row updated!
+func (s *boardService) MoveBoard(userID, boardID string, req *dto.MoveBoardRequest) (*dto.MoveBoardResponse, error) {
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
+	}
+
+	boardUUID, err := uuid.Parse(boardID)
+	if err != nil {
+		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 보드 ID", 400)
+	}
+
+	viewUUID, err := uuid.Parse(req.ViewID)
+	if err != nil {
+		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 뷰 ID", 400)
+	}
+
+	fieldUUID, err := uuid.Parse(req.GroupByFieldID)
+	if err != nil {
+		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 필드 ID", 400)
+	}
+
+	newValueUUID, err := uuid.Parse(req.NewFieldValue)
+	if err != nil {
+		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 필드 값 ID", 400)
+	}
+
+	// 1. Fetch board
+	board, err := s.repo.FindByID(boardUUID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, apperrors.New(apperrors.ErrCodeNotFound, "보드를 찾을 수 없습니다", 404)
+		}
+		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 조회 실패", 500)
+	}
+
+	// 2. Check project membership
+	_, err = s.projectRepo.FindMemberByUserAndProject(userUUID, board.ProjectID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, apperrors.New(apperrors.ErrCodeForbidden, "프로젝트 멤버가 아닙니다", 403)
+		}
+		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
+	}
+
+	// 3. Fetch field to validate
+	field, err := s.fieldRepo.FindFieldByID(fieldUUID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, apperrors.New(apperrors.ErrCodeNotFound, "필드를 찾을 수 없습니다", 404)
+		}
+		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "필드 조회 실패", 500)
+	}
+
+	// 4. Validate field belongs to board's project
+	if field.ProjectID != board.ProjectID {
+		return nil, apperrors.New(apperrors.ErrCodeBadRequest, "필드가 보드의 프로젝트에 속하지 않습니다", 400)
+	}
+
+	// 5. Validate field type (only single_select and multi_select supported for grouping)
+	if field.FieldType != domain.FieldTypeSingleSelect && field.FieldType != domain.FieldTypeMultiSelect {
+		return nil, apperrors.New(apperrors.ErrCodeBadRequest, "Single-select 또는 Multi-select 필드만 그룹핑에 사용할 수 있습니다", 400)
+	}
+
+	// 6. Validate option exists
+	option, err := s.fieldRepo.FindOptionByID(newValueUUID)
+	if err != nil || option.FieldID != fieldUUID {
+		return nil, apperrors.New(apperrors.ErrCodeBadRequest, "유효하지 않은 옵션입니다", 400)
+	}
+
+	// 7. Generate new position using fractional indexing
+	var beforePos, afterPos string
+	if req.BeforePosition != nil {
+		beforePos = *req.BeforePosition
+	}
+	if req.AfterPosition != nil {
+		afterPos = *req.AfterPosition
+	}
+
+	// Import util package for fractional indexing
+	newPosition := util.GeneratePositionBetween(beforePos, afterPos)
+
+	// 8. Execute in transaction
+	var finalPosition string
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		// 8-1. Update field value (change column)
+		// Delete old value first
+		if err := s.fieldRepo.BatchDeleteFieldValues(boardUUID, fieldUUID); err != nil {
+			return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "기존 필드 값 삭제 실패", 500)
+		}
+
+		// Set new value
+		newFieldValue := &domain.BoardFieldValue{
+			BoardID:       boardUUID,
+			FieldID:       fieldUUID,
+			ValueOptionID: &newValueUUID,
+			DisplayOrder:  0,
+		}
+		if err := s.fieldRepo.SetFieldValue(newFieldValue); err != nil {
+			return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "필드 값 설정 실패", 500)
+		}
+
+		// 8-2. Update board position (fractional indexing - only 1 row!)
+		boardOrder := domain.UserBoardOrder{
+			ViewID:   viewUUID,
+			UserID:   userUUID,
+			BoardID:  boardUUID,
+			Position: newPosition,
+		}
+		if err := s.fieldRepo.SetBoardOrder(&boardOrder); err != nil {
+			return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 순서 업데이트 실패", 500)
+		}
+
+		finalPosition = newPosition
+
+		// 8-3. Update JSONB cache
+		if _, err := s.fieldRepo.UpdateBoardFieldCache(boardUUID); err != nil {
+			s.logger.Warn("Failed to update board cache", zap.Error(err))
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		if appErr, ok := err.(*apperrors.AppError); ok {
+			return nil, appErr
+		}
+		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 이동 실패", 500)
+	}
+
+	return &dto.MoveBoardResponse{
+		BoardID:       boardID,
+		NewFieldValue: req.NewFieldValue,
+		NewPosition:   finalPosition,
+		Message:       "보드가 성공적으로 이동되었습니다 (O(1) 연산)",
+	}, nil
 }

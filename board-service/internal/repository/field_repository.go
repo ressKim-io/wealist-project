@@ -319,7 +319,7 @@ func (r *fieldRepository) SetBoardOrder(order *domain.UserBoardOrder) error {
 func (r *fieldRepository) FindBoardOrdersByView(viewID, userID uuid.UUID) ([]domain.UserBoardOrder, error) {
 	var orders []domain.UserBoardOrder
 	if err := r.db.Where("view_id = ? AND user_id = ?", viewID, userID).
-		Order("display_order ASC").
+		Order("position ASC"). // Fractional indexing: lexicographic sort
 		Find(&orders).Error; err != nil {
 		return nil, err
 	}
