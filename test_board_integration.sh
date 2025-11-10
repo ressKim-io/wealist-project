@@ -105,45 +105,36 @@ get_test_token() {
 }
 
 create_workspace() {
-    print_step "3" "Create Workspace"
+    print_step "3" "Workspace 생성"
 
-    response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/workspaces" \
+    workspace_data="{\"name\":\"Test Workspace $(date +%s)\",\"description\":\"자동 테스트용 워크스페이스\"}"
+    workspace_response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/workspaces" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
-        -d "{
-            \"name\": \"Test Workspace $(date +%s)\",
-            \"description\": \"Integration test workspace\"
-        }")
+        -d "$workspace_data")
 
-    WORKSPACE_ID=$(echo "$response" | jq -r '.data.id // empty')
-
-    if [ -n "$WORKSPACE_ID" ] && [ "$WORKSPACE_ID" != "null" ]; then
-        print_success "Workspace created: ${WORKSPACE_ID:0:8}..."
-        print_json "$response"
+    if echo "$workspace_response" | grep -q '"data"'; then
+        WORKSPACE_ID=$(echo "$workspace_response" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        print_success "Workspace 생성 성공 (ID: ${WORKSPACE_ID:0:8}...)"
     else
-        print_error "Failed to create workspace"
+        print_error "Workspace 생성 실패: $workspace_response"
     fi
 }
 
 create_project() {
-    print_step "4" "Create Project"
+    print_step "4" "Project 생성"
 
-    response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/projects" \
+    project_data="{\"workspaceId\":\"$WORKSPACE_ID\",\"name\":\"Test Project $(date +%s)\",\"description\":\"자동 테스트용 프로젝트\"}"
+    project_response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/projects" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
-        -d "{
-            \"workspaceId\": \"$WORKSPACE_ID\",
-            \"name\": \"Test Project $(date +%s)\",
-            \"description\": \"Integration test project with custom fields\"
-        }")
+        -d "$project_data")
 
-    PROJECT_ID=$(echo "$response" | jq -r '.data.id // empty')
-
-    if [ -n "$PROJECT_ID" ] && [ "$PROJECT_ID" != "null" ]; then
-        print_success "Project created: ${PROJECT_ID:0:8}..."
-        print_json "$response"
+    if echo "$project_response" | grep -q '"data"'; then
+        PROJECT_ID=$(echo "$project_response" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        print_success "Project 생성 성공 (ID: ${PROJECT_ID:0:8}...)"
     else
-        print_error "Failed to create project"
+        print_error "Project 생성 실패: $project_response"
     fi
 }
 
