@@ -142,20 +142,20 @@ func main() {
 			// Project CRUD
 			projects.POST("", projectHandler.CreateProject)
 			projects.GET("", projectHandler.GetProjects)           // Get all projects in workspace
-			projects.GET("/search", projectHandler.SearchProjects) // Must be before /:project_id
-			projects.GET("/:project_id", projectHandler.GetProject)
-			projects.PUT("/:project_id", projectHandler.UpdateProject)
-			projects.DELETE("/:project_id", projectHandler.DeleteProject)
+			projects.GET("/search", projectHandler.SearchProjects) // Must be before /:projectId
+			projects.GET("/:projectId", projectHandler.GetProject)
+			projects.PUT("/:projectId", projectHandler.UpdateProject)
+			projects.DELETE("/:projectId", projectHandler.DeleteProject)
 
 			// Join Requests
 			projects.POST("/join-requests", projectHandler.CreateJoinRequest)
-			projects.GET("/:project_id/join-requests", projectHandler.GetJoinRequests)
-			projects.PUT("/join-requests/:join_request_id", projectHandler.UpdateJoinRequest)
+			projects.GET("/:projectId/join-requests", projectHandler.GetJoinRequests)
+			projects.PUT("/join-requests/:joinRequestId", projectHandler.UpdateJoinRequest)
 
 			// Members
-			projects.GET("/:project_id/members", projectHandler.GetProjectMembers)
-			projects.PUT("/:project_id/members/:member_id/role", projectHandler.UpdateMemberRole)
-			projects.DELETE("/:project_id/members/:member_id", projectHandler.RemoveMember)
+			projects.GET("/:projectId/members", projectHandler.GetProjectMembers)
+			projects.PUT("/:projectId/members/:memberId/role", projectHandler.UpdateMemberRole)
+			projects.DELETE("/:projectId/members/:memberId", projectHandler.RemoveMember)
 		}
 
 		// Custom Fields routes removed - use new ProjectField system instead
@@ -165,11 +165,11 @@ func main() {
 		boards := api.Group("/boards")
 		{
 			boards.POST("", boardHandler.CreateBoard)
-			boards.GET("/:board_id", boardHandler.GetBoard)
+			boards.GET("/:boardId", boardHandler.GetBoard)
 			boards.GET("", boardHandler.GetBoards)
-			boards.PUT("/:board_id", boardHandler.UpdateBoard)
-			boards.DELETE("/:board_id", boardHandler.DeleteBoard)
-			boards.PUT("/:board_id/move", boardHandler.MoveBoard) // Integrated API: field value change + order update
+			boards.PUT("/:boardId", boardHandler.UpdateBoard)
+			boards.DELETE("/:boardId", boardHandler.DeleteBoard)
+			boards.PUT("/:boardId/move", boardHandler.MoveBoard) // Integrated API: field value change + order update
 		}
 
 		// Comment routes
@@ -177,39 +177,39 @@ func main() {
 		{
 			comments.POST("", commentHandler.CreateComment)
 			comments.GET("", commentHandler.GetCommentsByBoardID) // Changed from nested route
-			comments.PUT("/:id", commentHandler.UpdateComment)
-			comments.DELETE("/:id", commentHandler.DeleteComment)
+			comments.PUT("/:commentId", commentHandler.UpdateComment)
+			comments.DELETE("/:commentId", commentHandler.DeleteComment)
 		}
 
 		// Custom Fields routes (Jira-style) - NEW SYSTEM
 		// Field CRUD
 		api.POST("/fields", fieldHandler.CreateField)
-		api.GET("/fields/:field_id", fieldHandler.GetField)
-		api.PATCH("/fields/:field_id", fieldHandler.UpdateField)
-		api.DELETE("/fields/:field_id", fieldHandler.DeleteField)
-		projects.GET("/:project_id/fields", fieldHandler.GetFieldsByProject) // Under projects
-		projects.PUT("/:project_id/fields/order", fieldHandler.UpdateFieldOrder)
+		api.GET("/fields/:fieldId", fieldHandler.GetField)
+		api.PATCH("/fields/:fieldId", fieldHandler.UpdateField)
+		api.DELETE("/fields/:fieldId", fieldHandler.DeleteField)
+		projects.GET("/:projectId/fields", fieldHandler.GetFieldsByProject) // Under projects
+		projects.PUT("/:projectId/fields/order", fieldHandler.UpdateFieldOrder)
 
 		// Field Options
 		api.POST("/field-options", fieldHandler.CreateOption)
-		api.GET("/fields/:field_id/options", fieldHandler.GetOptionsByField)
-		api.PATCH("/field-options/:option_id", fieldHandler.UpdateOption)
-		api.DELETE("/field-options/:option_id", fieldHandler.DeleteOption)
-		api.PUT("/fields/:field_id/options/order", fieldHandler.UpdateOptionOrder)
+		api.GET("/fields/:fieldId/options", fieldHandler.GetOptionsByField)
+		api.PATCH("/field-options/:optionId", fieldHandler.UpdateOption)
+		api.DELETE("/field-options/:optionId", fieldHandler.DeleteOption)
+		api.PUT("/fields/:fieldId/options/order", fieldHandler.UpdateOptionOrder)
 
 		// Board Field Values
 		api.POST("/board-field-values", fieldHandler.SetFieldValue)
 		api.POST("/board-field-values/multi-select", fieldHandler.SetMultiSelectValue)
-		api.GET("/boards/:board_id/field-values", fieldHandler.GetBoardFieldValues)
-		api.DELETE("/boards/:board_id/field-values/:field_id", fieldHandler.DeleteFieldValue)
+		api.GET("/boards/:boardId/field-values", fieldHandler.GetBoardFieldValues)
+		api.DELETE("/boards/:boardId/field-values/:fieldId", fieldHandler.DeleteFieldValue)
 
 		// Saved Views (filters/sorting/grouping)
 		api.POST("/views", viewHandler.CreateView)
-		api.GET("/views/:view_id", viewHandler.GetView)
-		api.PATCH("/views/:view_id", viewHandler.UpdateView)
-		api.DELETE("/views/:view_id", viewHandler.DeleteView)
-		api.GET("/views/:view_id/boards", viewHandler.ApplyView) // Apply view and get boards
-		projects.GET("/:project_id/views", viewHandler.GetViewsByProject) // Under projects
+		api.GET("/views/:viewId", viewHandler.GetView)
+		api.PATCH("/views/:viewId", viewHandler.UpdateView)
+		api.DELETE("/views/:viewId", viewHandler.DeleteView)
+		api.GET("/views/:viewId/boards", viewHandler.ApplyView) // Apply view and get boards
+		projects.GET("/:projectId/views", viewHandler.GetViewsByProject) // Under projects
 		api.PUT("/view-board-orders", viewHandler.UpdateBoardOrder) // Manual board ordering in views
 	}
 
