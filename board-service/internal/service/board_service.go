@@ -9,6 +9,7 @@ import (
 	"board-service/internal/repository"
 	"board-service/internal/util"
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -27,21 +28,19 @@ type BoardService interface {
 }
 
 type boardService struct {
-	repo            repository.BoardRepository
-	projectRepo     repository.ProjectRepository
-	customFieldRepo repository.CustomFieldRepository
-	roleRepo        repository.RoleRepository
-	fieldRepo       repository.FieldRepository // For custom fields system
-	userClient      client.UserClient
-	userInfoCache   cache.UserInfoCache
-	logger          *zap.Logger
-	db              *gorm.DB
+	repo          repository.BoardRepository
+	projectRepo   repository.ProjectRepository
+	roleRepo      repository.RoleRepository
+	fieldRepo     repository.FieldRepository // For custom fields system
+	userClient    client.UserClient
+	userInfoCache cache.UserInfoCache
+	logger        *zap.Logger
+	db            *gorm.DB
 }
 
 func NewBoardService(
 	repo repository.BoardRepository,
 	projectRepo repository.ProjectRepository,
-	customFieldRepo repository.CustomFieldRepository,
 	roleRepo repository.RoleRepository,
 	fieldRepo repository.FieldRepository,
 	userClient client.UserClient,
@@ -50,15 +49,14 @@ func NewBoardService(
 	db *gorm.DB,
 ) BoardService {
 	return &boardService{
-		repo:            repo,
-		projectRepo:     projectRepo,
-		customFieldRepo: customFieldRepo,
-		roleRepo:        roleRepo,
-		fieldRepo:       fieldRepo,
-		userClient:      userClient,
-		userInfoCache:   userInfoCache,
-		logger:          logger,
-		db:              db,
+		repo:          repo,
+		projectRepo:   projectRepo,
+		roleRepo:      roleRepo,
+		fieldRepo:     fieldRepo,
+		userClient:    userClient,
+		userInfoCache: userInfoCache,
+		logger:        logger,
+		db:            db,
 	}
 }
 
@@ -84,80 +82,7 @@ func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
 	}
 
-	// 2. Validate Stage (optional, legacy)
-	var stage *domain.CustomStage
-	var stageUUID *uuid.UUID
-	if req.StageID != nil && *req.StageID != "" {
-		parsedStageUUID, err := uuid.Parse(*req.StageID)
-		if err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 진행단계 ID", 400)
-		}
-		stageUUID = &parsedStageUUID
-
-		stage, err = s.customFieldRepo.FindCustomStageByID(parsedStageUUID)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, apperrors.New(apperrors.ErrCodeNotFound, "진행단계를 찾을 수 없습니다", 404)
-			}
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "진행단계 조회 실패", 500)
-		}
-
-		if stage.ProjectID != projectUUID {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "다른 프로젝트의 진행단계입니다", 403)
-		}
-	}
-
-	// 3. Validate Importance (optional)
-	var importance *domain.CustomImportance
-	var importanceUUID *uuid.UUID
-	if req.ImportanceID != nil {
-		parsedImportanceUUID, err := uuid.Parse(*req.ImportanceID)
-		if err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 중요도 ID", 400)
-		}
-		importanceUUID = &parsedImportanceUUID
-
-		importance, err = s.customFieldRepo.FindCustomImportanceByID(parsedImportanceUUID)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, apperrors.New(apperrors.ErrCodeNotFound, "중요도를 찾을 수 없습니다", 404)
-			}
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "중요도 조회 실패", 500)
-		}
-
-		if importance.ProjectID != projectUUID {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "다른 프로젝트의 중요도입니다", 403)
-		}
-	}
-
-	// 4. Validate Roles (optional, legacy)
-	roleUUIDs := make([]uuid.UUID, 0, len(req.RoleIDs))
-	roles := make([]*domain.CustomRole, 0, len(req.RoleIDs))
-	if len(req.RoleIDs) > 0 {
-		for _, roleID := range req.RoleIDs {
-			roleUUID, err := uuid.Parse(roleID)
-			if err != nil {
-				return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 역할 ID", 400)
-			}
-
-			role, err := s.customFieldRepo.FindCustomRoleByID(roleUUID)
-			if err != nil {
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					return nil, apperrors.New(apperrors.ErrCodeNotFound, "역할을 찾을 수 없습니다", 404)
-				}
-				return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "역할 조회 실패", 500)
-			}
-
-			if role.ProjectID != projectUUID {
-				return nil, apperrors.New(apperrors.ErrCodeForbidden, "다른 프로젝트의 역할입니다", 403)
-			}
-
-			roleUUIDs = append(roleUUIDs, roleUUID)
-			roles = append(roles, role)
-		}
-	}
-
-	// 5. Validate Assignee (optional)
+	// 2. Validate Assignee (optional)
 	var assigneeUUID *uuid.UUID
 	if req.AssigneeID != nil {
 		parsedAssigneeUUID, err := uuid.Parse(*req.AssigneeID)
@@ -175,7 +100,7 @@ func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (
 		}
 	}
 
-	// 6. Parse DueDate (optional)
+	// 3. Parse DueDate (optional)
 	var dueDate *time.Time
 	if req.DueDate != nil {
 		parsed, err := time.Parse(time.RFC3339, *req.DueDate)
@@ -185,42 +110,28 @@ func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (
 		dueDate = &parsed
 	}
 
-	// 7. Create Board in transaction
-	var board *domain.Board
-	err = s.db.Transaction(func(tx *gorm.DB) error {
-		board = &domain.Board{
-			ProjectID:          projectUUID,
-			Title:              req.Title,
-			Description:        req.Content,
-			CustomStageID:      stageUUID,
-			CustomImportanceID: importanceUUID,
-			AssigneeID:         assigneeUUID,
-			CreatedBy:          userUUID,
-			DueDate:            dueDate,
-		}
-
-		if err := s.repo.Create(board); err != nil {
-			s.logger.Error("Failed to create board", zap.Error(err))
-			return err
-		}
-
-		// Create board_roles (many-to-many) - only if roles provided (legacy)
-		if len(roleUUIDs) > 0 {
-			if err := s.repo.CreateBoardRoles(board.ID, roleUUIDs); err != nil {
-				s.logger.Error("Failed to create board roles", zap.Error(err))
-				return err
-			}
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 생성 실패", 500)
+	// 4. Create Board
+	board := &domain.Board{
+		ProjectID:         projectUUID,
+		Title:             req.Title,
+		Description:       req.Content,
+		AssigneeID:        assigneeUUID,
+		CreatedBy:         userUUID,
+		DueDate:           dueDate,
+		CustomFieldsCache: "{}",  // Initialize empty, use FieldValueService to set values
 	}
 
-	// 8. Build response with user info
-	return s.buildBoardResponse(board, stage, importance, roles)
+	err = s.repo.Create(board)
+	if err != nil {
+		s.logger.Error("Failed to create board", zap.Error(err))
+		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "칸반 생성 실패", 500)
+	}
+
+	// Note: Custom field values (stage, role, importance) should be set via FieldValueService
+	// after board creation using /field-values API
+
+	// 5. Build response
+	return s.buildBoardResponse(board)
 }
 
 // ==================== Get Single Board ====================
@@ -254,38 +165,10 @@ func (s *boardService) GetBoard(boardID, userID string) (*dto.BoardResponse, err
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
 	}
 
-	// 3. Fetch related data
-	var stage *domain.CustomStage
-	if board.CustomStageID != nil {
-		stage, err = s.customFieldRepo.FindCustomStageByID(*board.CustomStageID)
-		if err != nil {
-			s.logger.Warn("Failed to fetch stage", zap.Error(err), zap.String("stage_id", board.CustomStageID.String()))
-		}
-	}
-
-	var importance *domain.CustomImportance
-	if board.CustomImportanceID != nil {
-		importance, err = s.customFieldRepo.FindCustomImportanceByID(*board.CustomImportanceID)
-		if err != nil {
-			s.logger.Warn("Failed to fetch importance", zap.Error(err), zap.String("importance_id", board.CustomImportanceID.String()))
-		}
-	}
-
-	boardRoles, err := s.repo.FindRolesByBoard(board.ID)
-	if err != nil {
-		s.logger.Warn("Failed to fetch board roles", zap.Error(err))
-	}
-
-	roles := make([]*domain.CustomRole, 0, len(boardRoles))
-	for _, kr := range boardRoles {
-		role, err := s.customFieldRepo.FindCustomRoleByID(kr.CustomRoleID)
-		if err == nil && role != nil {
-			roles = append(roles, role)
-		}
-	}
-
-	// 4. Build response
-	return s.buildBoardResponse(board, stage, importance, roles)
+	// 3. Build response
+	// Note: Custom field values are now in custom_fields_cache (JSONB)
+	// Frontend should fetch field definitions and parse custom_fields_cache
+	return s.buildBoardResponse(board)
 }
 
 // ==================== Get Boards (List with Filters) ====================
@@ -313,25 +196,9 @@ func (s *boardService) GetBoards(userID string, req *dto.GetBoardsRequest) (*dto
 	}
 
 	// 2. Build filters
+	// Note: Custom field filtering (stage, role, importance, etc.) is now done
+	// via ViewService using JSONB queries on custom_fields_cache column
 	filters := repository.BoardFilters{}
-	if req.StageID != "" {
-		stageUUID, err := uuid.Parse(req.StageID)
-		if err == nil {
-			filters.StageID = stageUUID
-		}
-	}
-	if req.RoleID != "" {
-		roleUUID, err := uuid.Parse(req.RoleID)
-		if err == nil {
-			filters.RoleID = roleUUID
-		}
-	}
-	if req.ImportanceID != "" {
-		importanceUUID, err := uuid.Parse(req.ImportanceID)
-		if err == nil {
-			filters.ImportanceID = importanceUUID
-		}
-	}
 	if req.AssigneeID != "" {
 		assigneeUUID, err := uuid.Parse(req.AssigneeID)
 		if err == nil {
@@ -370,100 +237,23 @@ func (s *boardService) GetBoards(userID string, req *dto.GetBoardsRequest) (*dto
 		}, nil
 	}
 
-	// 5. Collect all IDs for batch queries
-	stageIDs := make([]uuid.UUID, 0, len(boards))
-	importanceIDs := make([]uuid.UUID, 0)
+	// 5. Collect user IDs for batch queries
 	userIDs := make([]string, 0, len(boards)*2)
-
 	for _, board := range boards {
-		if board.CustomStageID != nil {
-			stageIDs = append(stageIDs, *board.CustomStageID)
-		}
-		if board.CustomImportanceID != nil {
-			importanceIDs = append(importanceIDs, *board.CustomImportanceID)
-		}
 		userIDs = append(userIDs, board.CreatedBy.String())
 		if board.AssigneeID != nil {
 			userIDs = append(userIDs, board.AssigneeID.String())
 		}
 	}
 
-	// 6. Batch fetch custom fields
-	stagesSlice, _ := s.customFieldRepo.FindCustomStagesByIDs(stageIDs)
-	stagesMap := make(map[uuid.UUID]*domain.CustomStage)
-	for i := range stagesSlice {
-		stagesMap[stagesSlice[i].ID] = &stagesSlice[i]
-	}
-
-	importancesSlice, _ := s.customFieldRepo.FindCustomImportancesByIDs(importanceIDs)
-	importancesMap := make(map[uuid.UUID]*domain.CustomImportance)
-	for i := range importancesSlice {
-		importancesMap[importancesSlice[i].ID] = &importancesSlice[i]
-	}
-
-	// 7. Batch fetch users
+	// 6. Batch fetch users
 	userMap := s.getUserInfoBatch(ctx, userIDs)
 
-	// 8. Batch fetch board roles for all boards
-	boardRolesMap := make(map[uuid.UUID][]*domain.CustomRole)
-	allRoleIDs := make([]uuid.UUID, 0)
-	boardToRoleIDs := make(map[uuid.UUID][]uuid.UUID)
-
-	// Collect all board IDs
-	boardIDs := make([]uuid.UUID, 0, len(boards))
-	for _, board := range boards {
-		boardIDs = append(boardIDs, board.ID)
-	}
-
-	// Batch fetch board roles (1 query instead of N)
-	boardRolesData, _ := s.repo.FindRolesByBoards(boardIDs)
-
-	// Process board roles
-	for boardID, boardRoles := range boardRolesData {
-		if len(boardRoles) > 0 {
-			roleIDs := make([]uuid.UUID, 0, len(boardRoles))
-			for _, kr := range boardRoles {
-				roleIDs = append(roleIDs, kr.CustomRoleID)
-				allRoleIDs = append(allRoleIDs, kr.CustomRoleID)
-			}
-			boardToRoleIDs[boardID] = roleIDs
-		}
-	}
-
-	// Batch fetch all roles at once
-	if len(allRoleIDs) > 0 {
-		rolesSlice, _ := s.customFieldRepo.FindCustomRolesByIDs(allRoleIDs)
-		rolesMapByID := make(map[uuid.UUID]*domain.CustomRole)
-		for i := range rolesSlice {
-			rolesMapByID[rolesSlice[i].ID] = &rolesSlice[i]
-		}
-
-		// Map roles to boards
-		for boardID, roleIDs := range boardToRoleIDs {
-			roles := make([]*domain.CustomRole, 0, len(roleIDs))
-			for _, roleID := range roleIDs {
-				if role, ok := rolesMapByID[roleID]; ok {
-					roles = append(roles, role)
-				}
-			}
-			boardRolesMap[boardID] = roles
-		}
-	}
-
-	// 9. Build responses
+	// 7. Build responses
+	// Note: Custom field values are now in custom_fields_cache (JSONB)
 	responses := make([]dto.BoardResponse, 0, len(boards))
 	for _, board := range boards {
-		var stage *domain.CustomStage
-		if board.CustomStageID != nil {
-			stage = stagesMap[*board.CustomStageID]
-		}
-		var importance *domain.CustomImportance
-		if board.CustomImportanceID != nil {
-			importance = importancesMap[*board.CustomImportanceID]
-		}
-		roles := boardRolesMap[board.ID]
-
-		response, err := s.buildBoardResponseOptimized(&board, stage, importance, roles, userMap)
+		response, err := s.buildBoardResponseOptimized(&board, userMap)
 		if err == nil && response != nil {
 			responses = append(responses, *response)
 		}
@@ -527,31 +317,8 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 		board.Description = req.Content
 	}
 
-	if req.StageID != nil && *req.StageID != "" {
-		stageUUID, err := uuid.Parse(*req.StageID)
-		if err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 진행단계 ID", 400)
-		}
-
-		stage, err := s.customFieldRepo.FindCustomStageByID(stageUUID)
-		if err != nil || stage.ProjectID != board.ProjectID {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, "진행단계를 찾을 수 없습니다", 404)
-		}
-		board.CustomStageID = &stageUUID
-	}
-
-	if req.ImportanceID != nil {
-		importanceUUID, err := uuid.Parse(*req.ImportanceID)
-		if err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 중요도 ID", 400)
-		}
-
-		importance, err := s.customFieldRepo.FindCustomImportanceByID(importanceUUID)
-		if err != nil || importance.ProjectID != board.ProjectID {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, "중요도를 찾을 수 없습니다", 404)
-		}
-		board.CustomImportanceID = &importanceUUID
-	}
+	// Note: Stage, Importance, and Role updates should now be done via FieldValueService
+	// using /field-values API endpoints
 
 	if req.AssigneeID != nil {
 		assigneeUUID, err := uuid.Parse(*req.AssigneeID)
@@ -574,46 +341,12 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 		board.DueDate = &parsed
 	}
 
-	// 4. Update roles if provided
-	if len(req.RoleIDs) > 0 {
-		// Validate all roles first
-		roleUUIDs := make([]uuid.UUID, 0, len(req.RoleIDs))
-		for _, roleID := range req.RoleIDs {
-			roleUUID, err := uuid.Parse(roleID)
-			if err != nil {
-				return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 역할 ID", 400)
-			}
-
-			role, err := s.customFieldRepo.FindCustomRoleByID(roleUUID)
-			if err != nil || role.ProjectID != board.ProjectID {
-				return nil, apperrors.New(apperrors.ErrCodeNotFound, "역할을 찾을 수 없습니다", 404)
-			}
-
-			roleUUIDs = append(roleUUIDs, roleUUID)
-		}
-
-		// Delete existing roles and create new ones in transaction
-		err = s.db.Transaction(func(tx *gorm.DB) error {
-			if err := s.repo.DeleteBoardRolesByBoard(board.ID); err != nil {
-				return err
-			}
-			if err := s.repo.CreateBoardRoles(board.ID, roleUUIDs); err != nil {
-				return err
-			}
-			return nil
-		})
-
-		if err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "역할 업데이트 실패", 500)
-		}
-	}
-
-	// 5. Save board
+	// 4. Save board
 	if err := s.repo.Update(board); err != nil {
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 수정 실패", 500)
 	}
 
-	// 6. Return updated board
+	// 5. Return updated board
 	return s.GetBoard(board.ID.String(), userID)
 }
 
@@ -669,12 +402,7 @@ func (s *boardService) DeleteBoard(boardID, userID string) error {
 
 // ==================== Helper: Build Board Response ====================
 
-func (s *boardService) buildBoardResponse(
-	board *domain.Board,
-	stage *domain.CustomStage,
-	importance *domain.CustomImportance,
-	roles []*domain.CustomRole,
-) (*dto.BoardResponse, error) {
+func (s *boardService) buildBoardResponse(board *domain.Board) (*dto.BoardResponse, error) {
 	// Collect user IDs for batch query
 	userIDs := []string{board.CreatedBy.String()}
 	if board.AssigneeID != nil {
@@ -685,60 +413,28 @@ func (s *boardService) buildBoardResponse(
 	ctx := context.Background()
 	userMap := s.getUserInfoBatch(ctx, userIDs)
 
+	// Parse custom_fields_cache
+	var customFields map[string]interface{}
+	if board.CustomFieldsCache != "" && board.CustomFieldsCache != "{}" {
+		if err := json.Unmarshal([]byte(board.CustomFieldsCache), &customFields); err != nil {
+			s.logger.Warn("Failed to parse custom_fields_cache", zap.Error(err), zap.String("board_id", board.ID.String()))
+			customFields = make(map[string]interface{})
+		}
+	} else {
+		customFields = make(map[string]interface{})
+	}
+
 	// Build response
 	response := &dto.BoardResponse{
-		ID:        board.ID.String(),
-		ProjectID: board.ProjectID.String(),
-		Title:     board.Title,
-		Content:   board.Description,
-		DueDate:   board.DueDate,
-		CreatedAt: board.CreatedAt,
-		UpdatedAt: board.UpdatedAt,
+		ID:           board.ID.String(),
+		ProjectID:    board.ProjectID.String(),
+		Title:        board.Title,
+		Content:      board.Description,
+		CustomFields: customFields,  // Include JSONB custom fields
+		DueDate:      board.DueDate,
+		CreatedAt:    board.CreatedAt,
+		UpdatedAt:    board.UpdatedAt,
 	}
-
-	// Stage
-	if stage != nil {
-		response.Stage = dto.CustomStageResponse{
-			ID:              stage.ID.String(),
-			ProjectID:       stage.ProjectID.String(),
-			Name:            stage.Name,
-			Color:           stage.Color,
-			IsSystemDefault: stage.IsSystemDefault,
-			DisplayOrder:    stage.DisplayOrder,
-			CreatedAt:       stage.CreatedAt,
-			UpdatedAt:       stage.UpdatedAt,
-		}
-	}
-
-	// Importance
-	if importance != nil {
-		response.Importance = &dto.CustomImportanceResponse{
-			ID:              importance.ID.String(),
-			ProjectID:       importance.ProjectID.String(),
-			Name:            importance.Name,
-			Color:           importance.Color,
-			IsSystemDefault: importance.IsSystemDefault,
-			DisplayOrder:    importance.DisplayOrder,
-			CreatedAt:       importance.CreatedAt,
-			UpdatedAt:       importance.UpdatedAt,
-		}
-	}
-
-	// Roles
-	roleResponses := make([]dto.CustomRoleResponse, 0, len(roles))
-	for _, role := range roles {
-		roleResponses = append(roleResponses, dto.CustomRoleResponse{
-			ID:              role.ID.String(),
-			ProjectID:       role.ProjectID.String(),
-			Name:            role.Name,
-			Color:           role.Color,
-			IsSystemDefault: role.IsSystemDefault,
-			DisplayOrder:    role.DisplayOrder,
-			CreatedAt:       role.CreatedAt,
-			UpdatedAt:       role.UpdatedAt,
-		})
-	}
-	response.Roles = roleResponses
 
 	// Author
 	if author, ok := userMap[board.CreatedBy.String()]; ok {
@@ -784,65 +480,30 @@ func (s *boardService) buildBoardResponse(
 // buildBoardResponseOptimized builds a board response using pre-fetched data (batch optimized)
 func (s *boardService) buildBoardResponseOptimized(
 	board *domain.Board,
-	stage *domain.CustomStage,
-	importance *domain.CustomImportance,
-	roles []*domain.CustomRole,
 	userMap map[string]client.UserInfo,
 ) (*dto.BoardResponse, error) {
+	// Parse custom_fields_cache
+	var customFields map[string]interface{}
+	if board.CustomFieldsCache != "" && board.CustomFieldsCache != "{}" {
+		if err := json.Unmarshal([]byte(board.CustomFieldsCache), &customFields); err != nil {
+			s.logger.Warn("Failed to parse custom_fields_cache", zap.Error(err), zap.String("board_id", board.ID.String()))
+			customFields = make(map[string]interface{})
+		}
+	} else {
+		customFields = make(map[string]interface{})
+	}
+
 	// Build response
 	response := &dto.BoardResponse{
-		ID:        board.ID.String(),
-		ProjectID: board.ProjectID.String(),
-		Title:     board.Title,
-		Content:   board.Description,
-		DueDate:   board.DueDate,
-		CreatedAt: board.CreatedAt,
-		UpdatedAt: board.UpdatedAt,
+		ID:           board.ID.String(),
+		ProjectID:    board.ProjectID.String(),
+		Title:        board.Title,
+		Content:      board.Description,
+		CustomFields: customFields,
+		DueDate:      board.DueDate,
+		CreatedAt:    board.CreatedAt,
+		UpdatedAt:    board.UpdatedAt,
 	}
-
-	// Stage
-	if stage != nil {
-		response.Stage = dto.CustomStageResponse{
-			ID:              stage.ID.String(),
-			ProjectID:       stage.ProjectID.String(),
-			Name:            stage.Name,
-			Color:           stage.Color,
-			IsSystemDefault: stage.IsSystemDefault,
-			DisplayOrder:    stage.DisplayOrder,
-			CreatedAt:       stage.CreatedAt,
-			UpdatedAt:       stage.UpdatedAt,
-		}
-	}
-
-	// Importance
-	if importance != nil {
-		response.Importance = &dto.CustomImportanceResponse{
-			ID:              importance.ID.String(),
-			ProjectID:       importance.ProjectID.String(),
-			Name:            importance.Name,
-			Color:           importance.Color,
-			IsSystemDefault: importance.IsSystemDefault,
-			DisplayOrder:    importance.DisplayOrder,
-			CreatedAt:       importance.CreatedAt,
-			UpdatedAt:       importance.UpdatedAt,
-		}
-	}
-
-	// Roles
-	roleResponses := make([]dto.CustomRoleResponse, 0, len(roles))
-	for _, role := range roles {
-		roleResponses = append(roleResponses, dto.CustomRoleResponse{
-			ID:              role.ID.String(),
-			ProjectID:       role.ProjectID.String(),
-			Name:            role.Name,
-			Color:           role.Color,
-			IsSystemDefault: role.IsSystemDefault,
-			DisplayOrder:    role.DisplayOrder,
-			CreatedAt:       role.CreatedAt,
-			UpdatedAt:       role.UpdatedAt,
-		})
-	}
-	response.Roles = roleResponses
 
 	// Author (from userMap)
 	if author, ok := userMap[board.CreatedBy.String()]; ok {
