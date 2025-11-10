@@ -9,6 +9,7 @@ import (
 	"board-service/internal/repository"
 	"board-service/internal/util"
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -195,25 +196,9 @@ func (s *boardService) GetBoards(userID string, req *dto.GetBoardsRequest) (*dto
 	}
 
 	// 2. Build filters
+	// Note: Custom field filtering (stage, role, importance, etc.) is now done
+	// via ViewService using JSONB queries on custom_fields_cache column
 	filters := repository.BoardFilters{}
-	if req.StageID != "" {
-		stageUUID, err := uuid.Parse(req.StageID)
-		if err == nil {
-			filters.StageID = stageUUID
-		}
-	}
-	if req.RoleID != "" {
-		roleUUID, err := uuid.Parse(req.RoleID)
-		if err == nil {
-			filters.RoleID = roleUUID
-		}
-	}
-	if req.ImportanceID != "" {
-		importanceUUID, err := uuid.Parse(req.ImportanceID)
-		if err == nil {
-			filters.ImportanceID = importanceUUID
-		}
-	}
 	if req.AssigneeID != "" {
 		assigneeUUID, err := uuid.Parse(req.AssigneeID)
 		if err == nil {
