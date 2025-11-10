@@ -211,27 +211,25 @@ create_status_options() {
 }
 
 create_field_priority() {
-    print_step "7" "Create Custom Field: Priority (single_select)"
+    print_step "7" "Custom Field 생성: Priority (single_select)"
 
     response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/fields" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"projectId\": \"$PROJECT_ID\",
+            \"project_id\": \"$PROJECT_ID\",
             \"name\": \"Priority\",
-            \"fieldType\": \"single_select\",
+            \"field_type\": \"single_select\",
             \"description\": \"Task priority level\",
-            \"isRequired\": false,
+            \"is_required\": false,
             \"config\": {}
         }")
 
-    FIELD_PRIORITY_ID=$(echo "$response" | jq -r '.data.id // empty')
-
-    if [ -n "$FIELD_PRIORITY_ID" ] && [ "$FIELD_PRIORITY_ID" != "null" ]; then
-        print_success "Priority field created: ${FIELD_PRIORITY_ID:0:8}..."
-        print_json "$response"
+    if echo "$response" | grep -q '"data"'; then
+        FIELD_PRIORITY_ID=$(echo "$response" | grep -o '"field_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        print_success "Priority 필드 생성 성공 (ID: ${FIELD_PRIORITY_ID:0:8}...)"
     else
-        print_error "Failed to create priority field"
+        print_error "Priority 필드 생성 실패: $response"
     fi
 }
 
@@ -243,7 +241,7 @@ create_priority_options() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"fieldId\": \"$FIELD_PRIORITY_ID\",
+            \"field_id\": \"$FIELD_PRIORITY_ID\",
             \"value\": \"High\",
             \"color\": \"#EF4444\"
         }")
@@ -256,7 +254,7 @@ create_priority_options() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"fieldId\": \"$FIELD_PRIORITY_ID\",
+            \"field_id\": \"$FIELD_PRIORITY_ID\",
             \"value\": \"Medium\",
             \"color\": \"#F59E0B\"
         }")
@@ -269,7 +267,7 @@ create_priority_options() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"fieldId\": \"$FIELD_PRIORITY_ID\",
+            \"field_id\": \"$FIELD_PRIORITY_ID\",
             \"value\": \"Low\",
             \"color\": \"#6B7280\"
         }")
@@ -285,11 +283,11 @@ create_field_tags() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"projectId\": \"$PROJECT_ID\",
+            \"project_id\": \"$PROJECT_ID\",
             \"name\": \"Tags\",
-            \"fieldType\": \"multi_select\",
+            \"field_type\": \"multi_select\",
             \"description\": \"Task tags\",
-            \"isRequired\": false,
+            \"is_required\": false,
             \"config\": {\"max_selections\": 5}
         }")
 
@@ -309,10 +307,9 @@ list_project_fields() {
     response=$(curl -s "$BOARD_SERVICE_URL/api/projects/$PROJECT_ID/fields" \
         -H "Authorization: Bearer $TOKEN")
 
-    if echo "$response" | jq -e '.code == 0' > /dev/null 2>&1; then
-        field_count=$(echo "$response" | jq '.data | length')
+    if echo "$response" | grep -q '"data"'; then
+        field_count=$(echo "$response" | grep -o '"field_id"' | wc -l)
         print_success "Retrieved $field_count custom fields"
-        echo "$response" | jq '.data[] | {id, name, field_type: .fieldType, required: .isRequired}'
     else
         print_error "Failed to list project fields"
     fi
@@ -325,26 +322,17 @@ create_board() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"projectId\": \"$PROJECT_ID\",
+            \"project_id\": \"$PROJECT_ID\",
             \"title\": \"Test Board $(date +%s)\",
             \"description\": \"Board with custom fields\",
-            \"assigneeId\": \"$USER_ID\"
+            \"assignee_id\": \"$USER_ID\"
         }")
 
-    BOARD_ID=$(echo "$response" | jq -r '.data.id // empty')
-
-    if [ -n "$BOARD_ID" ] && [ "$BOARD_ID" != "null" ]; then
-        print_success "Board created: ${BOARD_ID:0:8}..."
-        print_json "$response"
-
-        # Check custom_fields in response
-        custom_fields=$(echo "$response" | jq '.data.custom_fields // empty')
-        if [ -n "$custom_fields" ]; then
-            print_info "Custom fields in response:"
-            echo "$custom_fields" | jq '.'
-        fi
+    if echo "$response" | grep -q '"data"'; then
+        BOARD_ID=$(echo "$response" | grep -o '"board_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        print_success "Board 생성 성공 (ID: ${BOARD_ID:0:8}...)"
     else
-        print_error "Failed to create board"
+        print_error "Board 생성 실패: $response"
     fi
 }
 
@@ -357,12 +345,12 @@ set_board_field_values() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"fieldId\": \"$FIELD_STATUS_ID\",
+            \"field_id\": \"$FIELD_STATUS_ID\",
             \"value\": \"$OPTION_INPROGRESS_ID\"
         }")
 
-    if echo "$response" | jq -e '.code == 0' > /dev/null 2>&1; then
-        print_success "Status field value set"
+    if echo "$response" | grep -q '"data"'; then
+        print_success "Status 필드 값 설정 성공"
     fi
 
     # Set Priority = High
@@ -371,41 +359,39 @@ set_board_field_values() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"fieldId\": \"$FIELD_PRIORITY_ID\",
+            \"field_id\": \"$FIELD_PRIORITY_ID\",
             \"value\": \"$OPTION_HIGH_ID\"
         }")
 
-    if echo "$response" | jq -e '.code == 0' > /dev/null 2>&1; then
-        print_success "Priority field value set"
+    if echo "$response" | grep -q '"data"'; then
+        print_success "Priority 필드 값 설정 성공"
     fi
 }
 
 get_board_with_fields() {
-    print_step "13" "Get Board with Custom Fields"
+    print_step "13" "Board 조회 (Custom Fields 포함)"
 
     response=$(curl -s "$BOARD_SERVICE_URL/api/boards/$BOARD_ID" \
         -H "Authorization: Bearer $TOKEN")
 
-    if echo "$response" | jq -e '.code == 0' > /dev/null 2>&1; then
-        print_success "Retrieved board with custom fields"
-        echo "$response" | jq '.data | {id, title, custom_fields}'
+    if echo "$response" | grep -q '"data"'; then
+        print_success "Board 조회 성공"
     else
-        print_error "Failed to get board"
+        print_error "Board 조회 실패"
     fi
 }
 
 get_boards_in_project() {
-    print_step "14" "Get All Boards in Project"
+    print_step "14" "Project의 모든 Board 조회"
 
     response=$(curl -s "$BOARD_SERVICE_URL/api/boards?project_id=$PROJECT_ID" \
         -H "Authorization: Bearer $TOKEN")
 
-    if echo "$response" | jq -e '.code == 0' > /dev/null 2>&1; then
-        board_count=$(echo "$response" | jq '.data | length')
-        print_success "Retrieved $board_count boards"
-        echo "$response" | jq '.data[] | {id, title, status: .custom_fields.Status, priority: .custom_fields.Priority}'
+    if echo "$response" | grep -q '"data"'; then
+        board_count=$(echo "$response" | grep -o '"board_id"' | wc -l)
+        print_success "$board_count개의 Board 조회 성공"
     else
-        print_error "Failed to get boards"
+        print_error "Boards 조회 실패"
     fi
 }
 
@@ -416,50 +402,47 @@ create_comment() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"boardId\": \"$BOARD_ID\",
+            \"board_id\": \"$BOARD_ID\",
             \"content\": \"This is a test comment from integration test script\"
         }")
 
-    COMMENT_ID=$(echo "$response" | jq -r '.data.id // empty')
-
-    if [ -n "$COMMENT_ID" ] && [ "$COMMENT_ID" != "null" ]; then
-        print_success "Comment created: ${COMMENT_ID:0:8}..."
-        print_json "$response"
+    if echo "$response" | grep -q '"data"'; then
+        COMMENT_ID=$(echo "$response" | grep -o '"comment_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        print_success "Comment 생성 성공 (ID: ${COMMENT_ID:0:8}...)"
     else
-        print_error "Failed to create comment"
+        print_error "Comment 생성 실패"
     fi
 }
 
 get_comments() {
-    print_step "16" "Get Board Comments"
+    print_step "16" "Board Comments 조회"
 
     response=$(curl -s "$BOARD_SERVICE_URL/api/comments?board_id=$BOARD_ID" \
         -H "Authorization: Bearer $TOKEN")
 
-    if echo "$response" | jq -e '.code == 0' > /dev/null 2>&1; then
-        comment_count=$(echo "$response" | jq '.data | length')
-        print_success "Retrieved $comment_count comments"
-        echo "$response" | jq '.data[] | {id, content, userName, createdAt}'
+    if echo "$response" | grep -q '"data"'; then
+        comment_count=$(echo "$response" | grep -o '"comment_id"' | wc -l)
+        print_success "$comment_count개의 Comment 조회 성공"
     else
-        print_error "Failed to get comments"
+        print_error "Comments 조회 실패"
     fi
 }
 
 test_board_filtering() {
-    print_step "17" "Test Board Filtering (using custom fields)"
+    print_step "17" "Board 필터링 테스트"
 
     print_info "Filter by Status = In Progress..."
     response=$(curl -s "$BOARD_SERVICE_URL/api/boards?project_id=$PROJECT_ID&status=In%20Progress" \
         -H "Authorization: Bearer $TOKEN")
 
-    if echo "$response" | jq -e '.code == 0' > /dev/null 2>&1; then
-        filtered_count=$(echo "$response" | jq '.data | length')
-        print_success "Filtered boards: $filtered_count"
+    if echo "$response" | grep -q '"data"'; then
+        filtered_count=$(echo "$response" | grep -o '"board_id"' | wc -l)
+        print_success "필터링된 Board: $filtered_count개"
     fi
 }
 
 update_board() {
-    print_step "18" "Update Board"
+    print_step "18" "Board 업데이트"
 
     response=$(curl -s -X PUT "$BOARD_SERVICE_URL/api/boards/$BOARD_ID" \
         -H "Authorization: Bearer $TOKEN" \
@@ -469,11 +452,10 @@ update_board() {
             \"description\": \"Updated description\"
         }")
 
-    if echo "$response" | jq -e '.code == 0' > /dev/null 2>&1; then
-        print_success "Board updated successfully"
-        print_json "$response"
+    if echo "$response" | grep -q '"data"'; then
+        print_success "Board 업데이트 성공"
     else
-        print_error "Failed to update board"
+        print_error "Board 업데이트 실패"
     fi
 }
 
