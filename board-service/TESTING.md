@@ -27,19 +27,23 @@ cd board-service
 go run cmd/api/main.go
 ```
 
-### 2. 테스트 유저 생성
+### 2. 테스트 토큰 확인
 
-User Service에 테스트 계정이 필요합니다:
+User Service의 `/api/auth/test` 엔드포인트가 정상 동작하는지 확인합니다:
 
 ```bash
-curl -X POST http://localhost:8080/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "testuser",
-    "password": "testpass123",
-    "email": "test@example.com"
-  }'
+# 테스트 토큰 발급 확인
+curl -s http://localhost:8080/api/auth/test | jq '.'
+
+# 응답 예시:
+# {
+#   "accessToken": "eyJhbGc...",
+#   "userId": "test-user-id",
+#   "email": "test@example.com"
+# }
 ```
+
+**참고**: 테스트 환경에서는 `/api/auth/test`를 사용하므로 별도의 유저 등록이 필요 없습니다.
 
 ---
 
@@ -155,11 +159,22 @@ TEST 6: Performance Test - Verify Single Row Update
 
 #### Step 1: 토큰 얻기
 
+**테스트 환경**에서는 `/api/auth/test` 엔드포인트를 사용합니다:
+
+```bash
+export TOKEN=$(curl -s http://localhost:8080/api/auth/test \
+  | jq -r '.accessToken')
+
+echo $TOKEN
+```
+
+**프로덕션 환경**에서는 실제 로그인을 사용합니다:
+
 ```bash
 export TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "testuser", "password": "testpass123"}' \
-  | jq -r '.data.accessToken')
+  -d '{"username": "your-username", "password": "your-password"}' \
+  | jq -r '.accessToken')
 
 echo $TOKEN
 ```
@@ -423,11 +438,9 @@ cd /home/user/wealist-project/board-service
 # User Service 실행 확인
 curl http://localhost:8080/health
 
-# 새 토큰 발급
-export TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "testuser", "password": "testpass123"}' \
-  | jq -r '.data.accessToken')
+# 새 토큰 발급 (테스트 환경)
+export TOKEN=$(curl -s http://localhost:8080/api/auth/test \
+  | jq -r '.accessToken')
 ```
 
 ### 문제 3: Position이 null로 표시됨

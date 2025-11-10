@@ -88,16 +88,12 @@ extract_field() {
 setup_test_data() {
     print_header "SETUP: Creating Test Data"
 
-    # Get access token from User Service
-    print_step "Getting access token from User Service"
-    token_response=$(curl -s -X POST "$USER_SERVICE_URL/api/auth/login" \
-        -H "Content-Type: application/json" \
-        -d '{
-            "username": "testuser",
-            "password": "testpass123"
-        }')
+    # Get access token from User Service (test endpoint)
+    print_step "Getting test user token from User Service"
+    token_response=$(curl -s "$USER_SERVICE_URL/api/auth/test")
 
-    ACCESS_TOKEN=$(echo "$token_response" | jq -r '.data.accessToken // .access_token // .accessToken // .token')
+    ACCESS_TOKEN=$(echo "$token_response" | jq -r '.accessToken')
+    USER_ID=$(echo "$token_response" | jq -r '.userId')
 
     if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "null" ]; then
         print_error "Failed to get access token"
@@ -105,7 +101,8 @@ setup_test_data() {
         exit 1
     fi
 
-    print_success "Got access token"
+    print_success "Got test user token"
+    print_info "User ID: $USER_ID"
 
     # Create project
     print_step "Creating test project"
