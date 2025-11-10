@@ -2,7 +2,6 @@ package service_test
 
 import (
 	"board-service/internal/domain"
-	"context"
 	"encoding/json"
 	"testing"
 

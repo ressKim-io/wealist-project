@@ -162,7 +162,7 @@ func TestApplySorting_Descending(t *testing.T) {
 
 func TestGroupByField_SingleSelect(t *testing.T) {
 	// Arrange
-	groupByFieldID := "field-priority"
+	// groupByFieldID := "field-priority" // Field to group by
 
 	// Mock boards with single_select field values
 	boards := []struct {
@@ -203,7 +203,7 @@ func TestGroupByField_SingleSelect(t *testing.T) {
 
 func TestGroupByField_MultiSelect(t *testing.T) {
 	// Arrange
-	groupByFieldID := "field-tags"
+	// groupByFieldID := "field-tags" // Field to group by (multi_select type)
 
 	// Mock boards with multi_select field values
 	// Boards can have multiple tags, so they appear in multiple groups
@@ -347,7 +347,7 @@ func TestViewAccess_PrivateView(t *testing.T) {
 
 func TestViewAccess_NonMember(t *testing.T) {
 	// Arrange
-	projectID := "project-789"
+	// projectID := "project-789" // Project identifier
 	nonMemberID := "user-999"
 
 	// Project members
@@ -401,7 +401,7 @@ func TestJSONBQuery_ArrayContains(t *testing.T) {
 // =============================================================================
 
 func TestPagination_FirstPage(t *testing.T) {
-	total := 100
+	// total := 100 // Total number of items
 	page := 1
 	limit := 20
 
@@ -412,7 +412,7 @@ func TestPagination_FirstPage(t *testing.T) {
 }
 
 func TestPagination_SecondPage(t *testing.T) {
-	total := 100
+	// total := 100 // Total number of items
 	page := 2
 	limit := 20
 

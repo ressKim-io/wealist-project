@@ -276,7 +276,7 @@ func TestSetFieldValue_Number(t *testing.T) {
 
 func TestSetFieldValue_SingleSelect(t *testing.T) {
 	// Arrange
-	fieldID := "field-123"
+	// fieldID := "field-123" // Field identifier for single_select type
 	optionID := "option-456"
 
 	// Field options
