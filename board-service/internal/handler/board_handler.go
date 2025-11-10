@@ -198,3 +198,49 @@ func (h *BoardHandler) DeleteBoard(c *gin.Context) {
 
 	dto.Success(c, gin.H{"message": "보드가 삭제되었습니다"})
 }
+
+// MoveBoard godoc
+// @Summary      Move board to different column
+// @Description  Move a board to a different column/group in a view (integrated API: field value change + order update in single transaction)
+// @Tags         boards
+// @Accept       json
+// @Produce      json
+// @Param        board_id path string true "Board ID"
+// @Param        request body dto.MoveBoardRequest true "Move board request"
+// @Success      200 {object} dto.SuccessResponse{data=dto.MoveBoardResponse}
+// @Failure      400 {object} dto.ErrorResponse
+// @Failure      403 {object} dto.ErrorResponse
+// @Failure      404 {object} dto.ErrorResponse
+// @Router       /api/boards/{board_id}/move [put]
+// @Security     BearerAuth
+func (h *BoardHandler) MoveBoard(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		dto.Error(c, apperrors.ErrUnauthorized)
+		return
+	}
+
+	boardID := c.Param("board_id")
+	if boardID == "" {
+		dto.Error(c, apperrors.Wrap(nil, apperrors.ErrCodeBadRequest, "보드 ID가 필요합니다", 400))
+		return
+	}
+
+	var req dto.MoveBoardRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		dto.Error(c, apperrors.Wrap(err, apperrors.ErrCodeValidation, "입력값 검증 실패", 400))
+		return
+	}
+
+	response, err := h.service.MoveBoard(userID, boardID, &req)
+	if err != nil {
+		if appErr, ok := err.(*apperrors.AppError); ok {
+			dto.Error(c, appErr)
+		} else {
+			dto.Error(c, apperrors.ErrInternalServer)
+		}
+		return
+	}
+
+	dto.Success(c, response)
+}

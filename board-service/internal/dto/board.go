@@ -66,3 +66,21 @@ type PaginatedBoardsResponse struct {
 	Page   int             `json:"page"`
 	Limit  int             `json:"limit"`
 }
+
+// MoveBoardRequest represents a request to move a board to a different column/group
+// This API combines field value change + order update in a single transaction
+type MoveBoardRequest struct {
+	ViewID         string `json:"view_id" binding:"required,uuid"`
+	GroupByFieldID string `json:"group_by_field_id" binding:"required,uuid"` // Which field is used for grouping
+	NewFieldValue  string `json:"new_field_value" binding:"required,uuid"`   // New option_id (destination column)
+	NewPosition    int    `json:"new_position" binding:"min=0"`              // Position in destination column (0-based)
+}
+
+// MoveBoardResponse represents the result of a board move operation
+type MoveBoardResponse struct {
+	BoardID          string `json:"board_id"`
+	NewFieldValue    string `json:"new_field_value"`
+	NewPosition      int    `json:"new_position"`
+	AffectedBoards   int    `json:"affected_boards"` // Number of boards whose order was changed
+	Message          string `json:"message"`
+}

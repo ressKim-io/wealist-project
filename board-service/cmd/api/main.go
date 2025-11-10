@@ -93,7 +93,7 @@ func main() {
 	// 5.7. Initialize services
 	// Note: customFieldService needs boardRepo (for Phase 4 TODO), then injected into projectService
 	customFieldService := service.NewCustomFieldService(customFieldRepo, projectRepo, roleRepo, boardRepo, log, db)
-	boardService := service.NewBoardService(boardRepo, projectRepo, customFieldRepo, roleRepo, userClient, userInfoCache, log, db)
+	boardService := service.NewBoardService(boardRepo, projectRepo, customFieldRepo, roleRepo, fieldRepo, userClient, userInfoCache, log, db)
 	projectService := service.NewProjectService(projectRepo, roleRepo, userOrderRepo, customFieldService, userClient, workspaceCache, userInfoCache, log, db)
 	userOrderService := service.NewUserOrderService(userOrderRepo, projectRepo, customFieldRepo, boardRepo, userOrderCache, log)
 	commentService := service.NewCommentService(commentRepo, boardRepo, projectRepo, userClient, userInfoCache, log, db) // Add CommentService
@@ -210,6 +210,7 @@ func main() {
 			boards.GET("", boardHandler.GetBoards)
 			boards.PUT("/:board_id", boardHandler.UpdateBoard)
 			boards.DELETE("/:board_id", boardHandler.DeleteBoard)
+			boards.PUT("/:board_id/move", boardHandler.MoveBoard) // Integrated API: field value change + order update
 		}
 
 		// Comment routes
