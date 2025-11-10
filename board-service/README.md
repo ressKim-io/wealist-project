@@ -472,6 +472,33 @@ The service uses structured JSON logging in production and console logging in de
 
 ## Recent Updates
 
+### v1.2.0 - Fractional Indexing for Board Ordering (2025-01-11)
+
+**Major Changes:**
+- **Migrated from integer-based ordering to fractional indexing** for O(1) board position updates
+- Replaced `display_order` (int) with `position` (string) in `user_board_order` table
+- **Performance improvement**: Moving a board now updates only 1 row instead of N rows
+- **New MoveBoard API**: Uses `before_position` and `after_position` instead of numeric index
+- Implemented fractional indexing utility (`internal/util/position.go`) using base62 encoding
+- Created comprehensive frontend API guide: `docs/FRONTEND_API_GUIDE.md`
+
+**Technical Details:**
+- Position strings are lexicographically sortable (e.g., "a0", "a0V", "a1")
+- Can always insert between any two positions without reordering other boards
+- Migration script automatically converts existing integer orders to string positions
+- Eliminated `recalculateBoardOrders` function (no longer needed)
+
+**Benefits:**
+- O(1) insert/move operations (was O(N) with cascading updates)
+- Eliminates database bottleneck for large board lists
+- Same approach used by Linear, Jira, Notion, and Figma
+- Simpler frontend implementation (only need before/after positions)
+
+**Documentation:**
+- Frontend implementation guide: `docs/FRONTEND_API_GUIDE.md`
+- Migration files: `migrations/20250111120000_convert_to_fractional_indexing.{up|down}.sql`
+- Utility functions: `internal/util/position.go`
+
 ### v1.1.0 - API Field Name Standardization (2025-11-09)
 
 **Major Changes:**

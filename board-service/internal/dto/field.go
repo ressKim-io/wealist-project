@@ -194,12 +194,13 @@ type BoardGroup struct {
 // ==================== User Board Order DTOs ====================
 
 // UpdateBoardOrderRequest represents a request to update board order in a view
+// Note: Prefer using MoveBoardRequest API for single board moves (O(1) fractional indexing)
 type UpdateBoardOrderRequest struct {
 	ViewID      string       `json:"view_id" binding:"required,uuid"`
 	BoardOrders []BoardOrder `json:"boardOrders" binding:"required,dive"`
 }
 
 type BoardOrder struct {
-	BoardID      string `json:"board_id" binding:"required,uuid"`
-	DisplayOrder int    `json:"displayOrder" binding:"min=0"`
+	BoardID  string `json:"board_id" binding:"required,uuid"`
+	Position string `json:"position" binding:"required"` // Fractional index position
 }

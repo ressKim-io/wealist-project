@@ -7,6 +7,7 @@ import (
 	"board-service/internal/domain"
 	"board-service/internal/dto"
 	"board-service/internal/repository"
+	"board-service/internal/util"
 	"context"
 	"errors"
 	"time"
@@ -932,7 +933,8 @@ func (s *boardService) getUserInfoBatch(ctx context.Context, userIDs []string) m
 // ==================== Move Board (Integrated API) ====================
 
 // MoveBoard moves a board to a different column/group in a view
-// This API combines field value change + order update in a single transaction
+// This API combines field value change + position update in a single transaction
+// Uses fractional indexing for O(1) operations - only 1 row updated!
 func (s *boardService) MoveBoard(userID, boardID string, req *dto.MoveBoardRequest) (*dto.MoveBoardResponse, error) {
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
@@ -1002,21 +1004,22 @@ func (s *boardService) MoveBoard(userID, boardID string, req *dto.MoveBoardReque
 		return nil, apperrors.New(apperrors.ErrCodeBadRequest, "유효하지 않은 옵션입니다", 400)
 	}
 
-	// 7. Execute in transaction
-	var affectedBoardsCount int
+	// 7. Generate new position using fractional indexing
+	var beforePos, afterPos string
+	if req.BeforePosition != nil {
+		beforePos = *req.BeforePosition
+	}
+	if req.AfterPosition != nil {
+		afterPos = *req.AfterPosition
+	}
+
+	// Import util package for fractional indexing
+	newPosition := util.GeneratePositionBetween(beforePos, afterPos)
+
+	// 8. Execute in transaction
+	var finalPosition string
 	err = s.db.Transaction(func(tx *gorm.DB) error {
-		// 7-1. Get old field value (for order recalculation)
-		oldValues, err := s.fieldRepo.FindFieldValuesByBoardAndField(boardUUID, fieldUUID)
-		if err != nil {
-			return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "기존 필드 값 조회 실패", 500)
-		}
-
-		var oldValueUUID *uuid.UUID
-		if len(oldValues) > 0 && oldValues[0].ValueOptionID != nil {
-			oldValueUUID = oldValues[0].ValueOptionID
-		}
-
-		// 7-2. Update field value (change column)
+		// 8-1. Update field value (change column)
 		// Delete old value first
 		if err := s.fieldRepo.BatchDeleteFieldValues(boardUUID, fieldUUID); err != nil {
 			return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "기존 필드 값 삭제 실패", 500)
@@ -1033,29 +1036,20 @@ func (s *boardService) MoveBoard(userID, boardID string, req *dto.MoveBoardReque
 			return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "필드 값 설정 실패", 500)
 		}
 
-		// 7-3. Recalculate and update board orders
-		orders, err := s.recalculateBoardOrders(
-			viewUUID,
-			userUUID,
-			boardUUID,
-			oldValueUUID,
-			newValueUUID,
-			req.NewPosition,
-		)
-		if err != nil {
-			return err
+		// 8-2. Update board position (fractional indexing - only 1 row!)
+		boardOrder := domain.UserBoardOrder{
+			ViewID:   viewUUID,
+			UserID:   userUUID,
+			BoardID:  boardUUID,
+			Position: newPosition,
+		}
+		if err := s.fieldRepo.SetBoardOrder(&boardOrder); err != nil {
+			return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 순서 업데이트 실패", 500)
 		}
 
-		affectedBoardsCount = len(orders)
+		finalPosition = newPosition
 
-		// Batch update orders
-		if len(orders) > 0 {
-			if err := s.fieldRepo.BatchUpdateBoardOrders(orders); err != nil {
-				return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 순서 업데이트 실패", 500)
-			}
-		}
-
-		// 7-4. Update JSONB cache
+		// 8-3. Update JSONB cache
 		if _, err := s.fieldRepo.UpdateBoardFieldCache(boardUUID); err != nil {
 			s.logger.Warn("Failed to update board cache", zap.Error(err))
 		}
@@ -1071,58 +1065,9 @@ func (s *boardService) MoveBoard(userID, boardID string, req *dto.MoveBoardReque
 	}
 
 	return &dto.MoveBoardResponse{
-		BoardID:        boardID,
-		NewFieldValue:  req.NewFieldValue,
-		NewPosition:    req.NewPosition,
-		AffectedBoards: affectedBoardsCount,
-		Message:        "보드가 성공적으로 이동되었습니다",
+		BoardID:       boardID,
+		NewFieldValue: req.NewFieldValue,
+		NewPosition:   finalPosition,
+		Message:       "보드가 성공적으로 이동되었습니다 (O(1) 연산)",
 	}, nil
-}
-
-// recalculateBoardOrders calculates new display orders for affected boards
-// When a board moves from one column to another, we need to:
-// 1. Remove it from source column (decrease orders of boards after it)
-// 2. Insert it to destination column (increase orders of boards at/after new position)
-func (s *boardService) recalculateBoardOrders(
-	viewID, userID, movedBoardID uuid.UUID,
-	oldValueID, newValueID *uuid.UUID,
-	newPosition int,
-) ([]domain.UserBoardOrder, error) {
-	// Get all current board orders for this user and view
-	currentOrders, err := s.fieldRepo.FindBoardOrdersByView(viewID, userID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 순서 조회 실패", 500)
-	}
-
-	// Get all boards in the view to determine which column they belong to
-	// This is simplified - in production, you'd query boards by field value
-	// For now, we'll just update the moved board and boards at/after the new position
-
-	orders := make([]domain.UserBoardOrder, 0)
-
-	// Find moved board's current order
-	var movedBoardCurrentOrder *domain.UserBoardOrder
-	for i := range currentOrders {
-		if currentOrders[i].BoardID == movedBoardID {
-			movedBoardCurrentOrder = &currentOrders[i]
-			break
-		}
-	}
-
-	// Add the moved board with new position
-	orders = append(orders, domain.UserBoardOrder{
-		ViewID:       viewID,
-		UserID:       userID,
-		BoardID:      movedBoardID,
-		DisplayOrder: newPosition,
-	})
-
-	// Note: In a full implementation, we would:
-	// 1. Get all boards in the source column, decrement orders after moved board
-	// 2. Get all boards in destination column, increment orders at/after new position
-	// For simplicity, we're just setting the moved board's order
-	// The frontend should send all affected board orders in the existing UpdateBoardOrder API
-	// This API primarily handles the field value change
-
-	return orders, nil
 }

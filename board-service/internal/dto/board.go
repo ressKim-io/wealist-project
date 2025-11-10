@@ -68,19 +68,20 @@ type PaginatedBoardsResponse struct {
 }
 
 // MoveBoardRequest represents a request to move a board to a different column/group
-// This API combines field value change + order update in a single transaction
+// This API combines field value change + position update in a single transaction
+// Uses fractional indexing for O(1) operations without affecting other boards
 type MoveBoardRequest struct {
-	ViewID         string `json:"view_id" binding:"required,uuid"`
-	GroupByFieldID string `json:"group_by_field_id" binding:"required,uuid"` // Which field is used for grouping
-	NewFieldValue  string `json:"new_field_value" binding:"required,uuid"`   // New option_id (destination column)
-	NewPosition    int    `json:"new_position" binding:"min=0"`              // Position in destination column (0-based)
+	ViewID         string  `json:"view_id" binding:"required,uuid"`
+	GroupByFieldID string  `json:"group_by_field_id" binding:"required,uuid"` // Which field is used for grouping
+	NewFieldValue  string  `json:"new_field_value" binding:"required,uuid"`   // New option_id (destination column)
+	BeforePosition *string `json:"before_position"`                           // Position of board before insertion point (optional)
+	AfterPosition  *string `json:"after_position"`                            // Position of board after insertion point (optional)
 }
 
 // MoveBoardResponse represents the result of a board move operation
 type MoveBoardResponse struct {
-	BoardID          string `json:"board_id"`
-	NewFieldValue    string `json:"new_field_value"`
-	NewPosition      int    `json:"new_position"`
-	AffectedBoards   int    `json:"affected_boards"` // Number of boards whose order was changed
-	Message          string `json:"message"`
+	BoardID       string `json:"board_id"`
+	NewFieldValue string `json:"new_field_value"`
+	NewPosition   string `json:"new_position"` // New fractional index position
+	Message       string `json:"message"`
 }
