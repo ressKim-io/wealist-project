@@ -45,18 +45,20 @@ type GetBoardsRequest struct {
 // ==================== Response DTOs ====================
 
 type BoardResponse struct {
-	ID         string                     `json:"board_id"`
-	ProjectID  string                     `json:"project_id"`
-	Title      string                     `json:"title"`
-	Content    string                     `json:"content"`
-	Stage      CustomStageResponse        `json:"stage"`
-	Importance *CustomImportanceResponse  `json:"importance"`
-	Roles      []CustomRoleResponse       `json:"roles"`
-	Assignee   *UserInfo                  `json:"assignee"`
-	Author     UserInfo                   `json:"author"`
-	DueDate    *time.Time                 `json:"dueDate"`
-	CreatedAt  time.Time                  `json:"createdAt"`
-	UpdatedAt  time.Time                  `json:"updatedAt"`
+	ID            string                     `json:"board_id"`
+	ProjectID     string                     `json:"project_id"`
+	Title         string                     `json:"title"`
+	Content       string                     `json:"content"`
+	Stage         CustomStageResponse        `json:"stage"`
+	Importance    *CustomImportanceResponse  `json:"importance"`
+	Roles         []CustomRoleResponse       `json:"roles"`
+	Assignee      *UserInfo                  `json:"assignee"`
+	Author        UserInfo                   `json:"author"`
+	DueDate       *time.Time                 `json:"dueDate"`
+	CreatedAt     time.Time                  `json:"createdAt"`
+	UpdatedAt     time.Time                  `json:"updatedAt"`
+	CustomFields  map[string]interface{}     `json:"custom_fields,omitempty"`  // Parsed custom_fields_cache
+	Position      string                     `json:"position,omitempty"`       // Board position in view
 }
 
 type UserInfo struct {

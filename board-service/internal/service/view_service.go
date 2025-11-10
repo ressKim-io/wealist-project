@@ -465,14 +465,26 @@ func (s *viewService) ApplyViewWithFilters(userID, projectID string, filters map
 	// Return paginated results
 	boardResponses := make([]dto.BoardResponse, 0, len(boards))
 	for _, board := range boards {
+		// Parse custom_fields_cache
+		var customFields map[string]interface{}
+		if board.CustomFieldsCache != "" && board.CustomFieldsCache != "{}" {
+			if err := json.Unmarshal([]byte(board.CustomFieldsCache), &customFields); err != nil {
+				s.logger.Warn("Failed to parse custom_fields_cache", zap.Error(err), zap.String("board_id", board.ID.String()))
+				customFields = make(map[string]interface{})
+			}
+		} else {
+			customFields = make(map[string]interface{})
+		}
+
 		// Simplified board response (can be enhanced with full details)
 		boardResponses = append(boardResponses, dto.BoardResponse{
-			ID:        board.ID.String(),
-			ProjectID: board.ProjectID.String(),
-			Title:     board.Title,
-			Content:   board.Description,
-			CreatedAt: board.CreatedAt,
-			UpdatedAt: board.UpdatedAt,
+			ID:           board.ID.String(),
+			ProjectID:    board.ProjectID.String(),
+			Title:        board.Title,
+			Content:      board.Description,
+			CustomFields: customFields,
+			CreatedAt:    board.CreatedAt,
+			UpdatedAt:    board.UpdatedAt,
 		})
 	}
 
@@ -645,24 +657,26 @@ func (s *viewService) applyGrouping(boards []domain.Board, groupByFieldID string
 						for _, optionID := range arr {
 							optionIDStr := fmt.Sprintf("%v", optionID)
 							groups[optionIDStr] = append(groups[optionIDStr], dto.BoardResponse{
-								ID:        board.ID.String(),
-								ProjectID: board.ProjectID.String(),
-								Title:     board.Title,
-								Content:   board.Description,
-								CreatedAt: board.CreatedAt,
-								UpdatedAt: board.UpdatedAt,
+								ID:           board.ID.String(),
+								ProjectID:    board.ProjectID.String(),
+								Title:        board.Title,
+								Content:      board.Description,
+								CustomFields: cache,
+								CreatedAt:    board.CreatedAt,
+								UpdatedAt:    board.UpdatedAt,
 							})
 						}
 					} else {
 						// Single value
 						optionIDStr := fmt.Sprintf("%v", fieldVal)
 						groups[optionIDStr] = append(groups[optionIDStr], dto.BoardResponse{
-							ID:        board.ID.String(),
-							ProjectID: board.ProjectID.String(),
-							Title:     board.Title,
-							Content:   board.Description,
-							CreatedAt: board.CreatedAt,
-							UpdatedAt: board.UpdatedAt,
+							ID:           board.ID.String(),
+							ProjectID:    board.ProjectID.String(),
+							Title:        board.Title,
+							Content:      board.Description,
+							CustomFields: cache,
+							CreatedAt:    board.CreatedAt,
+							UpdatedAt:    board.UpdatedAt,
 						})
 					}
 				}
