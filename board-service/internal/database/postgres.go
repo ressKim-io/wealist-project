@@ -81,17 +81,13 @@ func autoMigrateAll(db *gorm.DB, logger *zap.Logger) error {
 		&domain.CustomImportance{},
 		&domain.Board{},
 		&domain.BoardRole{},
-		&domain.UserRoleColumnOrder{},
-		&domain.UserStageColumnOrder{},
-		&domain.UserBoardOrderInRole{},
-		&domain.UserBoardOrderInStage{},
 		&domain.Comment{},
 		// Custom fields system (Jira-style)
 		&domain.ProjectField{},
 		&domain.FieldOption{},
 		&domain.BoardFieldValue{},
 		&domain.SavedView{},
-		&domain.UserBoardOrder{},
+		&domain.UserBoardOrder{}, // Fractional indexing for board ordering in views
 	}
 
 	return db.AutoMigrate(models...)

@@ -76,7 +76,6 @@ func main() {
 	log.Info("User Service client initialized", zap.String("url", cfg.UserService.URL))
 
 	// 5.5. Initialize caches
-	userOrderCache := cache.NewUserOrderCache(rdb)
 	workspaceCache := cache.NewWorkspaceCache(rdb)
 	userInfoCache := cache.NewUserInfoCache(rdb)
 	fieldCache := cache.NewFieldCache(rdb) // Custom fields cache
@@ -86,7 +85,6 @@ func main() {
 	projectRepo := repository.NewProjectRepository(db)
 	customFieldRepo := repository.NewCustomFieldRepository(db)
 	boardRepo := repository.NewBoardRepository(db)
-	userOrderRepo := repository.NewUserOrderRepository(db)
 	commentRepo := repository.NewCommentRepository(db) // Add CommentRepository
 	fieldRepo := repository.NewFieldRepository(db)     // Custom fields repository
 
@@ -94,8 +92,7 @@ func main() {
 	// Note: customFieldService needs boardRepo (for Phase 4 TODO), then injected into projectService
 	customFieldService := service.NewCustomFieldService(customFieldRepo, projectRepo, roleRepo, boardRepo, log, db)
 	boardService := service.NewBoardService(boardRepo, projectRepo, customFieldRepo, roleRepo, fieldRepo, userClient, userInfoCache, log, db)
-	projectService := service.NewProjectService(projectRepo, roleRepo, userOrderRepo, customFieldService, userClient, workspaceCache, userInfoCache, log, db)
-	userOrderService := service.NewUserOrderService(userOrderRepo, projectRepo, customFieldRepo, boardRepo, userOrderCache, log)
+	projectService := service.NewProjectService(projectRepo, roleRepo, customFieldService, userClient, workspaceCache, userInfoCache, log, db)
 	commentService := service.NewCommentService(commentRepo, boardRepo, projectRepo, userClient, userInfoCache, log, db) // Add CommentService
 	// Custom fields services
 	fieldService := service.NewFieldService(fieldRepo, projectRepo, fieldCache, log, db)
@@ -139,7 +136,6 @@ func main() {
 		projectHandler := handler.NewProjectHandler(projectService)
 		customFieldHandler := handler.NewCustomFieldHandler(customFieldService)
 		boardHandler := handler.NewBoardHandler(boardService)
-		userOrderHandler := handler.NewUserOrderHandler(userOrderService)
 		commentHandler := handler.NewCommentHandler(commentService) // Add CommentHandler
 		fieldHandler := handler.NewFieldHandler(fieldService, fieldValueService) // Custom fields (Jira-style)
 		viewHandler := handler.NewViewHandler(viewService) // Saved views (filters/sorting/grouping)
@@ -164,14 +160,6 @@ func main() {
 			projects.GET("/:project_id/members", projectHandler.GetProjectMembers)
 			projects.PUT("/:project_id/members/:member_id/role", projectHandler.UpdateMemberRole)
 			projects.DELETE("/:project_id/members/:member_id", projectHandler.RemoveMember)
-
-			// User Order Management (Drag-and-Drop)
-			projects.GET("/:project_id/orders/role-board", userOrderHandler.GetRoleBasedBoardView)
-			projects.GET("/:project_id/orders/stage-board", userOrderHandler.GetStageBasedBoardView)
-			projects.PUT("/:project_id/orders/role-columns", userOrderHandler.UpdateRoleColumnOrder)
-			projects.PUT("/:project_id/orders/stage-columns", userOrderHandler.UpdateStageColumnOrder)
-			projects.PUT("/:project_id/orders/role-boards/:role_id", userOrderHandler.UpdateBoardOrderInRole)
-			projects.PUT("/:project_id/orders/stage-boards/:stage_id", userOrderHandler.UpdateBoardOrderInStage)
 		}
 
 		// Custom Fields routes
