@@ -210,8 +210,25 @@ setup_test_data() {
             "value": "'"$TODO_OPTION_ID"'"
         }' > /dev/null
 
+        # Initialize position by calling MoveBoard (moves to end of Todo column)
+        move_init_response=$(call_api PUT "$BOARD_SERVICE_URL/api/boards/$board_id/move" '{
+            "view_id": "'"$VIEW_ID"'",
+            "group_by_field_id": "'"$FIELD_ID"'",
+            "new_field_value": "'"$TODO_OPTION_ID"'",
+            "before_position": null,
+            "after_position": null
+        }')
+
+        # Check if MoveBoard succeeded
+        if echo "$move_init_response" | jq -e '.error' > /dev/null 2>&1; then
+            print_error "Failed to initialize position for Board-$i"
+            exit 1
+        fi
+
+        initial_position=$(echo "$move_init_response" | jq -r '.data.new_position // "unknown"')
+
         eval "BOARD_${i}_ID=$board_id"
-        print_success "Created Board-$i: $board_id"
+        print_success "Created Board-$i: $board_id (position: $initial_position)"
     done
 }
 
@@ -228,12 +245,18 @@ test_move_within_column() {
     print_info "Current orders:"
     echo "$orders_response" | jq -r '.data.boards[] | select(.custom_fields["'"$FIELD_ID"'"] == "'"$TODO_OPTION_ID"'") | "\(.title): \(.position // "no position")"'
 
+    # Debug: Print full response if positions are null
+    if echo "$orders_response" | jq -e '.data.boards[0].position == null or .data.boards[0].position == ""' > /dev/null 2>&1; then
+        print_info "Warning: Positions are null, printing full response:"
+        echo "$orders_response" | jq '.'
+    fi
+
     # Get positions
-    board1_position=$(echo "$orders_response" | jq -r '.data.boards[] | select(.board_id == "'"$BOARD_1_ID"'") | .position')
-    board3_position=$(echo "$orders_response" | jq -r '.data.boards[] | select(.board_id == "'"$BOARD_3_ID"'") | .position')
+    board1_position=$(echo "$orders_response" | jq -r '.data.boards[] | select(.board_id == "'"$BOARD_1_ID"'") | .position // "a0"')
+    board3_position=$(echo "$orders_response" | jq -r '.data.boards[] | select(.board_id == "'"$BOARD_3_ID"'") | .position // "a2"')
 
     print_step "Moving Board-2 between Board-1 and Board-3"
-    move_response=$(call_api POST "$BOARD_SERVICE_URL/api/boards/$BOARD_2_ID/move" '{
+    move_response=$(call_api PUT "$BOARD_SERVICE_URL/api/boards/$BOARD_2_ID/move" '{
         "view_id": "'"$VIEW_ID"'",
         "group_by_field_id": "'"$FIELD_ID"'",
         "new_field_value": "'"$TODO_OPTION_ID"'",
@@ -270,7 +293,7 @@ test_move_between_columns() {
     print_header "TEST 2: Move Board to Different Column"
 
     print_step "Moving Board-1 from Todo to In Progress (first position)"
-    move_response=$(call_api POST "$BOARD_SERVICE_URL/api/boards/$BOARD_1_ID/move" '{
+    move_response=$(call_api PUT "$BOARD_SERVICE_URL/api/boards/$BOARD_1_ID/move" '{
         "view_id": "'"$VIEW_ID"'",
         "group_by_field_id": "'"$FIELD_ID"'",
         "new_field_value": "'"$PROGRESS_OPTION_ID"'",
@@ -316,7 +339,7 @@ test_move_to_first() {
     print_info "Current first position: $first_position"
 
     print_step "Moving Board-5 to first position in Todo"
-    move_response=$(call_api POST "$BOARD_SERVICE_URL/api/boards/$BOARD_5_ID/move" '{
+    move_response=$(call_api PUT "$BOARD_SERVICE_URL/api/boards/$BOARD_5_ID/move" '{
         "view_id": "'"$VIEW_ID"'",
         "group_by_field_id": "'"$FIELD_ID"'",
         "new_field_value": "'"$TODO_OPTION_ID"'",
@@ -353,7 +376,7 @@ test_move_to_last() {
     print_info "Current last position: $last_position"
 
     print_step "Moving Board-4 to last position in Todo"
-    move_response=$(call_api POST "$BOARD_SERVICE_URL/api/boards/$BOARD_4_ID/move" '{
+    move_response=$(call_api PUT "$BOARD_SERVICE_URL/api/boards/$BOARD_4_ID/move" '{
         "view_id": "'"$VIEW_ID"'",
         "group_by_field_id": "'"$FIELD_ID"'",
         "new_field_value": "'"$TODO_OPTION_ID"'",
@@ -453,7 +476,7 @@ test_performance() {
     # Move board to middle position
     start_time=$(date +%s%N)
 
-    move_response=$(call_api POST "$BOARD_SERVICE_URL/api/boards/$PERF_BOARD_15_ID/move" '{
+    move_response=$(call_api PUT "$BOARD_SERVICE_URL/api/boards/$PERF_BOARD_15_ID/move" '{
         "view_id": "'"$VIEW_ID"'",
         "group_by_field_id": "'"$FIELD_ID"'",
         "new_field_value": "'"$DONE_OPTION_ID"'",
