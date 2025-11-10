@@ -96,13 +96,13 @@ func (s *viewService) CreateView(userID string, req *dto.CreateViewRequest) (*dt
 			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 그룹핑 필드 ID", 400)
 		}
 
-		// Verify field exists and is multi-select
+		// Verify field exists and is single-select or multi-select
 		field, err := s.repo.FindFieldByID(fieldUUID)
 		if err != nil {
 			return nil, apperrors.New(apperrors.ErrCodeBadRequest, "그룹핑 필드를 찾을 수 없습니다", 400)
 		}
-		if field.FieldType != domain.FieldTypeMultiSelect {
-			return nil, apperrors.New(apperrors.ErrCodeBadRequest, "Multi-select 필드만 그룹핑에 사용할 수 있습니다", 400)
+		if field.FieldType != domain.FieldTypeSingleSelect && field.FieldType != domain.FieldTypeMultiSelect {
+			return nil, apperrors.New(apperrors.ErrCodeBadRequest, "Single-select 또는 Multi-select 필드만 그룹핑에 사용할 수 있습니다", 400)
 		}
 		groupByFieldID = &fieldUUID
 	}
