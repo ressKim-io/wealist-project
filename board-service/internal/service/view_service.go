@@ -27,7 +27,7 @@ type ViewService interface {
 
 	// Apply view (filter + sort + group)
 	ApplyView(userID, viewID string, page, limit int) (interface{}, error)
-	ApplyViewWithFilters(userID, projectID string, filters map[string]interface{}, sortBy, sortDir string, groupByFieldID *string, page, limit int) (interface{}, error)
+	ApplyViewWithFilters(userID, projectID, viewID string, filters map[string]interface{}, sortBy, sortDir string, groupByFieldID *string, page, limit int) (interface{}, error)
 
 	// Board order management
 	UpdateBoardOrder(userID string, req *dto.UpdateBoardOrderRequest) error
@@ -374,10 +374,10 @@ func (s *viewService) ApplyView(userID, viewID string, page, limit int) (interfa
 		groupByFieldIDStr = &str
 	}
 
-	return s.ApplyViewWithFilters(userID, view.ProjectID.String(), filters, sortBy, view.SortDirection, groupByFieldIDStr, page, limit)
+	return s.ApplyViewWithFilters(userID, view.ProjectID.String(), viewUUID.String(), filters, sortBy, view.SortDirection, groupByFieldIDStr, page, limit)
 }
 
-func (s *viewService) ApplyViewWithFilters(userID, projectID string, filters map[string]interface{}, sortBy, sortDir string, groupByFieldID *string, page, limit int) (interface{}, error) {
+func (s *viewService) ApplyViewWithFilters(userID, projectID, viewID string, filters map[string]interface{}, sortBy, sortDir string, groupByFieldID *string, page, limit int) (interface{}, error) {
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
@@ -386,6 +386,11 @@ func (s *viewService) ApplyViewWithFilters(userID, projectID string, filters map
 	projectUUID, err := uuid.Parse(projectID)
 	if err != nil {
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 프로젝트 ID", 400)
+	}
+
+	viewUUID, err := uuid.Parse(viewID)
+	if err != nil {
+		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 뷰 ID", 400)
 	}
 
 	// Check project membership
@@ -462,6 +467,24 @@ func (s *viewService) ApplyViewWithFilters(userID, projectID string, filters map
 		return s.applyGrouping(boards, *groupByFieldID, total)
 	}
 
+	// Fetch board positions for this view and user
+	boardIDs := make([]uuid.UUID, len(boards))
+	for i, board := range boards {
+		boardIDs[i] = board.ID
+	}
+
+	var userBoardOrders []domain.UserBoardOrder
+	if len(boardIDs) > 0 {
+		s.db.Where("view_id = ? AND user_id = ? AND board_id IN ?", viewUUID, userUUID, boardIDs).
+			Find(&userBoardOrders)
+	}
+
+	// Create position map for quick lookup
+	positionMap := make(map[uuid.UUID]string)
+	for _, order := range userBoardOrders {
+		positionMap[order.BoardID] = order.Position
+	}
+
 	// Return paginated results
 	boardResponses := make([]dto.BoardResponse, 0, len(boards))
 	for _, board := range boards {
@@ -476,6 +499,9 @@ func (s *viewService) ApplyViewWithFilters(userID, projectID string, filters map
 			customFields = make(map[string]interface{})
 		}
 
+		// Get position from map
+		position := positionMap[board.ID]
+
 		// Simplified board response (can be enhanced with full details)
 		boardResponses = append(boardResponses, dto.BoardResponse{
 			ID:           board.ID.String(),
@@ -483,6 +509,7 @@ func (s *viewService) ApplyViewWithFilters(userID, projectID string, filters map
 			Title:        board.Title,
 			Content:      board.Description,
 			CustomFields: customFields,
+			Position:     position, // Include position from user_board_order
 			CreatedAt:    board.CreatedAt,
 			UpdatedAt:    board.UpdatedAt,
 		})
