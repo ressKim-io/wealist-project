@@ -81,11 +81,11 @@ test_health_check() {
 
     response=$(curl -s "$BOARD_SERVICE_URL/health")
 
-    if echo "$response" | jq -e '.status == "healthy"' > /dev/null 2>&1; then
+    if echo "$response" | grep -q '"status":"healthy"'; then
         print_success "Board Service is healthy"
         print_json "$response"
     else
-        print_error "Health check failed"
+        print_error "Health check failed: $response"
     fi
 }
 
@@ -94,13 +94,12 @@ get_test_token() {
 
     response=$(curl -s "$USER_SERVICE_URL/api/auth/test")
 
-    TOKEN=$(echo "$response" | jq -r '.accessToken // empty')
-    USER_ID=$(echo "$response" | jq -r '.userId // empty')
-
-    if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
-        print_success "Token obtained (User ID: ${USER_ID:0:8}...)"
+    if echo "$response" | grep -q '"accessToken"'; then
+        TOKEN=$(echo "$response" | grep -o '"accessToken":"[^"]*"' | cut -d'"' -f4)
+        USER_ID=$(echo "$response" | grep -o '"userId":"[^"]*"' | cut -d'"' -f4)
+        print_success "토큰 생성 성공 (User ID: ${USER_ID:0:8}...)"
     else
-        print_error "Failed to get test token"
+        print_error "테스트 토큰 생성 실패: $response"
     fi
 }
 
@@ -234,7 +233,7 @@ create_field_priority() {
 }
 
 create_priority_options() {
-    print_step "8" "Create Priority Options (High, Medium, Low)"
+    print_step "8" "Priority Options 생성 (High, Medium, Low)"
 
     # High
     response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/field-options" \
@@ -246,8 +245,10 @@ create_priority_options() {
             \"color\": \"#EF4444\"
         }")
 
-    OPTION_HIGH_ID=$(echo "$response" | jq -r '.data.id // empty')
-    print_success "High priority option created: ${OPTION_HIGH_ID:0:8}..."
+    if echo "$response" | grep -q '"data"'; then
+        OPTION_HIGH_ID=$(echo "$response" | grep -o '"option_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        print_success "High 옵션 생성 성공"
+    fi
 
     # Medium
     response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/field-options" \
@@ -259,8 +260,10 @@ create_priority_options() {
             \"color\": \"#F59E0B\"
         }")
 
-    OPTION_MEDIUM_ID=$(echo "$response" | jq -r '.data.id // empty')
-    print_success "Medium priority option created: ${OPTION_MEDIUM_ID:0:8}..."
+    if echo "$response" | grep -q '"data"'; then
+        OPTION_MEDIUM_ID=$(echo "$response" | grep -o '"option_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        print_success "Medium 옵션 생성 성공"
+    fi
 
     # Low
     response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/field-options" \
@@ -272,8 +275,10 @@ create_priority_options() {
             \"color\": \"#6B7280\"
         }")
 
-    OPTION_LOW_ID=$(echo "$response" | jq -r '.data.id // empty')
-    print_success "Low priority option created: ${OPTION_LOW_ID:0:8}..."
+    if echo "$response" | grep -q '"data"'; then
+        OPTION_LOW_ID=$(echo "$response" | grep -o '"option_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        print_success "Low 옵션 생성 성공"
+    fi
 }
 
 create_field_tags() {
@@ -291,13 +296,11 @@ create_field_tags() {
             \"config\": {\"max_selections\": 5}
         }")
 
-    FIELD_TAGS_ID=$(echo "$response" | jq -r '.data.id // empty')
-
-    if [ -n "$FIELD_TAGS_ID" ] && [ "$FIELD_TAGS_ID" != "null" ]; then
-        print_success "Tags field created: ${FIELD_TAGS_ID:0:8}..."
-        print_json "$response"
+    if echo "$response" | grep -q '"data"'; then
+        FIELD_TAGS_ID=$(echo "$response" | grep -o '"field_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        print_success "Tags 필드 생성 성공 (ID: ${FIELD_TAGS_ID:0:8}...)"
     else
-        print_error "Failed to create tags field"
+        print_error "Tags 필드 생성 실패: $response"
     fi
 }
 
