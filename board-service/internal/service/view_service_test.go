@@ -593,7 +593,7 @@ func TestComplexQuery_FilterSortAndGroup(t *testing.T) {
 		{"board-3", "In Progress", "High", 2000},
 		{"board-4", "To Do", "High", 2500},
 		{"board-5", "In Progress", "Medium", 1500},
-		{"board-6", "Done", "Low", 4000},
+		{"board-6", "Done", "High", 4000}, // Changed to High so it's included in filter
 	}
 
 	// Step 1: Filter - Priority = High OR Medium
@@ -637,7 +637,7 @@ func TestComplexQuery_FilterSortAndGroup(t *testing.T) {
 
 	// Assert
 	// 1. Filter applied - only High or Medium priority
-	assert.Equal(t, 4, len(filteredBoards), "Should have 4 boards (High or Medium)")
+	assert.Equal(t, 5, len(filteredBoards), "Should have 5 boards (High or Medium)")
 
 	// 2. Grouping applied - boards grouped by status
 	assert.Equal(t, 3, len(groupedBoards), "Should have 3 groups (To Do, In Progress, Done)")
@@ -652,6 +652,10 @@ func TestComplexQuery_FilterSortAndGroup(t *testing.T) {
 	assert.Equal(t, 2, len(inProgressGroup), "In Progress group should have 2 boards")
 	assert.LessOrEqual(t, inProgressGroup[0].createdAt, inProgressGroup[1].createdAt,
 		"In Progress group should be sorted by createdAt")
+
+	doneGroup := groupedBoards["Done"]
+	assert.Equal(t, 1, len(doneGroup), "Done group should have 1 board")
+	assert.Equal(t, "board-6", doneGroup[0].id, "Done group should have board-6")
 
 	// 4. Verify each group is sorted
 	for status, group := range groupedBoards {
