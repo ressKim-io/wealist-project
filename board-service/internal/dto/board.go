@@ -49,9 +49,6 @@ type BoardResponse struct {
 	ProjectID     string                     `json:"project_id"`
 	Title         string                     `json:"title"`
 	Content       string                     `json:"content"`
-	Stage         CustomStageResponse        `json:"stage"`
-	Importance    *CustomImportanceResponse  `json:"importance"`
-	Roles         []CustomRoleResponse       `json:"roles"`
 	Assignee      *UserInfo                  `json:"assignee"`
 	Author        UserInfo                   `json:"author"`
 	DueDate       *time.Time                 `json:"dueDate"`
