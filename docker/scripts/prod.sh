@@ -109,21 +109,14 @@ case $COMMAND in
         ;;
 
     backup)
-        echo -e "${BLUE}💾 데이터베이스 백업을 시작합니다...${NC}"
-        BACKUP_DIR="./backups"
-        mkdir -p "$BACKUP_DIR"
-        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-
-        # PostgreSQL 백업
-        echo -e "${YELLOW}PostgreSQL 백업 중...${NC}"
-        docker compose $COMPOSE_FILES exec -T postgres pg_dumpall -U postgres > "$BACKUP_DIR/postgres_backup_$TIMESTAMP.sql"
-
-        # Redis 백업 (RDB 스냅샷)
-        echo -e "${YELLOW}Redis 백업 중...${NC}"
-        docker compose $COMPOSE_FILES exec -T redis redis-cli --no-auth-warning -a "${REDIS_PASSWORD:-redis}" SAVE
-        docker cp wealist-redis:/data/dump.rdb "$BACKUP_DIR/redis_backup_$TIMESTAMP.rdb"
-
-        echo -e "${GREEN}✅ 백업이 완료되었습니다: $BACKUP_DIR${NC}"
+        echo -e "${RED}⚠️  프로덕션 환경에서는 RDS/ElastiCache 자체 백업 기능을 사용합니다.${NC}"
+        echo -e "${YELLOW}백업 방법:${NC}"
+        echo -e "  - RDS: AWS 콘솔 > RDS > 스냅샷 생성"
+        echo -e "  - ElastiCache: AWS 콘솔 > ElastiCache > 백업"
+        echo ""
+        echo -e "${BLUE}또는 AWS CLI 사용:${NC}"
+        echo -e "  aws rds create-db-snapshot --db-instance-identifier your-db --db-snapshot-identifier backup-\$(date +%Y%m%d)"
+        echo -e "  aws elasticache create-snapshot --cache-cluster-id your-redis --snapshot-name backup-\$(date +%Y%m%d)"
         ;;
 
     pull)

@@ -124,23 +124,41 @@ wealist-project/
 
 ### 프로덕션 환경 (Production)
 
+**⚠️ 중요: 프로덕션 인프라 구성**
+
+프로덕션 환경에서는 다음 서비스들을 **AWS 관리형 서비스**로 사용합니다:
+
+1. **Frontend**: S3 + CloudFront
+   - React 앱 빌드 후 S3 버킷에 업로드
+   - CloudFront로 CDN 배포
+
+2. **PostgreSQL**: AWS RDS
+   - Multi-AZ 배포로 고가용성 확보
+   - 자동 백업 및 스냅샷
+
+3. **Redis**: AWS ElastiCache
+   - Redis 클러스터 모드 사용
+   - 자동 failover
+
+4. **Backend Services**: Docker (ECS/EC2)
+   - user-service, board-service만 컨테이너로 실행
+   - ALB/NLB를 통한 로드밸런싱
+
 **특징:**
-- 최소 포트만 노출 (80, 443)
+- 백엔드 서비스만 Docker로 실행
+- 외부 RDS/ElastiCache 연결
 - 리소스 제한 적용 (CPU, Memory)
-- Read-only 파일시스템
 - Health checks 강화
-- 데이터베이스 외부 접근 차단
 - 프로덕션 수준 로깅
 
 **네트워크:**
-- `frontend-net`: 외부 접근
-- `backend-net`: 내부 API 통신
-- `database-net`: 완전히 격리됨 (internal)
+- `backend-net`: 백엔드 서비스 통신
+- RDS/ElastiCache는 VPC 보안 그룹으로 격리
 
 **보안 설정:**
 - `no-new-privileges`: 권한 상승 방지
 - `cap_drop/cap_add`: 최소 권한 부여
-- 네트워크 완전 격리
+- RDS/ElastiCache 보안 그룹 설정
 
 ---
 
@@ -203,8 +221,18 @@ docker compose -f docker/compose/docker-compose.yml \
 
 ### 프로덕션 환경
 
+**⚠️ 사전 준비:**
+1. AWS RDS PostgreSQL 인스턴스 생성
+2. AWS ElastiCache Redis 클러스터 생성
+3. S3 버킷 및 CloudFront 배포 생성
+4. `docker/env/.env.prod` 파일에 엔드포인트 설정
+
 ```bash
-# 시작
+# 환경변수 설정 (필수!)
+cp docker/env/.env.prod.example docker/env/.env.prod
+# RDS_ENDPOINT, ELASTICACHE_ENDPOINT 등 설정
+
+# 프로덕션 백엔드 서비스 시작
 ./docker/scripts/prod.sh up
 
 # 중지
@@ -228,7 +256,7 @@ docker compose -f docker/compose/docker-compose.yml \
 # 헬스체크 상태
 ./docker/scripts/prod.sh health
 
-# 데이터베이스 백업
+# 데이터베이스 백업 (RDS 백업 안내)
 ./docker/scripts/prod.sh backup
 
 # 이미지 업데이트
@@ -236,6 +264,21 @@ docker compose -f docker/compose/docker-compose.yml \
 
 # 전체 업데이트 (이미지 갱신 + 재시작)
 ./docker/scripts/prod.sh update
+```
+
+**Frontend 배포 (별도):**
+```bash
+# Frontend 빌드
+cd frontend
+pnpm build
+
+# S3 업로드
+aws s3 sync dist/ s3://your-bucket-name/ --delete
+
+# CloudFront 캐시 무효화
+aws cloudfront create-invalidation \
+  --distribution-id YOUR_DISTRIBUTION_ID \
+  --paths "/*"
 ```
 
 ---
@@ -426,7 +469,7 @@ docker restart wealist-redis
 
 ## 📝 환경변수 관리
 
-### 필수 환경변수
+### 개발 환경 필수 환경변수
 
 #### 데이터베이스
 - `POSTGRES_SUPERUSER`: PostgreSQL 관리자 계정
@@ -441,6 +484,38 @@ docker restart wealist-redis
 #### OAuth
 - `GOOGLE_CLIENT_ID`: Google OAuth 클라이언트 ID
 - `GOOGLE_CLIENT_SECRET`: Google OAuth 시크릿
+
+### 프로덕션 환경 필수 환경변수
+
+#### AWS RDS (PostgreSQL)
+```bash
+# RDS 엔드포인트 확인
+aws rds describe-db-instances --db-instance-identifier your-db-name
+
+# .env.prod 설정
+RDS_ENDPOINT=your-db.c9akl45jdo4e.ap-northeast-2.rds.amazonaws.com
+RDS_PORT=5432
+USER_DB_PASSWORD=<RDS 마스터 패스워드>
+BOARD_DB_PASSWORD=<RDS 마스터 패스워드>
+```
+
+#### AWS ElastiCache (Redis)
+```bash
+# ElastiCache 엔드포인트 확인
+aws elasticache describe-cache-clusters --cache-cluster-id your-redis-name --show-cache-node-info
+
+# .env.prod 설정
+ELASTICACHE_ENDPOINT=your-redis.abc123.0001.apne2.cache.amazonaws.com
+ELASTICACHE_PORT=6379
+REDIS_PASSWORD=<ElastiCache AUTH 토큰>
+```
+
+#### S3 + CloudFront (Frontend)
+```bash
+# S3 버킷 및 CloudFront 배포 ID
+S3_BUCKET_NAME=wealist-frontend-prod
+CLOUDFRONT_DISTRIBUTION_ID=E1234567890ABC
+```
 
 ### 환경변수 생성 도구
 
@@ -467,12 +542,17 @@ uuidgen
 ### 프로덕션 환경
 - [ ] 모든 기본 패스워드 변경
 - [ ] JWT_SECRET 64자 이상 랜덤 문자열 사용
-- [ ] 데이터베이스 포트 외부 노출 안됨
-- [ ] Redis 포트 외부 노출 안됨
+- [ ] RDS 보안 그룹 설정 (VPC 내부만 접근)
+- [ ] ElastiCache 보안 그룹 설정 (VPC 내부만 접근)
+- [ ] RDS AUTH 토큰 암호화 전송 (SSL)
+- [ ] ElastiCache AUTH 토큰 활성화
 - [ ] CORS 설정 실제 도메인으로 제한
-- [ ] Grafana 관리자 비밀번호 변경
-- [ ] SSL/TLS 인증서 설정 (권장)
-- [ ] 정기적인 백업 설정
+- [ ] CloudFront HTTPS 활성화
+- [ ] S3 버킷 퍼블릭 액세스 차단
+- [ ] RDS 자동 백업 활성화 (7-35일)
+- [ ] ElastiCache 스냅샷 설정
+- [ ] CloudWatch 알람 설정
+- [ ] IAM 역할 최소 권한 원칙 적용
 
 ---
 
