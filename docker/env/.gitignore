@@ -1,0 +1,10 @@
+# 환경변수 파일은 절대 Git에 커밋하지 않음
+.env
+.env.dev
+.env.prod
+.env.local
+.env.*.local
+
+# 백업 파일도 제외
+*.bak
+*.backup

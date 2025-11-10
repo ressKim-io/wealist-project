@@ -1,0 +1,136 @@
+#!/bin/bash
+# =============================================================================
+# weAlist - Development Environment Startup Script
+# =============================================================================
+# 개발 환경을 시작하는 스크립트입니다.
+#
+# 사용법:
+#   ./docker/scripts/dev.sh [command]
+#
+# Commands:
+#   up         - 개발 환경 시작 (기본값)
+#   down       - 개발 환경 중지
+#   restart    - 개발 환경 재시작
+#   logs       - 로그 확인
+#   build      - 이미지 다시 빌드
+#   clean      - 볼륨 포함 모두 삭제
+# =============================================================================
+
+set -e
+
+# 색상 정의
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# 프로젝트 루트 디렉토리로 이동
+cd "$(dirname "$0")/../.."
+
+# 환경변수 파일 확인
+ENV_FILE="docker/env/.env.dev"
+if [ ! -f "$ENV_FILE" ]; then
+    echo -e "${YELLOW}⚠️  환경변수 파일이 없습니다. 템플릿에서 생성합니다...${NC}"
+    cp docker/env/.env.dev.example "$ENV_FILE"
+    echo -e "${GREEN}✅ $ENV_FILE 파일이 생성되었습니다.${NC}"
+    echo -e "${YELLOW}   필요한 값들을 수정한 후 다시 실행하세요.${NC}"
+    exit 1
+fi
+
+# Docker Compose 파일 경로
+COMPOSE_FILES="-f docker/compose/docker-compose.yml -f docker/compose/docker-compose.dev.yml"
+
+# 커맨드 처리
+COMMAND=${1:-up}
+
+case $COMMAND in
+    up)
+        echo -e "${BLUE}🚀 개발 환경을 시작합니다...${NC}"
+        docker compose $COMPOSE_FILES up
+        ;;
+
+    up-d)
+        echo -e "${BLUE}🚀 개발 환경을 백그라운드로 시작합니다...${NC}"
+        docker compose $COMPOSE_FILES up -d
+        echo -e "${GREEN}✅ 개발 환경이 시작되었습니다.${NC}"
+        echo -e "${BLUE}📊 서비스 접속 정보:${NC}"
+        echo -e "   - Frontend:    http://localhost:3000"
+        echo -e "   - User API:    http://localhost:8080"
+        echo -e "   - Board API:   http://localhost:8000"
+        echo -e "   - PostgreSQL:  localhost:5432"
+        echo -e "   - Redis:       localhost:6379"
+        ;;
+
+    down)
+        echo -e "${YELLOW}⏹️  개발 환경을 중지합니다...${NC}"
+        docker compose $COMPOSE_FILES down
+        echo -e "${GREEN}✅ 개발 환경이 중지되었습니다.${NC}"
+        ;;
+
+    restart)
+        echo -e "${YELLOW}🔄 개발 환경을 재시작합니다...${NC}"
+        docker compose $COMPOSE_FILES restart
+        echo -e "${GREEN}✅ 개발 환경이 재시작되었습니다.${NC}"
+        ;;
+
+    logs)
+        SERVICE=${2:-}
+        if [ -z "$SERVICE" ]; then
+            docker compose $COMPOSE_FILES logs -f
+        else
+            docker compose $COMPOSE_FILES logs -f "$SERVICE"
+        fi
+        ;;
+
+    build)
+        echo -e "${BLUE}🔨 이미지를 다시 빌드합니다...${NC}"
+        docker compose $COMPOSE_FILES build --no-cache
+        echo -e "${GREEN}✅ 빌드가 완료되었습니다.${NC}"
+        ;;
+
+    rebuild)
+        echo -e "${BLUE}🔨 이미지를 다시 빌드하고 시작합니다...${NC}"
+        docker compose $COMPOSE_FILES up -d --build
+        echo -e "${GREEN}✅ 빌드 및 시작이 완료되었습니다.${NC}"
+        ;;
+
+    clean)
+        echo -e "${RED}⚠️  모든 컨테이너, 볼륨, 이미지를 삭제합니다.${NC}"
+        read -p "계속하시겠습니까? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            docker compose $COMPOSE_FILES down -v --remove-orphans
+            echo -e "${GREEN}✅ 정리가 완료되었습니다.${NC}"
+        else
+            echo -e "${YELLOW}취소되었습니다.${NC}"
+        fi
+        ;;
+
+    ps)
+        docker compose $COMPOSE_FILES ps
+        ;;
+
+    exec)
+        SERVICE=${2:-user-service}
+        SHELL=${3:-bash}
+        docker compose $COMPOSE_FILES exec "$SERVICE" "$SHELL"
+        ;;
+
+    *)
+        echo -e "${RED}❌ 알 수 없는 명령어: $COMMAND${NC}"
+        echo ""
+        echo "사용 가능한 명령어:"
+        echo "  up         - 개발 환경 시작 (포그라운드)"
+        echo "  up-d       - 개발 환경 시작 (백그라운드)"
+        echo "  down       - 개발 환경 중지"
+        echo "  restart    - 개발 환경 재시작"
+        echo "  logs       - 로그 확인 (logs [service])"
+        echo "  build      - 이미지 다시 빌드"
+        echo "  rebuild    - 빌드 후 시작"
+        echo "  clean      - 모두 삭제 (볼륨 포함)"
+        echo "  ps         - 실행 중인 서비스 확인"
+        echo "  exec       - 컨테이너 접속 (exec [service] [shell])"
+        exit 1
+        ;;
+esac

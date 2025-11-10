@@ -1,0 +1,154 @@
+# =============================================================================
+# weAlist Project - Development Environment Override
+# =============================================================================
+# 개발 환경에 특화된 설정을 오버라이드합니다.
+#
+# 특징:
+# - 모든 포트를 호스트에 노출 (디버깅 용이)
+# - 프론트엔드 Hot Module Reload (HMR) 지원
+# - 데이터베이스 직접 접근 가능
+# - 상세한 로깅
+# - 리소스 제한 없음
+#
+# 사용법:
+#   docker compose -f docker/compose/docker-compose.yml -f docker/compose/docker-compose.dev.yml up
+# =============================================================================
+
+version: '3.9'
+
+services:
+  # ===========================================================================
+  # Backend Services - Development Overrides
+  # ===========================================================================
+
+  user-service:
+    env_file:
+      - ../env/.env.dev
+    ports:
+      - "${USER_HOST_PORT:-8080}:8080"
+
+    environment:
+      # 개발 환경 전용 설정
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DEVTOOLS_RESTART_ENABLED=true
+      - SPRING_JPA_SHOW_SQL=true
+      - SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL=true
+      - LOGGING_LEVEL_ROOT=INFO
+      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK=DEBUG
+      - LOGGING_LEVEL_ORG_HIBERNATE=DEBUG
+
+    # 개발 중 코드 변경 감지 (선택사항)
+    # volumes:
+    #   - ../../user-service/build/libs:/app/libs:ro
+
+    networks:
+      - frontend-net
+      - backend-net
+      - database-net
+
+  board-service:
+    env_file:
+      - ../env/.env.dev
+    ports:
+      - "${BOARD_HOST_PORT:-8000}:8000"
+
+    environment:
+      - ENV=dev
+      - LOG_LEVEL=debug
+      - BOARD_USE_AUTO_MIGRATE=true
+
+    networks:
+      - frontend-net
+      - backend-net
+      - database-net
+
+  # Frontend - Development with HMR
+  frontend-service:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile.local
+
+    env_file:
+      - ../env/.env.dev
+
+    ports:
+      - "${FRONTEND_HOST_PORT:-3000}:5173"
+
+    volumes:
+      # 소스코드 Hot Reload
+      - ../../frontend:/app
+      - /app/node_modules  # node_modules는 컨테이너 내부 것 사용
+
+    command: pnpm dev --host 0.0.0.0 --port 5173 --strictPort
+
+    environment:
+      - NODE_ENV=development
+      - VITE_REACT_APP_JAVA_API_URL=http://localhost:8080
+      - VITE_REACT_APP_GO_API_URL=http://localhost:8000
+
+    networks:
+      - frontend-net
+      - backend-net  # 개발 환경에서는 직접 API 호출 가능
+
+  # ===========================================================================
+  # Infrastructure Services - Development Overrides
+  # ===========================================================================
+
+  postgres:
+    env_file:
+      - ../env/.env.dev
+
+    ports:
+      # 개발 환경에서는 직접 접근 가능 (DB 클라이언트 툴 사용)
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../../docker/init/postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+      # 개발용 SQL 스크립트 (선택사항)
+      # - ../../docker/init/postgres/seed-dev.sql:/docker-entrypoint-initdb.d/seed-dev.sql:ro
+
+    environment:
+      # 개발 환경 전용
+      - POSTGRES_HOST_AUTH_METHOD=trust  # 로컬 개발 편의성 (프로덕션 X)
+
+    networks:
+      - database-net
+      # 개발 환경에서는 internal 제한 해제
+
+  redis:
+    env_file:
+      - ../env/.env.dev
+
+    ports:
+      # Redis CLI 직접 접근 가능
+      - "${REDIS_HOST_PORT:-6379}:6379"
+
+    # 개발 환경에서는 persistence 줄임
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --databases 16
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+      --appendonly no
+
+    networks:
+      - database-net
+
+# =============================================================================
+# Development Networks Override
+# =============================================================================
+networks:
+  database-net:
+    internal: false  # 개발 환경에서는 외부 접근 허용
+
+# =============================================================================
+# Development Volumes
+# =============================================================================
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local

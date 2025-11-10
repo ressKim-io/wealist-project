@@ -1,0 +1,308 @@
+# =============================================================================
+# weAlist Project - Monitoring Stack
+# =============================================================================
+# Prometheus, Grafana, Exporters를 포함한 모니터링 스택입니다.
+# 선택적으로 추가할 수 있으며, 개발/프로덕션 모두에서 사용 가능합니다.
+#
+# 사용법:
+#   개발 + 모니터링:
+#     docker compose -f docker/compose/docker-compose.yml \
+#                    -f docker/compose/docker-compose.dev.yml \
+#                    -f docker/compose/docker-compose.monitoring.yml up
+#
+#   프로덕션 + 모니터링:
+#     docker compose -f docker/compose/docker-compose.yml \
+#                    -f docker/compose/docker-compose.prod.yml \
+#                    -f docker/compose/docker-compose.monitoring.yml up -d
+# =============================================================================
+
+version: '3.9'
+
+services:
+  # ===========================================================================
+  # Metrics Collection & Visualization
+  # ===========================================================================
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: wealist-prometheus
+    hostname: prometheus
+
+    user: "0:0"  # root로 실행 (설정 파일 읽기 위해)
+
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=30d'
+
+    volumes:
+      - ../../prometheus/config:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+
+    networks:
+      - backend-net
+      - database-net
+      - monitoring-net
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # 리소스 제한
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Grafana - Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: wealist-grafana
+    hostname: grafana
+
+    user: "0:0"  # root로 실행
+
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3001
+      - GF_INSTALL_PLUGINS=redis-datasource
+
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - grafana-logs:/var/log/grafana
+      # 프로비저닝 설정 (선택사항)
+      # - ../../grafana/provisioning:/etc/grafana/provisioning:ro
+
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+
+    networks:
+      - monitoring-net
+
+    depends_on:
+      - prometheus
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # 리소스 제한
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ===========================================================================
+  # Exporters
+  # ===========================================================================
+
+  # Redis Exporter
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: wealist-redis-exporter
+    hostname: redis-exporter
+
+    environment:
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_EXPORTER_DEBUG=false
+
+    ports:
+      - "${REDIS_EXPORTER_PORT:-9121}:9121"
+
+    networks:
+      - database-net
+      - monitoring-net
+
+    depends_on:
+      - redis
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9121/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # 리소스 제한
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+  # PostgreSQL Exporter
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: wealist-postgres-exporter
+    hostname: postgres-exporter
+
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${POSTGRES_SUPERUSER}:${POSTGRES_SUPERUSER_PASSWORD}@postgres:5432/postgres?sslmode=disable
+
+    ports:
+      - "${POSTGRES_EXPORTER_PORT:-9187}:9187"
+
+    networks:
+      - database-net
+      - monitoring-net
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9187/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # 리소스 제한
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+  # Node Exporter (호스트 메트릭 수집)
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: wealist-node-exporter
+    hostname: node-exporter
+
+    command:
+      - '--path.rootfs=/host'
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+
+    ports:
+      - "${NODE_EXPORTER_PORT:-9100}:9100"
+
+    networks:
+      - monitoring-net
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9100/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # 리소스 제한
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+# =============================================================================
+# Monitoring Networks
+# =============================================================================
+networks:
+  monitoring-net:
+    driver: bridge
+    name: wealist-monitoring-net
+
+  # 기존 네트워크 참조
+  backend-net:
+    external: true
+    name: wealist-backend-net
+
+  database-net:
+    external: true
+    name: wealist-database-net
+
+# =============================================================================
+# Monitoring Volumes
+# =============================================================================
+volumes:
+  prometheus-data:
+    name: wealist-prometheus-data
+    driver: local
+
+  grafana-storage:
+    name: wealist-grafana-storage
+    driver: local
+
+  grafana-logs:
+    name: wealist-grafana-logs
+    driver: local
