@@ -4,6 +4,7 @@ import (
 	"board-service/internal/domain"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type FieldRepository interface {
@@ -313,13 +314,17 @@ func (r *fieldRepository) DeleteView(id uuid.UUID) error {
 // ==================== User Board Order Implementation ====================
 
 func (r *fieldRepository) SetBoardOrder(order *domain.UserBoardOrder) error {
-	return r.db.Save(order).Error
+	// Use UPSERT to handle conflicts (PostgreSQL ON CONFLICT DO UPDATE)
+	return r.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "view_id"}, {Name: "user_id"}, {Name: "board_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"position", "updated_at"}),
+	}).Create(order).Error
 }
 
 func (r *fieldRepository) FindBoardOrdersByView(viewID, userID uuid.UUID) ([]domain.UserBoardOrder, error) {
 	var orders []domain.UserBoardOrder
 	if err := r.db.Where("view_id = ? AND user_id = ?", viewID, userID).
-		Order("display_order ASC").
+		Order("position ASC"). // Fractional indexing: lexicographic sort
 		Find(&orders).Error; err != nil {
 		return nil, err
 	}

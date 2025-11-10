@@ -27,7 +27,7 @@ type ViewService interface {
 
 	// Apply view (filter + sort + group)
 	ApplyView(userID, viewID string, page, limit int) (interface{}, error)
-	ApplyViewWithFilters(userID, projectID string, filters map[string]interface{}, sortBy, sortDir string, groupByFieldID *string, page, limit int) (interface{}, error)
+	ApplyViewWithFilters(userID, projectID, viewID string, filters map[string]interface{}, sortBy, sortDir string, groupByFieldID *string, page, limit int) (interface{}, error)
 
 	// Board order management
 	UpdateBoardOrder(userID string, req *dto.UpdateBoardOrderRequest) error
@@ -96,13 +96,13 @@ func (s *viewService) CreateView(userID string, req *dto.CreateViewRequest) (*dt
 			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 그룹핑 필드 ID", 400)
 		}
 
-		// Verify field exists and is multi-select
+		// Verify field exists and is single-select or multi-select
 		field, err := s.repo.FindFieldByID(fieldUUID)
 		if err != nil {
 			return nil, apperrors.New(apperrors.ErrCodeBadRequest, "그룹핑 필드를 찾을 수 없습니다", 400)
 		}
-		if field.FieldType != domain.FieldTypeMultiSelect {
-			return nil, apperrors.New(apperrors.ErrCodeBadRequest, "Multi-select 필드만 그룹핑에 사용할 수 있습니다", 400)
+		if field.FieldType != domain.FieldTypeSingleSelect && field.FieldType != domain.FieldTypeMultiSelect {
+			return nil, apperrors.New(apperrors.ErrCodeBadRequest, "Single-select 또는 Multi-select 필드만 그룹핑에 사용할 수 있습니다", 400)
 		}
 		groupByFieldID = &fieldUUID
 	}
@@ -374,10 +374,10 @@ func (s *viewService) ApplyView(userID, viewID string, page, limit int) (interfa
 		groupByFieldIDStr = &str
 	}
 
-	return s.ApplyViewWithFilters(userID, view.ProjectID.String(), filters, sortBy, view.SortDirection, groupByFieldIDStr, page, limit)
+	return s.ApplyViewWithFilters(userID, view.ProjectID.String(), viewUUID.String(), filters, sortBy, view.SortDirection, groupByFieldIDStr, page, limit)
 }
 
-func (s *viewService) ApplyViewWithFilters(userID, projectID string, filters map[string]interface{}, sortBy, sortDir string, groupByFieldID *string, page, limit int) (interface{}, error) {
+func (s *viewService) ApplyViewWithFilters(userID, projectID, viewID string, filters map[string]interface{}, sortBy, sortDir string, groupByFieldID *string, page, limit int) (interface{}, error) {
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
@@ -386,6 +386,11 @@ func (s *viewService) ApplyViewWithFilters(userID, projectID string, filters map
 	projectUUID, err := uuid.Parse(projectID)
 	if err != nil {
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 프로젝트 ID", 400)
+	}
+
+	viewUUID, err := uuid.Parse(viewID)
+	if err != nil {
+		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 뷰 ID", 400)
 	}
 
 	// Check project membership
@@ -462,17 +467,51 @@ func (s *viewService) ApplyViewWithFilters(userID, projectID string, filters map
 		return s.applyGrouping(boards, *groupByFieldID, total)
 	}
 
+	// Fetch board positions for this view and user
+	boardIDs := make([]uuid.UUID, len(boards))
+	for i, board := range boards {
+		boardIDs[i] = board.ID
+	}
+
+	var userBoardOrders []domain.UserBoardOrder
+	if len(boardIDs) > 0 {
+		s.db.Where("view_id = ? AND user_id = ? AND board_id IN ?", viewUUID, userUUID, boardIDs).
+			Find(&userBoardOrders)
+	}
+
+	// Create position map for quick lookup
+	positionMap := make(map[uuid.UUID]string)
+	for _, order := range userBoardOrders {
+		positionMap[order.BoardID] = order.Position
+	}
+
 	// Return paginated results
 	boardResponses := make([]dto.BoardResponse, 0, len(boards))
 	for _, board := range boards {
+		// Parse custom_fields_cache
+		var customFields map[string]interface{}
+		if board.CustomFieldsCache != "" && board.CustomFieldsCache != "{}" {
+			if err := json.Unmarshal([]byte(board.CustomFieldsCache), &customFields); err != nil {
+				s.logger.Warn("Failed to parse custom_fields_cache", zap.Error(err), zap.String("board_id", board.ID.String()))
+				customFields = make(map[string]interface{})
+			}
+		} else {
+			customFields = make(map[string]interface{})
+		}
+
+		// Get position from map
+		position := positionMap[board.ID]
+
 		// Simplified board response (can be enhanced with full details)
 		boardResponses = append(boardResponses, dto.BoardResponse{
-			ID:        board.ID.String(),
-			ProjectID: board.ProjectID.String(),
-			Title:     board.Title,
-			Content:   board.Description,
-			CreatedAt: board.CreatedAt,
-			UpdatedAt: board.UpdatedAt,
+			ID:           board.ID.String(),
+			ProjectID:    board.ProjectID.String(),
+			Title:        board.Title,
+			Content:      board.Description,
+			CustomFields: customFields,
+			Position:     position, // Include position from user_board_order
+			CreatedAt:    board.CreatedAt,
+			UpdatedAt:    board.UpdatedAt,
 		})
 	}
 
@@ -524,10 +563,10 @@ func (s *viewService) UpdateBoardOrder(userID string, req *dto.UpdateBoardOrderR
 		}
 
 		orders = append(orders, domain.UserBoardOrder{
-			ViewID:       viewUUID,
-			UserID:       userUUID,
-			BoardID:      boardUUID,
-			DisplayOrder: item.DisplayOrder,
+			ViewID:   viewUUID,
+			UserID:   userUUID,
+			BoardID:  boardUUID,
+			Position: item.Position,
 		})
 	}
 
@@ -645,24 +684,26 @@ func (s *viewService) applyGrouping(boards []domain.Board, groupByFieldID string
 						for _, optionID := range arr {
 							optionIDStr := fmt.Sprintf("%v", optionID)
 							groups[optionIDStr] = append(groups[optionIDStr], dto.BoardResponse{
-								ID:        board.ID.String(),
-								ProjectID: board.ProjectID.String(),
-								Title:     board.Title,
-								Content:   board.Description,
-								CreatedAt: board.CreatedAt,
-								UpdatedAt: board.UpdatedAt,
+								ID:           board.ID.String(),
+								ProjectID:    board.ProjectID.String(),
+								Title:        board.Title,
+								Content:      board.Description,
+								CustomFields: cache,
+								CreatedAt:    board.CreatedAt,
+								UpdatedAt:    board.UpdatedAt,
 							})
 						}
 					} else {
 						// Single value
 						optionIDStr := fmt.Sprintf("%v", fieldVal)
 						groups[optionIDStr] = append(groups[optionIDStr], dto.BoardResponse{
-							ID:        board.ID.String(),
-							ProjectID: board.ProjectID.String(),
-							Title:     board.Title,
-							Content:   board.Description,
-							CreatedAt: board.CreatedAt,
-							UpdatedAt: board.UpdatedAt,
+							ID:           board.ID.String(),
+							ProjectID:    board.ProjectID.String(),
+							Title:        board.Title,
+							Content:      board.Description,
+							CustomFields: cache,
+							CreatedAt:    board.CreatedAt,
+							UpdatedAt:    board.UpdatedAt,
 						})
 					}
 				}
