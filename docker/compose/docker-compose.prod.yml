@@ -1,0 +1,180 @@
+# =============================================================================
+# weAlist Project - Production Environment Override
+# =============================================================================
+# 프로덕션 환경에 특화된 설정을 오버라이드합니다.
+#
+# ⚠️ 주의: 프로덕션 환경에서는 다음 인프라를 외부 서비스로 사용합니다:
+# - Frontend: S3 + CloudFront (정적 호스팅)
+# - PostgreSQL: AWS RDS (관리형 데이터베이스)
+# - Redis: AWS ElastiCache (관리형 캐시)
+#
+# 따라서 이 파일에는 백엔드 애플리케이션 서비스(user-service, board-service)만 포함됩니다.
+#
+# 특징:
+# - 최소 포트 노출 (보안)
+# - 리소스 제한 (안정성)
+# - 외부 DB/Redis 연결
+# - Health check 강화
+# - 로깅 최적화
+# - 자동 재시작 정책
+#
+# 사용법:
+#   docker compose -f docker/compose/docker-compose.yml -f docker/compose/docker-compose.prod.yml up -d
+#
+# 환경변수 설정 예시 (.env.prod):
+#   SPRING_DATASOURCE_URL=jdbc:postgresql://your-rds-endpoint:5432/wealist_user_db
+#   REDIS_URL=redis://your-elasticache-endpoint:6379
+# =============================================================================
+
+version: '3.9'
+
+services:
+  # ===========================================================================
+  # Backend Services - Production Overrides
+  # ===========================================================================
+
+  user-service:
+    env_file:
+      - ../env/.env.prod
+
+    # 프로덕션 포트 노출 (ALB/NLB를 통한 접근)
+    ports:
+      - "${USER_HOST_PORT:-8080}:8080"
+
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DEVTOOLS_RESTART_ENABLED=false
+      - SPRING_JPA_SHOW_SQL=false
+      - SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL=false
+      - LOGGING_LEVEL_ROOT=WARN
+      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK=INFO
+      - JAVA_OPTS=-Xms512m -Xmx1024m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC
+
+    # 외부 DB/Redis 사용하므로 depends_on 제거
+    depends_on: []
+
+    # 네트워크: 백엔드만 사용
+    networks:
+      - backend-net
+
+    # 리소스 제한
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+    # 보안 설정
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+
+    # 프로덕션 Health check 강화
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+
+    restart: always
+
+  board-service:
+    env_file:
+      - ../env/.env.prod
+
+    # 프로덕션 포트 노출 (ALB/NLB를 통한 접근)
+    ports:
+      - "${BOARD_HOST_PORT:-8000}:8000"
+
+    environment:
+      - ENV=production
+      - LOG_LEVEL=info
+      - BOARD_USE_AUTO_MIGRATE=false  # 프로덕션에서는 수동 마이그레이션
+
+    # 외부 DB/Redis 사용하므로 depends_on 제거
+    depends_on: []
+
+    # 네트워크: 백엔드만 사용
+    networks:
+      - backend-net
+
+    # 리소스 제한
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+    # 보안 설정
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+    restart: always
+
+# =============================================================================
+# 주의사항
+# =============================================================================
+# 프로덕션 환경에서는 다음 서비스들을 외부에서 관리합니다:
+#
+# 1. Frontend (S3 + CloudFront)
+#    - React 앱을 빌드하여 S3에 업로드
+#    - CloudFront로 CDN 배포
+#
+# 2. PostgreSQL (AWS RDS)
+#    - RDS PostgreSQL 인스턴스 사용
+#    - 환경변수에 RDS 엔드포인트 설정 필요:
+#      SPRING_DATASOURCE_URL=jdbc:postgresql://your-rds.amazonaws.com:5432/wealist_user_db
+#      DATABASE_URL=postgresql://user:pass@your-rds.amazonaws.com:5432/wealist_board_db
+#
+# 3. Redis (AWS ElastiCache)
+#    - ElastiCache Redis 클러스터 사용
+#    - 환경변수에 ElastiCache 엔드포인트 설정 필요:
+#      SPRING_REDIS_HOST=your-elasticache.amazonaws.com
+#      REDIS_URL=redis://your-elasticache.amazonaws.com:6379
+#
+# =============================================================================
+
+# =============================================================================
+# Production Networks
+# =============================================================================
+networks:
+  backend-net:
+    driver: bridge
+    name: wealist-backend-net-prod
+
+# =============================================================================
+# Production Volumes
+# =============================================================================
+# 프로덕션 환경에서는 DB/Redis를 외부 관리형 서비스로 사용하므로 볼륨 불필요
+# volumes: {}
