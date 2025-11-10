@@ -142,9 +142,9 @@ setup_test_data() {
 
     print_success "Created project: $PROJECT_ID"
 
-    # Create custom field (Status)
+    # Create custom field (Status) - using new Jira-style API
     print_step "Creating Status custom field"
-    field_response=$(call_api POST "$BOARD_SERVICE_URL/api/custom-fields" '{
+    field_response=$(call_api POST "$BOARD_SERVICE_URL/api/fields" '{
         "project_id": "'"$PROJECT_ID"'",
         "name": "Status",
         "field_type": "single_select",
@@ -154,24 +154,27 @@ setup_test_data() {
     FIELD_ID=$(extract_field "$field_response" '.data.field_id')
     print_success "Created custom field: $FIELD_ID"
 
-    # Create field options
+    # Create field options - using new Jira-style API
     print_step "Creating field options: Todo, In Progress, Done"
 
-    todo_response=$(call_api POST "$BOARD_SERVICE_URL/api/custom-fields/$FIELD_ID/options" '{
+    todo_response=$(call_api POST "$BOARD_SERVICE_URL/api/field-options" '{
+        "field_id": "'"$FIELD_ID"'",
         "value": "Todo",
         "color": "#FF0000"
     }')
     TODO_OPTION_ID=$(extract_field "$todo_response" '.data.option_id')
     print_success "Created option: Todo ($TODO_OPTION_ID)"
 
-    progress_response=$(call_api POST "$BOARD_SERVICE_URL/api/custom-fields/$FIELD_ID/options" '{
+    progress_response=$(call_api POST "$BOARD_SERVICE_URL/api/field-options" '{
+        "field_id": "'"$FIELD_ID"'",
         "value": "In Progress",
         "color": "#FFA500"
     }')
     PROGRESS_OPTION_ID=$(extract_field "$progress_response" '.data.option_id')
     print_success "Created option: In Progress ($PROGRESS_OPTION_ID)"
 
-    done_response=$(call_api POST "$BOARD_SERVICE_URL/api/custom-fields/$FIELD_ID/options" '{
+    done_response=$(call_api POST "$BOARD_SERVICE_URL/api/field-options" '{
+        "field_id": "'"$FIELD_ID"'",
         "value": "Done",
         "color": "#00FF00"
     }')
