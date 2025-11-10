@@ -255,9 +255,12 @@ func (s *boardService) GetBoard(boardID, userID string) (*dto.BoardResponse, err
 	}
 
 	// 3. Fetch related data
-	stage, err := s.customFieldRepo.FindCustomStageByID(board.CustomStageID)
-	if err != nil {
-		s.logger.Warn("Failed to fetch stage", zap.Error(err), zap.String("stage_id", board.CustomStageID.String()))
+	var stage *domain.CustomStage
+	if board.CustomStageID != nil {
+		stage, err = s.customFieldRepo.FindCustomStageByID(*board.CustomStageID)
+		if err != nil {
+			s.logger.Warn("Failed to fetch stage", zap.Error(err), zap.String("stage_id", board.CustomStageID.String()))
+		}
 	}
 
 	var importance *domain.CustomImportance
@@ -373,7 +376,9 @@ func (s *boardService) GetBoards(userID string, req *dto.GetBoardsRequest) (*dto
 	userIDs := make([]string, 0, len(boards)*2)
 
 	for _, board := range boards {
-		stageIDs = append(stageIDs, board.CustomStageID)
+		if board.CustomStageID != nil {
+			stageIDs = append(stageIDs, *board.CustomStageID)
+		}
 		if board.CustomImportanceID != nil {
 			importanceIDs = append(importanceIDs, *board.CustomImportanceID)
 		}
@@ -448,7 +453,10 @@ func (s *boardService) GetBoards(userID string, req *dto.GetBoardsRequest) (*dto
 	// 9. Build responses
 	responses := make([]dto.BoardResponse, 0, len(boards))
 	for _, board := range boards {
-		stage := stagesMap[board.CustomStageID]
+		var stage *domain.CustomStage
+		if board.CustomStageID != nil {
+			stage = stagesMap[*board.CustomStageID]
+		}
 		var importance *domain.CustomImportance
 		if board.CustomImportanceID != nil {
 			importance = importancesMap[*board.CustomImportanceID]
@@ -519,8 +527,8 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 		board.Description = req.Content
 	}
 
-	if req.StageID != "" {
-		stageUUID, err := uuid.Parse(req.StageID)
+	if req.StageID != nil && *req.StageID != "" {
+		stageUUID, err := uuid.Parse(*req.StageID)
 		if err != nil {
 			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 진행단계 ID", 400)
 		}
@@ -529,7 +537,7 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 		if err != nil || stage.ProjectID != board.ProjectID {
 			return nil, apperrors.New(apperrors.ErrCodeNotFound, "진행단계를 찾을 수 없습니다", 404)
 		}
-		board.CustomStageID = stageUUID
+		board.CustomStageID = &stageUUID
 	}
 
 	if req.ImportanceID != nil {
