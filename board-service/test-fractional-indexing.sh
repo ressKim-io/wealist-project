@@ -181,12 +181,11 @@ setup_test_data() {
     DONE_OPTION_ID=$(extract_field "$done_response" '.data.option_id')
     print_success "Created option: Done ($DONE_OPTION_ID)"
 
-    # Create saved view
-    print_step "Creating saved view grouped by Status"
+    # Create saved view (without grouping for fractional indexing tests)
+    print_step "Creating saved view for Status Board"
     view_response=$(call_api POST "$BOARD_SERVICE_URL/api/views" '{
         "project_id": "'"$PROJECT_ID"'",
-        "name": "Status Board",
-        "group_by_field_id": "'"$FIELD_ID"'"
+        "name": "Status Board"
     }')
 
     VIEW_ID=$(extract_field "$view_response" '.data.view_id')
@@ -227,11 +226,11 @@ test_move_within_column() {
     orders_response=$(call_api GET "$BOARD_SERVICE_URL/api/views/$VIEW_ID/boards")
 
     print_info "Current orders:"
-    echo "$orders_response" | jq -r '.data[] | select(.custom_fields["'"$FIELD_ID"'"] == "'"$TODO_OPTION_ID"'") | "\(.title): \(.position // "no position")"'
+    echo "$orders_response" | jq -r '.data.boards[] | select(.custom_fields["'"$FIELD_ID"'"] == "'"$TODO_OPTION_ID"'") | "\(.title): \(.position // "no position")"'
 
     # Get positions
-    board1_position=$(echo "$orders_response" | jq -r '.data[] | select(.board_id == "'"$BOARD_1_ID"'") | .position')
-    board3_position=$(echo "$orders_response" | jq -r '.data[] | select(.board_id == "'"$BOARD_3_ID"'") | .position')
+    board1_position=$(echo "$orders_response" | jq -r '.data.boards[] | select(.board_id == "'"$BOARD_1_ID"'") | .position')
+    board3_position=$(echo "$orders_response" | jq -r '.data.boards[] | select(.board_id == "'"$BOARD_3_ID"'") | .position')
 
     print_step "Moving Board-2 between Board-1 and Board-3"
     move_response=$(call_api POST "$BOARD_SERVICE_URL/api/boards/$BOARD_2_ID/move" '{
@@ -312,7 +311,7 @@ test_move_to_first() {
     print_step "Getting first board position in Todo column"
     orders_response=$(call_api GET "$BOARD_SERVICE_URL/api/views/$VIEW_ID/boards")
 
-    first_position=$(echo "$orders_response" | jq -r '[.data[] | select(.custom_fields["'"$FIELD_ID"'"] == "'"$TODO_OPTION_ID"'")] | sort_by(.position) | .[0].position')
+    first_position=$(echo "$orders_response" | jq -r '[.data.boards[] | select(.custom_fields["'"$FIELD_ID"'"] == "'"$TODO_OPTION_ID"'")] | sort_by(.position) | .[0].position')
 
     print_info "Current first position: $first_position"
 
@@ -349,7 +348,7 @@ test_move_to_last() {
     print_step "Getting last board position in Todo column"
     orders_response=$(call_api GET "$BOARD_SERVICE_URL/api/views/$VIEW_ID/boards")
 
-    last_position=$(echo "$orders_response" | jq -r '[.data[] | select(.custom_fields["'"$FIELD_ID"'"] == "'"$TODO_OPTION_ID"'")] | sort_by(.position) | .[-1].position')
+    last_position=$(echo "$orders_response" | jq -r '[.data.boards[] | select(.custom_fields["'"$FIELD_ID"'"] == "'"$TODO_OPTION_ID"'")] | sort_by(.position) | .[-1].position')
 
     print_info "Current last position: $last_position"
 
@@ -386,7 +385,7 @@ test_verify_sorting() {
     orders_response=$(call_api GET "$BOARD_SERVICE_URL/api/views/$VIEW_ID/boards")
 
     # Extract positions for Todo column
-    positions=$(echo "$orders_response" | jq -r '[.data[] | select(.custom_fields["'"$FIELD_ID"'"] == "'"$TODO_OPTION_ID"'")] | sort_by(.position) | .[].position')
+    positions=$(echo "$orders_response" | jq -r '[.data.boards[] | select(.custom_fields["'"$FIELD_ID"'"] == "'"$TODO_OPTION_ID"'")] | sort_by(.position) | .[].position')
 
     print_info "Positions in Todo column (sorted):"
     echo "$positions" | while read -r pos; do
@@ -441,7 +440,7 @@ test_performance() {
     print_step "Getting positions in Done column"
     orders_response=$(call_api GET "$BOARD_SERVICE_URL/api/views/$VIEW_ID/boards")
 
-    positions=$(echo "$orders_response" | jq -r '[.data[] | select(.custom_fields["'"$FIELD_ID"'"] == "'"$DONE_OPTION_ID"'")] | sort_by(.position) | .[].position')
+    positions=$(echo "$orders_response" | jq -r '[.data.boards[] | select(.custom_fields["'"$FIELD_ID"'"] == "'"$DONE_OPTION_ID"'")] | sort_by(.position) | .[].position')
 
     position_array=($positions)
     first_pos="${position_array[0]}"
