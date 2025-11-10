@@ -124,14 +124,14 @@ create_workspace() {
 create_project() {
     print_step "4" "Project 생성"
 
-    project_data="{\"workspaceId\":\"$WORKSPACE_ID\",\"name\":\"Test Project $(date +%s)\",\"description\":\"자동 테스트용 프로젝트\"}"
+    project_data="{\"workspace_id\":\"$WORKSPACE_ID\",\"name\":\"Test Project $(date +%s)\",\"description\":\"자동 테스트용 프로젝트\"}"
     project_response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/projects" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "$project_data")
 
     if echo "$project_response" | grep -q '"data"'; then
-        PROJECT_ID=$(echo "$project_response" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        PROJECT_ID=$(echo "$project_response" | grep -o '"project_id":"[^"]*"' | head -1 | cut -d'"' -f4)
         print_success "Project 생성 성공 (ID: ${PROJECT_ID:0:8}...)"
     else
         print_error "Project 생성 실패: $project_response"
@@ -139,71 +139,75 @@ create_project() {
 }
 
 create_field_status() {
-    print_step "5" "Create Custom Field: Status (single_select)"
+    print_step "5" "Custom Field 생성: Status (single_select)"
 
     response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/fields" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"projectId\": \"$PROJECT_ID\",
+            \"project_id\": \"$PROJECT_ID\",
             \"name\": \"Status\",
-            \"fieldType\": \"single_select\",
+            \"field_type\": \"single_select\",
             \"description\": \"Task status\",
-            \"isRequired\": true,
+            \"is_required\": true,
             \"config\": {}
         }")
 
-    FIELD_STATUS_ID=$(echo "$response" | jq -r '.data.id // empty')
-
-    if [ -n "$FIELD_STATUS_ID" ] && [ "$FIELD_STATUS_ID" != "null" ]; then
-        print_success "Status field created: ${FIELD_STATUS_ID:0:8}..."
-        print_json "$response"
+    if echo "$response" | grep -q '"data"'; then
+        FIELD_STATUS_ID=$(echo "$response" | grep -o '"field_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        print_success "Status 필드 생성 성공 (ID: ${FIELD_STATUS_ID:0:8}...)"
     else
-        print_error "Failed to create status field"
+        print_error "Status 필드 생성 실패: $response"
     fi
 }
 
 create_status_options() {
-    print_step "6" "Create Status Options (To Do, In Progress, Done)"
+    print_step "6" "Status Options 생성 (To Do, In Progress, Done)"
 
     # To Do
     response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/field-options" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"fieldId\": \"$FIELD_STATUS_ID\",
+            \"field_id\": \"$FIELD_STATUS_ID\",
             \"value\": \"To Do\",
             \"color\": \"#94A3B8\"
         }")
 
-    OPTION_TODO_ID=$(echo "$response" | jq -r '.data.id // empty')
-    print_success "To Do option created: ${OPTION_TODO_ID:0:8}..."
+    if echo "$response" | grep -q '"data"'; then
+        OPTION_TODO_ID=$(echo "$response" | grep -o '"option_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        print_success "To Do 옵션 생성 성공"
+    fi
 
     # In Progress
     response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/field-options" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"fieldId\": \"$FIELD_STATUS_ID\",
+            \"field_id\": \"$FIELD_STATUS_ID\",
             \"value\": \"In Progress\",
             \"color\": \"#3B82F6\"
         }")
 
-    OPTION_INPROGRESS_ID=$(echo "$response" | jq -r '.data.id // empty')
-    print_success "In Progress option created: ${OPTION_INPROGRESS_ID:0:8}..."
+    if echo "$response" | grep -q '"data"'; then
+        OPTION_INPROGRESS_ID=$(echo "$response" | grep -o '"option_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        print_success "In Progress 옵션 생성 성공"
+    fi
 
     # Done
     response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/field-options" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"fieldId\": \"$FIELD_STATUS_ID\",
+            \"field_id\": \"$FIELD_STATUS_ID\",
             \"value\": \"Done\",
             \"color\": \"#10B981\"
         }")
 
-    OPTION_DONE_ID=$(echo "$response" | jq -r '.data.id // empty')
-    print_success "Done option created: ${OPTION_DONE_ID:0:8}..."
+    if echo "$response" | grep -q '"data"'; then
+        OPTION_DONE_ID=$(echo "$response" | grep -o '"option_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        print_success "Done 옵션 생성 성공"
+    fi
 }
 
 create_field_priority() {
