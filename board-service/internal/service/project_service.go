@@ -36,20 +36,18 @@ type ProjectService interface {
 }
 
 type projectService struct {
-	repo               repository.ProjectRepository
-	roleRepo           repository.RoleRepository
-	customFieldService CustomFieldService
-	userClient         client.UserClient
-	workspaceCache     cache.WorkspaceCache
-	userInfoCache      cache.UserInfoCache
-	logger             *zap.Logger
-	db                 *gorm.DB
+	repo           repository.ProjectRepository
+	roleRepo       repository.RoleRepository
+	userClient     client.UserClient
+	workspaceCache cache.WorkspaceCache
+	userInfoCache  cache.UserInfoCache
+	logger         *zap.Logger
+	db             *gorm.DB
 }
 
 func NewProjectService(
 	repo repository.ProjectRepository,
 	roleRepo repository.RoleRepository,
-	customFieldService CustomFieldService,
 	userClient client.UserClient,
 	workspaceCache cache.WorkspaceCache,
 	userInfoCache cache.UserInfoCache,
@@ -57,14 +55,13 @@ func NewProjectService(
 	db *gorm.DB,
 ) ProjectService {
 	return &projectService{
-		repo:               repo,
-		roleRepo:           roleRepo,
-		customFieldService: customFieldService,
-		userClient:         userClient,
-		workspaceCache:     workspaceCache,
-		userInfoCache:      userInfoCache,
-		logger:             logger,
-		db:                 db,
+		repo:           repo,
+		roleRepo:       roleRepo,
+		userClient:     userClient,
+		workspaceCache: workspaceCache,
+		userInfoCache:  userInfoCache,
+		logger:         logger,
+		db:             db,
 	}
 }
 
@@ -118,14 +115,8 @@ func (s *projectService) CreateProject(userID string, token string, req *dto.Cre
 			return err
 		}
 
-		// Phase 4 - Create default custom fields
-		// - Custom Roles: "없음" (system default)
-		// - Custom Stages: "없음", "대기", "진행중", "완료" (system defaults)
-		// - Custom Importance: "없음", "낮음", "보통", "높음", "긴급" (system defaults)
-		if err := s.customFieldService.CreateDefaultCustomFields(project.ID); err != nil {
-			s.logger.Error("Failed to create default custom fields", zap.Error(err), zap.String("project_id", project.ID.String()))
-			return err
-		}
+		// Note: Default custom fields (stages, roles, importance) should be created
+		// via the new ProjectField system by the frontend or during project initialization
 
 		return nil
 	})

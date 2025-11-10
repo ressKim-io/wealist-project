@@ -83,18 +83,15 @@ func main() {
 	// 5.6. Initialize repositories
 	roleRepo := repository.NewRoleRepository(db)
 	projectRepo := repository.NewProjectRepository(db)
-	customFieldRepo := repository.NewCustomFieldRepository(db)
 	boardRepo := repository.NewBoardRepository(db)
-	commentRepo := repository.NewCommentRepository(db) // Add CommentRepository
-	fieldRepo := repository.NewFieldRepository(db)     // Custom fields repository
+	commentRepo := repository.NewCommentRepository(db)
+	fieldRepo := repository.NewFieldRepository(db)
 
 	// 5.7. Initialize services
-	// Note: customFieldService needs boardRepo (for Phase 4 TODO), then injected into projectService
-	customFieldService := service.NewCustomFieldService(customFieldRepo, projectRepo, roleRepo, boardRepo, log, db)
-	boardService := service.NewBoardService(boardRepo, projectRepo, customFieldRepo, roleRepo, fieldRepo, userClient, userInfoCache, log, db)
-	projectService := service.NewProjectService(projectRepo, roleRepo, customFieldService, userClient, workspaceCache, userInfoCache, log, db)
-	commentService := service.NewCommentService(commentRepo, boardRepo, projectRepo, userClient, userInfoCache, log, db) // Add CommentService
-	// Custom fields services
+	boardService := service.NewBoardService(boardRepo, projectRepo, roleRepo, fieldRepo, userClient, userInfoCache, log, db)
+	projectService := service.NewProjectService(projectRepo, roleRepo, userClient, workspaceCache, userInfoCache, log, db)
+	commentService := service.NewCommentService(commentRepo, boardRepo, projectRepo, userClient, userInfoCache, log, db)
+	// Custom fields services (new ProjectField system)
 	fieldService := service.NewFieldService(fieldRepo, projectRepo, fieldCache, log, db)
 	fieldValueService := service.NewFieldValueService(fieldRepo, boardRepo, projectRepo, fieldCache, log, db)
 	viewService := service.NewViewService(fieldRepo, boardRepo, projectRepo, fieldCache, log, db)
@@ -134,10 +131,9 @@ func main() {
 	{
 		// Initialize handlers
 		projectHandler := handler.NewProjectHandler(projectService)
-		customFieldHandler := handler.NewCustomFieldHandler(customFieldService)
 		boardHandler := handler.NewBoardHandler(boardService)
-		commentHandler := handler.NewCommentHandler(commentService) // Add CommentHandler
-		fieldHandler := handler.NewFieldHandler(fieldService, fieldValueService) // Custom fields (Jira-style)
+		commentHandler := handler.NewCommentHandler(commentService)
+		fieldHandler := handler.NewFieldHandler(fieldService, fieldValueService) // Custom fields (new ProjectField system)
 		viewHandler := handler.NewViewHandler(viewService) // Saved views (filters/sorting/grouping)
 
 		// Project routes
@@ -162,33 +158,8 @@ func main() {
 			projects.DELETE("/:project_id/members/:member_id", projectHandler.RemoveMember)
 		}
 
-		// Custom Fields routes
-		customFields := api.Group("/custom-fields")
-		{
-			// Custom Roles
-			customFields.POST("/roles", customFieldHandler.CreateCustomRole)
-			customFields.GET("/projects/:project_id/roles", customFieldHandler.GetCustomRoles)
-			customFields.GET("/roles/:role_id", customFieldHandler.GetCustomRole)
-			customFields.PUT("/roles/:role_id", customFieldHandler.UpdateCustomRole)
-			customFields.DELETE("/roles/:role_id", customFieldHandler.DeleteCustomRole)
-			customFields.PUT("/projects/:project_id/roles/order", customFieldHandler.UpdateCustomRoleOrder)
-
-			// Custom Stages
-			customFields.POST("/stages", customFieldHandler.CreateCustomStage)
-			customFields.GET("/projects/:project_id/stages", customFieldHandler.GetCustomStages)
-			customFields.GET("/stages/:stage_id", customFieldHandler.GetCustomStage)
-			customFields.PUT("/stages/:stage_id", customFieldHandler.UpdateCustomStage)
-			customFields.DELETE("/stages/:stage_id", customFieldHandler.DeleteCustomStage)
-			customFields.PUT("/projects/:project_id/stages/order", customFieldHandler.UpdateCustomStageOrder)
-
-			// Custom Importance
-			customFields.POST("/importance", customFieldHandler.CreateCustomImportance)
-			customFields.GET("/projects/:project_id/importance", customFieldHandler.GetCustomImportances)
-			customFields.GET("/importance/:importance_id", customFieldHandler.GetCustomImportance)
-			customFields.PUT("/importance/:importance_id", customFieldHandler.UpdateCustomImportance)
-			customFields.DELETE("/importance/:importance_id", customFieldHandler.DeleteCustomImportance)
-			customFields.PUT("/projects/:project_id/importance/order", customFieldHandler.UpdateCustomImportanceOrder)
-		}
+		// Custom Fields routes removed - use new ProjectField system instead
+		// See /fields, /field-values, and /views endpoints
 
 		// Board routes
 		boards := api.Group("/boards")

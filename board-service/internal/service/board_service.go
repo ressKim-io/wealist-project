@@ -27,21 +27,19 @@ type BoardService interface {
 }
 
 type boardService struct {
-	repo            repository.BoardRepository
-	projectRepo     repository.ProjectRepository
-	customFieldRepo repository.CustomFieldRepository
-	roleRepo        repository.RoleRepository
-	fieldRepo       repository.FieldRepository // For custom fields system
-	userClient      client.UserClient
-	userInfoCache   cache.UserInfoCache
-	logger          *zap.Logger
-	db              *gorm.DB
+	repo          repository.BoardRepository
+	projectRepo   repository.ProjectRepository
+	roleRepo      repository.RoleRepository
+	fieldRepo     repository.FieldRepository // For custom fields system
+	userClient    client.UserClient
+	userInfoCache cache.UserInfoCache
+	logger        *zap.Logger
+	db            *gorm.DB
 }
 
 func NewBoardService(
 	repo repository.BoardRepository,
 	projectRepo repository.ProjectRepository,
-	customFieldRepo repository.CustomFieldRepository,
 	roleRepo repository.RoleRepository,
 	fieldRepo repository.FieldRepository,
 	userClient client.UserClient,
@@ -50,15 +48,14 @@ func NewBoardService(
 	db *gorm.DB,
 ) BoardService {
 	return &boardService{
-		repo:            repo,
-		projectRepo:     projectRepo,
-		customFieldRepo: customFieldRepo,
-		roleRepo:        roleRepo,
-		fieldRepo:       fieldRepo,
-		userClient:      userClient,
-		userInfoCache:   userInfoCache,
-		logger:          logger,
-		db:              db,
+		repo:          repo,
+		projectRepo:   projectRepo,
+		roleRepo:      roleRepo,
+		fieldRepo:     fieldRepo,
+		userClient:    userClient,
+		userInfoCache: userInfoCache,
+		logger:        logger,
+		db:            db,
 	}
 }
 
