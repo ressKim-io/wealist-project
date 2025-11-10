@@ -524,10 +524,10 @@ func (s *viewService) UpdateBoardOrder(userID string, req *dto.UpdateBoardOrderR
 		}
 
 		orders = append(orders, domain.UserBoardOrder{
-			ViewID:       viewUUID,
-			UserID:       userUUID,
-			BoardID:      boardUUID,
-			DisplayOrder: item.DisplayOrder,
+			ViewID:   viewUUID,
+			UserID:   userUUID,
+			BoardID:  boardUUID,
+			Position: item.Position,
 		})
 	}
 
