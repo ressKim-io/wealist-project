@@ -105,15 +105,15 @@ get_test_token() {
 }
 
 create_workspace() {
-    print_step "3" "Workspace 생성"
+    print_step "3" "Workspace 생성 (User Service)"
 
     workspace_data="{\"name\":\"Test Workspace $(date +%s)\",\"description\":\"자동 테스트용 워크스페이스\"}"
-    workspace_response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/workspaces" \
+    workspace_response=$(curl -s -X POST "$USER_SERVICE_URL/api/workspaces" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "$workspace_data")
 
-    if echo "$workspace_response" | grep -q '"data"'; then
+    if echo "$workspace_response" | grep -q '"id"'; then
         WORKSPACE_ID=$(echo "$workspace_response" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
         print_success "Workspace 생성 성공 (ID: ${WORKSPACE_ID:0:8}...)"
     else
