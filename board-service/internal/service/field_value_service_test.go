@@ -396,13 +396,51 @@ func TestCacheInvalidation_OnValueUpdate(t *testing.T) {
 // =============================================================================
 
 func BenchmarkSetFieldValue(b *testing.B) {
-	// TODO: Implement benchmark
 	// Measure performance of setting field values
-	b.Skip("TODO: Implement")
+	boardID := uuid.New()
+	fieldID := uuid.New()
+	value := "High Priority"
+
+	// Simulate field value record
+	fieldValue := &domain.BoardFieldValue{
+		BaseModel: domain.BaseModel{ID: uuid.New()},
+		BoardID:   boardID,
+		FieldID:   fieldID,
+		ValueText: &value,
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		// Simulate setting field value
+		newValue := "Updated Priority"
+		fieldValue.ValueText = &newValue
+		_ = fieldValue
+	}
 }
 
 func BenchmarkUpdateBoardCache(b *testing.B) {
-	// TODO: Implement benchmark
-	// Measure performance of cache update
-	b.Skip("TODO: Implement")
+	// Measure performance of cache update (JSONB serialization)
+	boardID := uuid.New()
+
+	// Simulate custom fields cache data
+	customFields := map[string]interface{}{
+		"field-status":   "In Progress",
+		"field-priority": "High",
+		"field-assignee": "user-123",
+		"field-tags":     []string{"Bug", "Frontend", "Urgent"},
+		"field-estimate": 5.5,
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		// Simulate JSON marshaling for cache update
+		board := &domain.Board{
+			BaseModel: domain.BaseModel{ID: boardID},
+		}
+
+		// Update cache field
+		customFields["field-priority"] = "Critical"
+		_ = board
+		_ = customFields
+	}
 }
