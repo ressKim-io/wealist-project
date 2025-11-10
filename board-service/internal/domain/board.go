@@ -11,8 +11,11 @@ type Board struct {
 	ProjectID          uuid.UUID  `gorm:"type:uuid;not null;index" json:"project_id"`
 	Title              string     `gorm:"type:varchar(255);not null" json:"title"`
 	Description        string     `gorm:"type:text" json:"description"`
-	CustomStageID      uuid.UUID  `gorm:"type:uuid;not null;index" json:"custom_stage_id"`
-	CustomImportanceID *uuid.UUID `gorm:"type:uuid;index" json:"custom_importance_id"`
+
+	// Legacy fields (deprecated - use custom_fields_cache instead)
+	CustomStageID      *uuid.UUID `gorm:"type:uuid;index" json:"custom_stage_id,omitempty"`
+	CustomImportanceID *uuid.UUID `gorm:"type:uuid;index" json:"custom_importance_id,omitempty"`
+
 	AssigneeID         *uuid.UUID `gorm:"type:uuid;index" json:"assignee_id"`
 	CreatedBy          uuid.UUID  `gorm:"type:uuid;not null;index" json:"created_by"`
 	DueDate            *time.Time `gorm:"index" json:"due_date"`

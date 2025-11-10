@@ -8,9 +8,12 @@ type CreateBoardRequest struct {
 	ProjectID    string   `json:"project_id" binding:"required,uuid"`
 	Title        string   `json:"title" binding:"required,min=1,max=200"`
 	Content      string   `json:"content" binding:"max=5000"`
-	StageID      string   `json:"stage_id" binding:"required,uuid"`
+
+	// Legacy fields (deprecated - use custom fields instead)
+	StageID      *string  `json:"stage_id" binding:"omitempty,uuid"`
 	ImportanceID *string  `json:"importance_id" binding:"omitempty,uuid"`
-	RoleIDs      []string `json:"role_ids" binding:"required,min=1,dive,uuid"`
+	RoleIDs      []string `json:"role_ids" binding:"omitempty,dive,uuid"`
+
 	AssigneeID   *string  `json:"assignee_id" binding:"omitempty,uuid"`
 	DueDate      *string  `json:"dueDate" binding:"omitempty"` // ISO 8601 format
 }
@@ -18,9 +21,12 @@ type CreateBoardRequest struct {
 type UpdateBoardRequest struct {
 	Title        string   `json:"title" binding:"omitempty,min=1,max=200"`
 	Content      string   `json:"content" binding:"omitempty,max=5000"`
-	StageID      string   `json:"stage_id" binding:"omitempty,uuid"`
+
+	// Legacy fields (deprecated - use custom fields instead)
+	StageID      *string  `json:"stage_id" binding:"omitempty,uuid"`
 	ImportanceID *string  `json:"importance_id" binding:"omitempty,uuid"`
 	RoleIDs      []string `json:"role_ids" binding:"omitempty,dive,uuid"`
+
 	AssigneeID   *string  `json:"assignee_id" binding:"omitempty,uuid"`
 	DueDate      *string  `json:"dueDate" binding:"omitempty"`
 }

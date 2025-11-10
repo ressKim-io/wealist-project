@@ -84,22 +84,27 @@ func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
 	}
 
-	// 2. Validate Stage (required)
-	stageUUID, err := uuid.Parse(req.StageID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 진행단계 ID", 400)
-	}
-
-	stage, err := s.customFieldRepo.FindCustomStageByID(stageUUID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, "진행단계를 찾을 수 없습니다", 404)
+	// 2. Validate Stage (optional, legacy)
+	var stage *domain.CustomStage
+	var stageUUID *uuid.UUID
+	if req.StageID != nil && *req.StageID != "" {
+		parsedStageUUID, err := uuid.Parse(*req.StageID)
+		if err != nil {
+			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 진행단계 ID", 400)
 		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "진행단계 조회 실패", 500)
-	}
+		stageUUID = &parsedStageUUID
 
-	if stage.ProjectID != projectUUID {
-		return nil, apperrors.New(apperrors.ErrCodeForbidden, "다른 프로젝트의 진행단계입니다", 403)
+		stage, err = s.customFieldRepo.FindCustomStageByID(parsedStageUUID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, apperrors.New(apperrors.ErrCodeNotFound, "진행단계를 찾을 수 없습니다", 404)
+			}
+			return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "진행단계 조회 실패", 500)
+		}
+
+		if stage.ProjectID != projectUUID {
+			return nil, apperrors.New(apperrors.ErrCodeForbidden, "다른 프로젝트의 진행단계입니다", 403)
+		}
 	}
 
 	// 3. Validate Importance (optional)
@@ -125,29 +130,31 @@ func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (
 		}
 	}
 
-	// 4. Validate Roles (required, at least 1)
+	// 4. Validate Roles (optional, legacy)
 	roleUUIDs := make([]uuid.UUID, 0, len(req.RoleIDs))
 	roles := make([]*domain.CustomRole, 0, len(req.RoleIDs))
-	for _, roleID := range req.RoleIDs {
-		roleUUID, err := uuid.Parse(roleID)
-		if err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 역할 ID", 400)
-		}
-
-		role, err := s.customFieldRepo.FindCustomRoleByID(roleUUID)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, apperrors.New(apperrors.ErrCodeNotFound, "역할을 찾을 수 없습니다", 404)
+	if len(req.RoleIDs) > 0 {
+		for _, roleID := range req.RoleIDs {
+			roleUUID, err := uuid.Parse(roleID)
+			if err != nil {
+				return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 역할 ID", 400)
 			}
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "역할 조회 실패", 500)
-		}
 
-		if role.ProjectID != projectUUID {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "다른 프로젝트의 역할입니다", 403)
-		}
+			role, err := s.customFieldRepo.FindCustomRoleByID(roleUUID)
+			if err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return nil, apperrors.New(apperrors.ErrCodeNotFound, "역할을 찾을 수 없습니다", 404)
+				}
+				return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "역할 조회 실패", 500)
+			}
 
-		roleUUIDs = append(roleUUIDs, roleUUID)
-		roles = append(roles, role)
+			if role.ProjectID != projectUUID {
+				return nil, apperrors.New(apperrors.ErrCodeForbidden, "다른 프로젝트의 역할입니다", 403)
+			}
+
+			roleUUIDs = append(roleUUIDs, roleUUID)
+			roles = append(roles, role)
+		}
 	}
 
 	// 5. Validate Assignee (optional)
@@ -197,10 +204,12 @@ func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (
 			return err
 		}
 
-		// Create board_roles (many-to-many)
-		if err := s.repo.CreateBoardRoles(board.ID, roleUUIDs); err != nil {
-			s.logger.Error("Failed to create board roles", zap.Error(err))
-			return err
+		// Create board_roles (many-to-many) - only if roles provided (legacy)
+		if len(roleUUIDs) > 0 {
+			if err := s.repo.CreateBoardRoles(board.ID, roleUUIDs); err != nil {
+				s.logger.Error("Failed to create board roles", zap.Error(err))
+				return err
+			}
 		}
 
 		return nil

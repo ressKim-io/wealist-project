@@ -159,7 +159,7 @@ setup_test_data() {
 
     todo_response=$(call_api POST "$BOARD_SERVICE_URL/api/field-options" '{
         "field_id": "'"$FIELD_ID"'",
-        "value": "Todo",
+        "label": "Todo",
         "color": "#FF0000"
     }')
     TODO_OPTION_ID=$(extract_field "$todo_response" '.data.option_id')
@@ -167,7 +167,7 @@ setup_test_data() {
 
     progress_response=$(call_api POST "$BOARD_SERVICE_URL/api/field-options" '{
         "field_id": "'"$FIELD_ID"'",
-        "value": "In Progress",
+        "label": "In Progress",
         "color": "#FFA500"
     }')
     PROGRESS_OPTION_ID=$(extract_field "$progress_response" '.data.option_id')
@@ -175,7 +175,7 @@ setup_test_data() {
 
     done_response=$(call_api POST "$BOARD_SERVICE_URL/api/field-options" '{
         "field_id": "'"$FIELD_ID"'",
-        "value": "Done",
+        "label": "Done",
         "color": "#00FF00"
     }')
     DONE_OPTION_ID=$(extract_field "$done_response" '.data.option_id')
@@ -205,10 +205,10 @@ setup_test_data() {
         board_id=$(extract_field "$board_response" '.data.board_id')
 
         # Set custom field value to "Todo"
-        call_api PUT "$BOARD_SERVICE_URL/api/boards/$board_id/field-values" '{
-            "field_values": {
-                "'"$FIELD_ID"'": "'"$TODO_OPTION_ID"'"
-            }
+        call_api POST "$BOARD_SERVICE_URL/api/board-field-values" '{
+            "board_id": "'"$board_id"'",
+            "field_id": "'"$FIELD_ID"'",
+            "value": "'"$TODO_OPTION_ID"'"
         }' > /dev/null
 
         eval "BOARD_${i}_ID=$board_id"
@@ -426,10 +426,10 @@ test_performance() {
         board_id=$(extract_field "$board_response" '.data.board_id')
 
         # Set to Done column
-        call_api PUT "$BOARD_SERVICE_URL/api/boards/$board_id/field-values" '{
-            "field_values": {
-                "'"$FIELD_ID"'": "'"$DONE_OPTION_ID"'"
-            }
+        call_api POST "$BOARD_SERVICE_URL/api/board-field-values" '{
+            "board_id": "'"$board_id"'",
+            "field_id": "'"$FIELD_ID"'",
+            "value": "'"$DONE_OPTION_ID"'"
         }' > /dev/null
 
         eval "PERF_BOARD_${i}_ID=$board_id"
