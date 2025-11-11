@@ -46,13 +46,16 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
+# 환경변수 파일을 명시적으로 지정 (compose 파일 내 변수 치환용)
+ENV_FILE_OPTION="--env-file $ENV_FILE"
+
 # 커맨드 처리
 COMMAND=${1:-up}
 
 case $COMMAND in
     up)
         echo -e "${BLUE}📊 모니터링 스택을 시작합니다 (환경: $ENV)...${NC}"
-        docker compose $COMPOSE_FILES up -d prometheus grafana redis-exporter postgres-exporter node-exporter
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES up -d prometheus grafana redis-exporter postgres-exporter node-exporter
         echo -e "${GREEN}✅ 모니터링 스택이 시작되었습니다.${NC}"
         echo ""
         echo -e "${BLUE}📊 모니터링 서비스 접속 정보:${NC}"
@@ -66,24 +69,24 @@ case $COMMAND in
 
     down)
         echo -e "${YELLOW}⏹️  모니터링 스택을 중지합니다...${NC}"
-        docker compose $COMPOSE_FILES stop prometheus grafana redis-exporter postgres-exporter node-exporter
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES stop prometheus grafana redis-exporter postgres-exporter node-exporter
         echo -e "${GREEN}✅ 모니터링 스택이 중지되었습니다.${NC}"
         ;;
 
     restart)
         echo -e "${YELLOW}🔄 모니터링 스택을 재시작합니다...${NC}"
-        docker compose $COMPOSE_FILES restart prometheus grafana redis-exporter postgres-exporter node-exporter
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES restart prometheus grafana redis-exporter postgres-exporter node-exporter
         echo -e "${GREEN}✅ 모니터링 스택이 재시작되었습니다.${NC}"
         ;;
 
     logs)
         SERVICE=${3:-prometheus}
-        docker compose $COMPOSE_FILES logs -f "$SERVICE"
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES logs -f "$SERVICE"
         ;;
 
     status)
         echo -e "${BLUE}📊 모니터링 서비스 상태:${NC}"
-        docker compose $COMPOSE_FILES ps prometheus grafana redis-exporter postgres-exporter node-exporter
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES ps prometheus grafana redis-exporter postgres-exporter node-exporter
         ;;
 
     *)
