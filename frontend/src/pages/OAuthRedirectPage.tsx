@@ -24,27 +24,29 @@ const OAuthRedirectPage: React.FC = () => {
     // 1. URLSearchParams를 사용하여 쿼리 파라미터 파싱
     const params = new URLSearchParams(location.search);
     const accessToken = params.get('accessToken');
-    const userId = params.get('userId');
+    const refreshToken = params.get('refreshToken');
+    const nickName = params.get('nickName');
     const email = params.get('email'); // (필요하다면)
 
-    if (accessToken && userId) {
+    if (accessToken && refreshToken) {
       // 2. 토큰과 유저 ID를 localStorage에 저장
       localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('userId', userId);
-      if (email) {
-        localStorage.setItem('userEmail', email); // 이메일도 저장
-      }
+      localStorage.setItem('refreshToken', refreshToken);
+      if (nickName) localStorage.setItem('nickName', nickName);
+      if (email) localStorage.setItem('userEmail', email); // 이메일도 저장
 
       console.log('✅ 토큰 저장 성공:', {
         accessToken: accessToken.substring(0, 10) + '...',
-        userId,
+        refreshToken: refreshToken.substring(0, 10) + '...',
+        nickName,
+        email,
       });
 
       // 3. 워크스페이스 선택 페이지로 이동 (Protected Route 통과)
       navigate('/workspaces', { replace: true });
     } else {
       // 4. 필수 정보가 없는 경우 에러 처리 및 로그인 페이지로 리다이렉트
-      console.error('❌ OAuth 콜백 필수 정보(토큰, userId) 누락');
+      console.error('❌ OAuth 콜백 필수 정보(토큰, nickName) 누락');
       setError('로그인 정보를 확인할 수 없습니다. 다시 시도해 주세요.');
 
       // 5. 에러가 발생해도 바로 리다이렉트되지 않도록 3초 대기 후 이동

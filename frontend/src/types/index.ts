@@ -2,7 +2,7 @@ export interface Task {
   [key: string]: any;
   id: string;
   title: string;
-  assignee_id: string | null;
+  assigneeId: string | null;
   status: string;
   assignee: string; // 💡 전역 타입 호환성 유지
 }
@@ -22,7 +22,7 @@ export interface TaskComment {
 export interface UserProfile {
   profileId: string;
   userId: string;
-  name: string;
+  nickName: string;
   email: string | null;
   profileImageUrl: string | null;
   createdAt: string;
@@ -30,10 +30,13 @@ export interface UserProfile {
 }
 
 export interface User {
-  id: number;
+  userId: string;
   email: string;
-  name: string;
-  profileImage?: string;
+  provider?: string;
+  googleId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  isActive?: boolean;
 }
 
 export interface AuthResponse {
@@ -43,11 +46,15 @@ export interface AuthResponse {
 }
 
 export interface Workspace {
-  id: number;
-  name: string;
-  description?: string;
+  workspaceId: string;
+  workspaceName: string;
+  workspaceDescription?: string;
+  ownerId: string;
+  ownerName?: string;
+  ownerEmail?: string;
+  isPublic?: boolean;
+  needApproved?: boolean;
   createdAt: string;
-  updatedAt: string;
 }
 
 export interface Project {

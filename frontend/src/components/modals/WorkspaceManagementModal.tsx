@@ -11,7 +11,7 @@
  * 1. GET  /api/workspaces/{workspaceId}/settings           - 워크스페이스 설정 조회
  * 2. PUT  /api/workspaces/{workspaceId}/settings           - 워크스페이스 설정 업데이트
  * 3. GET  /api/workspaces/{workspaceId}/members            - 회원 목록 조회
- * 4. GET  /api/workspaces/{workspaceId}/pending-members    - 승인 대기 목록 조회
+ * 4. GET  /api/workspaces/{workspaceId}/pendingMembers    - 승인 대기 목록 조회
  * 5. POST /api/workspaces/{workspaceId}/members/{userId}/approve - 회원 승인
  * 6. POST /api/workspaces/{workspaceId}/members/{userId}/reject  - 회원 거절
  * 7. PUT  /api/workspaces/{workspaceId}/members/{userId}/role    - 회원 역할 변경
@@ -50,7 +50,6 @@ interface WorkspaceManagementModalProps {
 
 const WorkspaceManagementModal: React.FC<WorkspaceManagementModalProps> = ({
   workspaceId,
-  workspaceName,
   onClose,
 }) => {
   const { theme } = useTheme();
@@ -66,8 +65,8 @@ const WorkspaceManagementModal: React.FC<WorkspaceManagementModalProps> = ({
   // 워크스페이스 설정
   const [settings, setSettings] = useState<WorkspaceSettings | null>(null);
   const [settingsForm, setSettingsForm] = useState({
-    name: '',
-    description: '',
+    workspaceName: '',
+    workspaceDescription: '',
     isPublic: false,
     requiresApproval: false,
     onlyOwnerCanInvite: false,
@@ -105,8 +104,8 @@ const WorkspaceManagementModal: React.FC<WorkspaceManagementModalProps> = ({
 
         setSettings(settingsData);
         setSettingsForm({
-          name: settingsData.name,
-          description: settingsData.description,
+          workspaceName: settingsData.workspaceName,
+          workspaceDescription: settingsData.workspaceDescription,
           isPublic: settingsData.isPublic,
           requiresApproval: settingsData.requiresApproval,
           onlyOwnerCanInvite: settingsData.onlyOwnerCanInvite,
@@ -287,9 +286,9 @@ const WorkspaceManagementModal: React.FC<WorkspaceManagementModalProps> = ({
     const query = memberSearchQuery.toLowerCase();
     return members.filter(
       (member) =>
-        member.name.toLowerCase().includes(query) ||
-        member.email.toLowerCase().includes(query) ||
-        member.role.toLowerCase().includes(query),
+        member.userName.toLowerCase().includes(query) ||
+        member.userEmail.toLowerCase().includes(query) ||
+        member.roleName.toLowerCase().includes(query),
     );
   }, [members, memberSearchQuery]);
 
@@ -373,8 +372,10 @@ const WorkspaceManagementModal: React.FC<WorkspaceManagementModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={settingsForm.name}
-                    onChange={(e) => setSettingsForm({ ...settingsForm, name: e.target.value })}
+                    value={settingsForm.workspaceName}
+                    onChange={(e) =>
+                      setSettingsForm({ ...settingsForm, workspaceName: e.target.value })
+                    }
                     className={`w-full px-3 py-2 ${theme.effects.cardBorderWidth} ${theme.colors.border} ${theme.colors.card} ${theme.font.size.xs} ${theme.effects.borderRadius} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                     placeholder="워크스페이스 이름"
                   />
@@ -385,9 +386,9 @@ const WorkspaceManagementModal: React.FC<WorkspaceManagementModalProps> = ({
                     설명:
                   </label>
                   <textarea
-                    value={settingsForm.description}
+                    value={settingsForm.workspaceDescription}
                     onChange={(e) =>
-                      setSettingsForm({ ...settingsForm, description: e.target.value })
+                      setSettingsForm({ ...settingsForm, workspaceDescription: e.target.value })
                     }
                     rows={3}
                     className={`w-full px-3 py-2 ${theme.effects.cardBorderWidth} ${theme.colors.border} ${theme.colors.card} ${theme.font.size.xs} ${theme.effects.borderRadius} focus:outline-none focus:ring-2 focus:ring-blue-500`}
@@ -520,7 +521,7 @@ const WorkspaceManagementModal: React.FC<WorkspaceManagementModalProps> = ({
                           className="flex items-center justify-between bg-white p-2 rounded border border-gray-200"
                         >
                           <div>
-                            <p className="text-sm font-medium text-gray-700">{user.name}</p>
+                            <p className="text-sm font-medium text-gray-700">{user.nickName}</p>
                             <p className="text-xs text-gray-500">{user.email}</p>
                           </div>
                           <button
@@ -549,7 +550,7 @@ const WorkspaceManagementModal: React.FC<WorkspaceManagementModalProps> = ({
                           className="flex items-center justify-between bg-gray-50 p-3 rounded border border-gray-200"
                         >
                           <div>
-                            <p className="text-sm font-medium text-gray-700">{member.name}</p>
+                            <p className="text-sm font-medium text-gray-700">{member.nickName}</p>
                             <p className="text-xs text-gray-500">{member.email}</p>
                           </div>
                           <div className="flex gap-2">
@@ -599,16 +600,16 @@ const WorkspaceManagementModal: React.FC<WorkspaceManagementModalProps> = ({
                       >
                         <div>
                           <p className="text-sm font-medium text-gray-700">
-                            {member.name}{' '}
+                            {member.userName}{' '}
                             <span className="text-xs text-blue-600 font-semibold">
-                              ({member.role})
+                              ({member.roleName})
                             </span>
                           </p>
-                          <p className="text-xs text-gray-500">{member.email}</p>
+                          <p className="text-xs text-gray-500">{member.userEmail}</p>
                         </div>
-                        {member.role !== 'OWNER' && (
+                        {member.roleName !== 'OWNER' && (
                           <div className="flex gap-2">
-                            {member.role === 'MEMBER' && (
+                            {member.roleName === 'MEMBER' && (
                               <button
                                 onClick={() => handleUpdateRole(member.userId, 'ADMIN')}
                                 disabled={loading}
@@ -617,7 +618,7 @@ const WorkspaceManagementModal: React.FC<WorkspaceManagementModalProps> = ({
                                 ADMIN
                               </button>
                             )}
-                            {member.role === 'ADMIN' && (
+                            {member.roleName === 'ADMIN' && (
                               <>
                                 <button
                                   onClick={() => handleUpdateRole(member.userId, 'MEMBER')}
@@ -636,7 +637,7 @@ const WorkspaceManagementModal: React.FC<WorkspaceManagementModalProps> = ({
                               </>
                             )}
                             <button
-                              onClick={() => handleRemoveMember(member.userId, member.name)}
+                              onClick={() => handleRemoveMember(member.userId, member.userName)}
                               disabled={loading}
                               className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition disabled:opacity-50"
                             >

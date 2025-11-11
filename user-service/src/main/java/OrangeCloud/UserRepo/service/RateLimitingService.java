@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -33,7 +32,6 @@ public class RateLimitingService {
      */
     public void checkRateLimit(String key, int limit, long duration) {
         String redisKey = "rate_limit:" + key;
-        long currentTime = System.currentTimeMillis();
 
         // Redis에서 현재 카운트와 윈도우 시작 시간을 가져옵니다.
         // RedisTemplate의 opsForValue().increment()는 키가 없으면 0으로 초기화 후 1 증가시킵니다.

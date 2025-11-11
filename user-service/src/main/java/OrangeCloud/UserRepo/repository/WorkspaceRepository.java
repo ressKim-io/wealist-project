@@ -8,7 +8,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,7 +24,7 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, UUID> {
      */
     @Modifying
     @Transactional
-    @Query("UPDATE Workspace w SET w.isActive = false, w.deletedAt = CURRENT_TIMESTAMP WHERE w.groupId = :workspaceId")
+    @Query("UPDATE Workspace w SET w.isActive = false, w.deletedAt = CURRENT_TIMESTAMP WHERE w.workspaceId = :workspaceId")
     int softDeleteById(@Param("workspaceId") UUID workspaceId);
 
     /**
@@ -33,7 +32,7 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, UUID> {
      */
     @Modifying
     @Transactional
-    @Query("UPDATE Workspace w SET w.isActive = true, w.deletedAt = null WHERE w.groupId = :workspaceId")
+    @Query("UPDATE Workspace w SET w.isActive = true, w.deletedAt = null WHERE w.workspaceId = :workspaceId")
     int reactivateById(@Param("workspaceId") UUID workspaceId);
 
     // ============================================================================
@@ -49,36 +48,36 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, UUID> {
     /**
      * ID로 활성화된 Workspace 조회
      */
-    @Query("SELECT w FROM Workspace w WHERE w.groupId = :workspaceId AND w.isActive = true")
+    @Query("SELECT w FROM Workspace w WHERE w.workspaceId = :workspaceId AND w.isActive = true")
     Optional<Workspace> findActiveById(@Param("workspaceId") UUID workspaceId);
 
     /**
      * 이름으로 활성화된 Workspace 검색
      */
-    @Query("SELECT w FROM Workspace w WHERE w.name LIKE %:name% AND w.isActive = true ORDER BY w.createdAt DESC")
+    @Query("SELECT w FROM Workspace w WHERE w.workspaceName LIKE %:name% AND w.isActive = true ORDER BY w.createdAt DESC")
     List<Workspace> findActiveByNameContaining(@Param("name") String name);
 
     /**
-     * 회사명으로 활성화된 Workspace 조회
+     * Owner ID로 Workspace 조회
      */
-    @Query("SELECT w FROM Workspace w WHERE w.companyName = :companyName AND w.isActive = true ORDER BY w.createdAt ASC")
-    List<Workspace> findActiveByCompanyName(@Param("companyName") String companyName);
+    @Query("SELECT w FROM Workspace w WHERE w.ownerId = :ownerId AND w.isActive = true ORDER BY w.createdAt DESC")
+    List<Workspace> findActiveByOwnerId(@Param("ownerId") UUID ownerId);
 
     /**
-     * 회사명과 이름으로 활성화된 Workspace 조회
+     * Public Workspace 조회
      */
-    @Query("SELECT w FROM Workspace w WHERE w.companyName = :companyName AND w.name = :name AND w.isActive = true")
-    Optional<Workspace> findActiveByCompanyNameAndName(@Param("companyName") String companyName, @Param("name") String name);
+    @Query("SELECT w FROM Workspace w WHERE w.isPublic = true AND w.isActive = true ORDER BY w.createdAt DESC")
+    List<Workspace> findAllPublicWorkspaces();
 
     // ============================================================================
     // 중복 체크
     // ============================================================================
 
     /**
-     * 회사명 중복 체크
+     * Workspace 이름 중복 체크 (Owner 기준)
      */
-    @Query("SELECT COUNT(w) > 0 FROM Workspace w WHERE w.companyName = :companyName AND w.isActive = true")
-    boolean existsActiveByCompanyName(@Param("companyName") String companyName);
+    @Query("SELECT COUNT(w) > 0 FROM Workspace w WHERE w.ownerId = :ownerId AND w.workspaceName = :name AND w.isActive = true")
+    boolean existsActiveByOwnerIdAndName(@Param("ownerId") UUID ownerId, @Param("name") String name);
 
     // ============================================================================
     // 통계
@@ -91,10 +90,10 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, UUID> {
     long countActiveWorkspaces();
 
     /**
-     * 회사별 Workspace 수
+     * Owner별 Workspace 수
      */
-    @Query("SELECT COUNT(w) FROM Workspace w WHERE w.companyName = :companyName AND w.isActive = true")
-    long countActiveByCompanyName(@Param("companyName") String companyName);
+    @Query("SELECT COUNT(w) FROM Workspace w WHERE w.ownerId = :ownerId AND w.isActive = true")
+    long countActiveByOwnerId(@Param("ownerId") UUID ownerId);
 
     /**
      * 비활성화된 Workspace 조회 (관리자용)

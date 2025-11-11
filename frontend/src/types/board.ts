@@ -16,7 +16,7 @@ export type Priority = 'HIGH' | 'MEDIUM' | 'LOW' | '';
 export interface Board {
   id: string;
   title: string;
-  assignee_id: string;
+  assigneeId: string;
   status: string;
   assignee: string;
   description?: string;

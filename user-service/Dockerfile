@@ -1,5 +1,5 @@
 # Build stage
-FROM gradle:8.5.0-jdk17 AS builder
+FROM gradle:8-jdk21 AS builder
 WORKDIR /home/gradle/src
 
 # 캐시 무효화를 위한 ARG 추가
@@ -19,7 +19,7 @@ RUN echo "Cache bust: ${CACHEBUST}"
 RUN ./gradlew bootJar --no-daemon
 
 # Runtime stage
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:21-jre-jammy as final
 ENV TZ=Asia/Seoul
 
 # Create a non-root user

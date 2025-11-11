@@ -10,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,7 +26,7 @@ public class UserService {
      * Google OAuth 로그인/가입
      * 기존 사용자면 반환, 없으면 새로 생성
      */
-    public User findOrCreateUserByGoogle(String email, String googleId, String name) {
+    public User findOrCreateUserByGoogle(String email, String googleId, String nickName) {
         log.info("Finding or creating user via Google OAuth: email={}, googleId={}", email, googleId);
 
         // 1. googleId로 먼저 조회 (정확한 매칭)
@@ -63,11 +62,11 @@ public class UserService {
         // UserProfile도 함께 생성
         UserProfile profile = UserProfile.builder()
                 .userId(savedUser.getUserId())
-                .name(name)
+                .nickName(nickName)
                 .build();
 
         userProfileRepository.save(profile);
-        log.debug("UserProfile created for userId={}, name={}", savedUser.getUserId(), name);
+        log.debug("UserProfile created for userId={}, nickName={}", savedUser.getUserId(), nickName);
 
         log.info("New Google user created: userId={}, email={}", savedUser.getUserId(), email);
         return savedUser;
@@ -137,15 +136,5 @@ public class UserService {
         user.restore();
         userRepository.save(user);
         log.info("User restored: userId={}", userId);
-    }
-
-    /**
-     * 여러 사용자 ID로 일괄 조회
-     */
-    public List<User> getUsersByIds(List<UUID> userIds) {
-        log.debug("Fetching users by IDs: count={}", userIds.size());
-        List<User> users = userRepository.findAllByUserIdIn(userIds);
-        log.debug("Users retrieved: count={}", users.size());
-        return users;
     }
 }

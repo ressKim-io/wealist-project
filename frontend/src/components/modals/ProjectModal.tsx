@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 /**
  * ProjectModal - 프로젝트 생성 및 편집을 위한 통합 모달
  * - project prop이 있으면 편집 모드, 없으면 생성 모드
  */
 interface ProjectData {
-  id: string;
+  project_id: string;
   name: string;
   description?: string;
   workspace_id: string;
@@ -19,14 +20,14 @@ interface ProjectData {
 }
 
 interface ProjectModalProps {
-  workspace_id: string;
+  workspaceId: string;
   project?: ProjectData; // 편집 모드일 때만 전달
   onClose: () => void;
   onProjectSaved: () => void; // 생성 또는 수정 후 호출
 }
 
 export const ProjectModal: React.FC<ProjectModalProps> = ({
-  workspace_id,
+  workspaceId,
   project,
   onClose,
   onProjectSaved,
@@ -34,6 +35,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const { theme } = useTheme();
   const isEditMode = !!project;
 
+  const { nickName } = useAuth();
   const [name, setName] = useState(project?.name || '');
   const [description, setDescription] = useState(project?.description || '');
   const [isLoading, setIsLoading] = useState(false);
@@ -42,6 +44,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   // project prop이 변경되면 폼 리셋
   useEffect(() => {
     if (project) {
+      console.log(project);
       setName(project.name);
       setDescription(project.description || '');
     } else {
@@ -69,7 +72,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         // 편집 모드
         const { updateProject } = await import('../../api/board/boardService');
         await updateProject(
-          project.id,
+          project.project_id,
           {
             name: name.trim(),
             description: description.trim() || undefined,
@@ -78,16 +81,18 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         );
         console.log('✅ 프로젝트 수정 성공:', name);
       } else {
+        console.log(nickName);
         // 생성 모드
         const { createProject } = await import('../../api/board/boardService');
         await createProject(
           {
-            workspaceId: workspace_id,
+            workspace_id: workspaceId,
             name: name.trim(),
             description: description.trim() || undefined,
           },
           accessToken,
         );
+        alert(name + '이 생성되었습니다!');
         console.log('✅ 프로젝트 생성 성공:', name);
       }
 
@@ -95,10 +100,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       onClose();
     } catch (err) {
       const error = err as Error;
-      console.error(
-        isEditMode ? '❌ 프로젝트 수정 실패:' : '❌ 프로젝트 생성 실패:',
-        error,
-      );
+      console.error(isEditMode ? '❌ 프로젝트 수정 실패:' : '❌ 프로젝트 생성 실패:', error);
       setError(
         error.message ||
           (isEditMode ? '프로젝트 수정에 실패했습니다.' : '프로젝트 생성에 실패했습니다.'),
@@ -135,7 +137,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           <div className="mb-4 p-3 bg-gray-50 rounded-lg">
             <div className="text-xs text-gray-500 mb-1">프로젝트 소유자</div>
             <div className="text-sm font-medium text-gray-700">
-              {project.ownerName} ({project.ownerEmail})
+              {project.ownerId} ({project.ownerEmail})
             </div>
           </div>
         )}
@@ -210,8 +212,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   ? '저장 중...'
                   : '생성 중...'
                 : isEditMode
-                  ? '저장'
-                  : '프로젝트 만들기'}
+                ? '저장'
+                : '프로젝트 만들기'}
             </button>
           </div>
         </form>

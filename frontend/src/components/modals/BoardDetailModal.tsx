@@ -29,18 +29,18 @@ import { WorkspaceMember, getWorkspaceMembers } from '../../api/user/userService
  */
 interface BoardDetailModalProps {
   boardId: string;
-  workspace_id: string;
+  workspaceId: string;
   onClose: () => void;
   onBoardUpdated: () => void;
   onBoardDeleted: () => void;
   onEdit: (boardData: {
     boardId: string;
-    project_id: string;
+    projectId: string;
     title: string;
     content: string;
-    stage_id: string;
+    stageId: string;
     roleId: string;
-    importance_id: string;
+    importanceId: string;
     assigneeIds: string[];
     dueDate: string;
   }) => void;
@@ -91,7 +91,7 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
         const boardData = await getBoard(boardId, accessToken);
 
         // 보드 데이터로 상태 초기화
-        setProjectId(boardData.projectId);
+        setProjectId(boardData.project_id);
         setTitle(boardData.title);
         setContent(boardData.content || '');
         setSelectedStageId(boardData.stage?.id || '');
@@ -105,13 +105,14 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
         if (boardData.assignees && Array.isArray(boardData.assignees)) {
           // assignees가 배열인 경우
           assignees = boardData.assignees
-            .map((a: any) => a?.user_id || a)
+            .map((a: any) => a?.userId || a)
             .filter((id): id is string => typeof id === 'string' && id.length > 0);
         } else if (boardData.assignee) {
           // 단일 assignee 객체인 경우
-          const userId = typeof boardData.assignee === 'string'
-            ? boardData.assignee
-            : boardData.assignee?.user_id;
+          const userId =
+            typeof boardData.assignee === 'string'
+              ? boardData.assignee
+              : boardData.assignee?.userId;
           if (userId) {
             assignees = [userId];
           }
@@ -285,11 +286,11 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
                   className="w-3 h-3 rounded-full"
                   style={{
                     backgroundColor:
-                      stages.find((s) => s.id === selectedStageId)?.color || '#6B7280',
+                      stages.find((s) => s.stage_id === selectedStageId)?.color || '#6B7280',
                   }}
                 />
                 <span className="text-sm">
-                  {stages.find((s) => s.id === selectedStageId)?.name || '알 수 없음'}
+                  {stages.find((s) => s.stage_id === selectedStageId)?.name || '알 수 없음'}
                 </span>
               </div>
             </div>
@@ -304,11 +305,12 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
                 <span
                   className="w-3 h-3 rounded-full"
                   style={{
-                    backgroundColor: roles.find((r) => r.id === selectedRoleId)?.color || '#6B7280',
+                    backgroundColor:
+                      roles.find((r) => r.role_id === selectedRoleId)?.color || '#6B7280',
                   }}
                 />
                 <span className="text-sm">
-                  {roles.find((r) => r.id === selectedRoleId)?.name || '알 수 없음'}
+                  {roles.find((r) => r.role_id === selectedRoleId)?.name || '알 수 없음'}
                 </span>
               </div>
             </div>
@@ -327,12 +329,13 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
                     className="w-3 h-3 rounded-full"
                     style={{
                       backgroundColor:
-                        importances.find((i) => i.id === selectedImportanceId)?.color ||
+                        importances.find((i) => i.importance_id === selectedImportanceId)?.color ||
                         '#6B7280',
                     }}
                   />
                   <span className="text-sm">
-                    {importances.find((i) => i.id === selectedImportanceId)?.name || '알 수 없음'}
+                    {importances.find((i) => i.importance_id === selectedImportanceId)?.name ||
+                      '알 수 없음'}
                   </span>
                 </>
               ) : (
@@ -351,13 +354,13 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
               {assigneeIds.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
                   {assigneeIds.map((userId) => {
-                    const member = workspaceMembers.find((m) => m.user_id === userId);
+                    const member = workspaceMembers.find((m) => m.userId === userId);
                     return (
                       <span
                         key={userId}
                         className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
                       >
-                        {member?.name || userId}
+                        {member?.userName || userId}
                       </span>
                     );
                   })}
@@ -435,9 +438,9 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
                 projectId,
                 title,
                 content,
-                stage_id: selectedStageId,
+                stageId: selectedStageId,
                 roleId: selectedRoleId,
-                importance_id: selectedImportanceId,
+                importanceId: selectedImportanceId,
                 assigneeIds,
                 dueDate,
               });
