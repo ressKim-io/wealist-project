@@ -532,27 +532,33 @@ export interface BoardResponse {
   projectId: string;
   title: string;
   content?: string;
-  stage?: any;
-  roles?: any[];
-  importance?: any;
   assignee?: any;
-  assignees?: any[]; // 복수 담당자 지원
   author?: any;
   dueDate?: string;
   createdAt: string;
   updatedAt: string;
+  customFields?: Record<string, any>; // 통합된 커스텀 필드
+  position?: string; // Board position in view
+
+  // 하위 호환성을 위한 레거시 필드 (deprecated)
+  stage?: any;
+  roles?: any[];
+  importance?: any;
+  assignees?: any[];
 }
 
 export interface CreateBoardRequest {
   projectId: string;
   title: string;
   content?: string;
-  stageId: string;
-  roleIds: string[];
+
+  // Legacy fields (deprecated - use custom fields instead)
+  stageId?: string;
   importanceId?: string;
-  assigneeId?: string; // 단일 담당자 (하위 호환성)
-  assigneeIds?: string[]; // 복수 담당자
-  dueDate?: string;
+  roleIds?: string[];
+
+  assigneeId?: string;
+  dueDate?: string; // ISO 8601 format
 }
 
 export interface PaginatedBoardsResponse {
