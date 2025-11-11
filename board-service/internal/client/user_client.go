@@ -37,6 +37,11 @@ type UserInfo struct {
 	IsActive bool   `json:"isActive"`
 }
 
+// UserServiceResponse represents the wrapped response from User Service.
+type UserServiceResponse struct {
+	Data interface{} `json:"data"`
+}
+
 // SimpleUser represents basic user information needed for display.
 type SimpleUser struct {
 	ID        string `json:"user_id"`
@@ -134,12 +139,47 @@ func (c *userClient) GetUser(ctx context.Context, userID string) (*UserInfo, err
 		return nil, fmt.Errorf("user service returned status %d", resp.StatusCode)
 	}
 
-	var userInfo UserInfo
-	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	// First, try to decode as wrapped response
+	var wrappedResp UserServiceResponse
+	bodyBytes, err := json.Marshal(nil)
+	if err == nil {
+		// Read the response body
+		var rawResponse map[string]interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&rawResponse); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+
+		// Check if response has "data" field (wrapped response)
+		if data, ok := rawResponse["data"]; ok {
+			// Convert data to UserInfo
+			dataBytes, err := json.Marshal(data)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal data: %w", err)
+			}
+
+			var userInfo UserInfo
+			if err := json.Unmarshal(dataBytes, &userInfo); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal user info: %w", err)
+			}
+
+			return &userInfo, nil
+		}
+
+		// If no "data" field, treat as direct UserInfo response
+		bodyBytes, err = json.Marshal(rawResponse)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal response: %w", err)
+		}
+
+		var userInfo UserInfo
+		if err := json.Unmarshal(bodyBytes, &userInfo); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal user info: %w", err)
+		}
+
+		return &userInfo, nil
 	}
 
-	return &userInfo, nil
+	return nil, fmt.Errorf("failed to process response")
 }
 
 // GetUsersBatch retrieves multiple users by IDs
@@ -171,9 +211,36 @@ func (c *userClient) GetUsersBatch(ctx context.Context, userIDs []string) ([]Use
 		return nil, fmt.Errorf("user service returned status %d", resp.StatusCode)
 	}
 
-	var users []UserInfo
-	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
+	// Read the response body
+	var rawResponse map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&rawResponse); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	// Check if response has "data" field (wrapped response)
+	var users []UserInfo
+	if data, ok := rawResponse["data"]; ok {
+		// Convert data to []UserInfo
+		dataBytes, err := json.Marshal(data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal data: %w", err)
+		}
+
+		if err := json.Unmarshal(dataBytes, &users); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal users: %w", err)
+		}
+
+		return users, nil
+	}
+
+	// If no "data" field, treat as direct []UserInfo response
+	bodyBytes, err := json.Marshal(rawResponse)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	if err := json.Unmarshal(bodyBytes, &users); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal users: %w", err)
 	}
 
 	return users, nil
