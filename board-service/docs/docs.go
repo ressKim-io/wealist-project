@@ -45,38 +45,38 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "project_id",
+                        "name": "projectId",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Filter by Stage ID",
-                        "name": "stage_id",
+                        "name": "stageId",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "Filter by Role ID",
-                        "name": "role_id",
+                        "name": "roleId",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "Filter by Importance ID",
-                        "name": "importance_id",
+                        "name": "importanceId",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "Filter by Assignee ID",
-                        "name": "assignee_id",
+                        "name": "assigneeId",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "Filter by Author ID",
-                        "name": "author_id",
+                        "name": "authorId",
                         "in": "query"
                     },
                     {
@@ -193,7 +193,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/boards/{board_id}": {
+        "/api/boards/{boardId}": {
             "get": {
                 "security": [
                     {
@@ -215,7 +215,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Board ID",
-                        "name": "board_id",
+                        "name": "boardId",
                         "in": "path",
                         "required": true
                     }
@@ -274,7 +274,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Board ID",
-                        "name": "board_id",
+                        "name": "boardId",
                         "in": "path",
                         "required": true
                     },
@@ -348,7 +348,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Board ID",
-                        "name": "board_id",
+                        "name": "boardId",
                         "in": "path",
                         "required": true
                     }
@@ -375,124 +375,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/custom-fields/importance": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Create a new custom importance for a project (ADMIN+ only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "custom-fields"
-                ],
-                "summary": "Create custom importance",
-                "parameters": [
-                    {
-                        "description": "Importance details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.CreateCustomImportanceRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.CustomImportanceResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/custom-fields/importance/{importance_id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get a specific custom importance by ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "custom-fields"
-                ],
-                "summary": "Get custom importance",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Importance ID",
-                        "name": "importance_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.CustomImportanceResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            },
+        "/api/boards/{boardId}/move": {
             "put": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update a custom importance (ADMIN+ only, system defaults cannot be updated)",
+                "description": "Move a board to a different column/group in a view (integrated API: field value change + order update in single transaction)",
                 "consumes": [
                     "application/json"
                 ],
@@ -500,24 +390,24 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "custom-fields"
+                    "boards"
                 ],
-                "summary": "Update custom importance",
+                "summary": "Move board to different column",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Importance ID",
-                        "name": "importance_id",
+                        "description": "Board ID",
+                        "name": "boardId",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Importance updates",
+                        "description": "Move board request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.UpdateCustomImportanceRequest"
+                            "$ref": "#/definitions/dto.MoveBoardRequest"
                         }
                     }
                 ],
@@ -533,570 +423,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.CustomImportanceResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Delete a custom importance (ADMIN+ only, system defaults cannot be deleted)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "custom-fields"
-                ],
-                "summary": "Delete custom importance",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Importance ID",
-                        "name": "importance_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.SuccessResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/custom-fields/projects/{project_id}/importance": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get all custom importances for a project",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "custom-fields"
-                ],
-                "summary": "Get custom importances",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Project ID",
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.CustomImportanceResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/custom-fields/projects/{project_id}/importance/order": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Update the display order of custom importances (ADMIN+ only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "custom-fields"
-                ],
-                "summary": "Update importance display order",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Project ID",
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Importance orders",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.UpdateCustomImportanceOrderRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/custom-fields/projects/{project_id}/roles": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get all custom roles for a project",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "custom-fields"
-                ],
-                "summary": "Get custom roles",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Project ID",
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.CustomRoleResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/custom-fields/projects/{project_id}/roles/order": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Update the display order of custom roles (ADMIN+ only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "custom-fields"
-                ],
-                "summary": "Update role display order",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Project ID",
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Role orders",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.UpdateCustomRoleOrderRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/custom-fields/projects/{project_id}/stages": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get all custom stages for a project",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "custom-fields"
-                ],
-                "summary": "Get custom stages",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Project ID",
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.CustomStageResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/custom-fields/projects/{project_id}/stages/order": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Update the display order of custom stages (ADMIN+ only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "custom-fields"
-                ],
-                "summary": "Update stage display order",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Project ID",
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Stage orders",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.UpdateCustomStageOrderRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/custom-fields/roles": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Create a new custom role for a project (ADMIN+ only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "custom-fields"
-                ],
-                "summary": "Create custom role",
-                "parameters": [
-                    {
-                        "description": "Role details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.CreateCustomRoleRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.CustomRoleResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/custom-fields/roles/{role_id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get a specific custom role by ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "custom-fields"
-                ],
-                "summary": "Get custom role",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Role ID",
-                        "name": "role_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.CustomRoleResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Update a custom role (ADMIN+ only, system defaults cannot be updated)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "custom-fields"
-                ],
-                "summary": "Update custom role",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Role ID",
-                        "name": "role_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Role updates",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.UpdateCustomRoleRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.CustomRoleResponse"
+                                            "$ref": "#/definitions/dto.MoveBoardResponse"
                                         }
                                     }
                                 }
@@ -1117,280 +444,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Delete a custom role (ADMIN+ only, system defaults cannot be deleted)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "custom-fields"
-                ],
-                "summary": "Delete custom role",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Role ID",
-                        "name": "role_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.SuccessResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/custom-fields/stages": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Create a new custom stage for a project (ADMIN+ only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "custom-fields"
-                ],
-                "summary": "Create custom stage",
-                "parameters": [
-                    {
-                        "description": "Stage details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.CreateCustomStageRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.CustomStageResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/custom-fields/stages/{stage_id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get a specific custom stage by ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "custom-fields"
-                ],
-                "summary": "Get custom stage",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Stage ID",
-                        "name": "stage_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.CustomStageResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Update a custom stage (ADMIN+ only, system defaults cannot be updated)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "custom-fields"
-                ],
-                "summary": "Update custom stage",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Stage ID",
-                        "name": "stage_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Stage updates",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.UpdateCustomStageRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.CustomStageResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Delete a custom stage (ADMIN+ only, system defaults cannot be deleted)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "custom-fields"
-                ],
-                "summary": "Delete custom stage",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Stage ID",
-                        "name": "stage_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.SuccessResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -1420,7 +473,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Workspace ID",
-                        "name": "workspace_id",
+                        "name": "workspaceId",
                         "in": "query",
                         "required": true
                     }
@@ -1610,7 +663,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/join-requests/{join_request_id}": {
+        "/api/projects/join-requests/{joinRequestId}": {
             "put": {
                 "security": [
                     {
@@ -1632,7 +685,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Join Request ID",
-                        "name": "join_request_id",
+                        "name": "joinRequestId",
                         "in": "path",
                         "required": true
                     },
@@ -1708,7 +761,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Workspace ID",
-                        "name": "workspace_id",
+                        "name": "workspaceId",
                         "in": "query",
                         "required": true
                     },
@@ -1766,7 +819,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{project_id}": {
+        "/api/projects/{projectId}": {
             "get": {
                 "security": [
                     {
@@ -1788,7 +841,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "project_id",
+                        "name": "projectId",
                         "in": "path",
                         "required": true
                     }
@@ -1847,7 +900,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "project_id",
+                        "name": "projectId",
                         "in": "path",
                         "required": true
                     },
@@ -1921,7 +974,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "project_id",
+                        "name": "projectId",
                         "in": "path",
                         "required": true
                     }
@@ -1965,7 +1018,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{project_id}/join-requests": {
+        "/api/projects/{projectId}/join-requests": {
             "get": {
                 "security": [
                     {
@@ -1987,7 +1040,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "project_id",
+                        "name": "projectId",
                         "in": "path",
                         "required": true
                     },
@@ -2035,7 +1088,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{project_id}/members": {
+        "/api/projects/{projectId}/members": {
             "get": {
                 "security": [
                     {
@@ -2057,7 +1110,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "project_id",
+                        "name": "projectId",
                         "in": "path",
                         "required": true
                     }
@@ -2099,7 +1152,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{project_id}/members/{member_id}": {
+        "/api/projects/{projectId}/members/{memberId}": {
             "delete": {
                 "security": [
                     {
@@ -2121,14 +1174,14 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "project_id",
+                        "name": "projectId",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Member ID",
-                        "name": "member_id",
+                        "name": "memberId",
                         "in": "path",
                         "required": true
                     }
@@ -2178,7 +1231,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{project_id}/members/{member_id}/role": {
+        "/api/projects/{projectId}/members/{memberId}/role": {
             "put": {
                 "security": [
                     {
@@ -2200,14 +1253,14 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Project ID",
-                        "name": "project_id",
+                        "name": "projectId",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
                         "description": "Member ID",
-                        "name": "member_id",
+                        "name": "memberId",
                         "in": "path",
                         "required": true
                     },
@@ -2261,14 +1314,134 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{project_id}/orders/role-board": {
+        "/board-field-values": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Set a field value for a board",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Field Values"
+                ],
+                "summary": "Set field value",
+                "parameters": [
+                    {
+                        "description": "Field value request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SetFieldValueRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/board-field-values/multi-select": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Set ordered multi-select values for a board field",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Field Values"
+                ],
+                "summary": "Set multi-select field value",
+                "parameters": [
+                    {
+                        "description": "Multi-select value request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SetMultiSelectValueRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/boards/{boardId}/field-values": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get the board organized by roles with user-specific column and board orders",
+                "description": "Get all field values for a board",
                 "consumes": [
                     "application/json"
                 ],
@@ -2276,14 +1449,14 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "user-orders"
+                    "Field Values"
                 ],
-                "summary": "Get role-based board view",
+                "summary": "Get board field values",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Project ID",
-                        "name": "project_id",
+                        "description": "Board ID",
+                        "name": "boardId",
                         "in": "path",
                         "required": true
                     }
@@ -2300,7 +1473,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.RoleBasedBoardView"
+                                            "$ref": "#/definitions/dto.BoardFieldValuesResponse"
                                         }
                                     }
                                 }
@@ -2313,8 +1486,26 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -2322,14 +1513,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{project_id}/orders/role-boards/{role_id}": {
-            "put": {
+        "/boards/{boardId}/field-values/{fieldId}": {
+            "delete": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update the display order of boards within a specific role column (drag-and-drop)",
+                "description": "Delete a field value for a board",
                 "consumes": [
                     "application/json"
                 ],
@@ -2337,55 +1528,37 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "user-orders"
+                    "Field Values"
                 ],
-                "summary": "Update board order in role column",
+                "summary": "Delete field value",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Project ID",
-                        "name": "project_id",
+                        "description": "Board ID",
+                        "name": "boardId",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "Role ID",
-                        "name": "role_id",
+                        "description": "Field ID",
+                        "name": "fieldId",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "description": "Order update details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.UpdateOrderRequest"
-                        }
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
+                    "204": {
+                        "description": "No Content"
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -2395,18 +1568,24 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
                     }
                 }
             }
         },
-        "/api/projects/{project_id}/orders/role-columns": {
-            "put": {
+        "/field-options": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update the display order of role columns (drag-and-drop)",
+                "description": "Create a new option for a select field",
                 "consumes": [
                     "application/json"
                 ],
@@ -2414,24 +1593,161 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "user-orders"
+                    "Field Options"
                 ],
-                "summary": "Update role column order",
+                "summary": "Create field option",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Project ID",
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Order update details",
+                        "description": "Option creation request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.UpdateOrderRequest"
+                            "$ref": "#/definitions/dto.CreateOptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.OptionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/field-options/{optionId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a field option",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Field Options"
+                ],
+                "summary": "Delete field option",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Option ID",
+                        "name": "optionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update a field option",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Field Options"
+                ],
+                "summary": "Update field option",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Option ID",
+                        "name": "optionId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Option update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateOptionRequest"
                         }
                     }
                 ],
@@ -2447,7 +1763,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "string"
+                                            "$ref": "#/definitions/dto.OptionResponse"
                                         }
                                     }
                                 }
@@ -2460,8 +1776,26 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -2469,14 +1803,89 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{project_id}/orders/stage-board": {
+        "/fields": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new custom field for a project",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Fields"
+                ],
+                "summary": "Create a custom field",
+                "parameters": [
+                    {
+                        "description": "Field creation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateFieldRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.FieldResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/fields/{fieldId}": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get the board organized by stages with user-specific column and board orders",
+                "description": "Get a custom field by its ID",
                 "consumes": [
                     "application/json"
                 ],
@@ -2484,14 +1893,14 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "user-orders"
+                    "Fields"
                 ],
-                "summary": "Get stage-based board view",
+                "summary": "Get field by ID",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Project ID",
-                        "name": "project_id",
+                        "description": "Field ID",
+                        "name": "fieldId",
                         "in": "path",
                         "required": true
                     }
@@ -2508,7 +1917,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.StageBasedBoardView"
+                                            "$ref": "#/definitions/dto.FieldResponse"
                                         }
                                     }
                                 }
@@ -2521,8 +1930,174 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a custom field",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Fields"
+                ],
+                "summary": "Delete field",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Field ID",
+                        "name": "fieldId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update a custom field",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Fields"
+                ],
+                "summary": "Update field",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Field ID",
+                        "name": "fieldId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Field update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateFieldRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.FieldResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -2530,14 +2105,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{project_id}/orders/stage-boards/{stage_id}": {
-            "put": {
+        "/fields/{fieldId}/options": {
+            "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update the display order of boards within a specific stage column (drag-and-drop)",
+                "description": "Get all options for a select field",
                 "consumes": [
                     "application/json"
                 ],
@@ -2545,32 +2120,16 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "user-orders"
+                    "Field Options"
                 ],
-                "summary": "Update board order in stage column",
+                "summary": "Get options by field",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Project ID",
-                        "name": "project_id",
+                        "description": "Field ID",
+                        "name": "fieldId",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Stage ID",
-                        "name": "stage_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Order update details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.UpdateOrderRequest"
-                        }
                     }
                 ],
                 "responses": {
@@ -2585,7 +2144,10 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "string"
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.OptionResponse"
+                                            }
                                         }
                                     }
                                 }
@@ -2598,8 +2160,20 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -2607,14 +2181,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/projects/{project_id}/orders/stage-columns": {
+        "/fields/{fieldId}/options/order": {
             "put": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update the display order of stage columns (drag-and-drop)",
+                "description": "Update display order of options for a field",
                 "consumes": [
                     "application/json"
                 ],
@@ -2622,24 +2196,584 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "user-orders"
+                    "Field Options"
                 ],
-                "summary": "Update stage column order",
+                "summary": "Update option order",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Project ID",
-                        "name": "project_id",
+                        "description": "Field ID",
+                        "name": "fieldId",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Order update details",
+                        "description": "Option order update request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.UpdateOrderRequest"
+                            "$ref": "#/definitions/dto.UpdateOptionOrderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{projectId}/fields": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all custom fields for a project",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Fields"
+                ],
+                "summary": "Get fields by project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "projectId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.FieldResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{projectId}/fields/order": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update display order of fields in a project",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Fields"
+                ],
+                "summary": "Update field order",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "projectId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Field order update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateFieldOrderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{projectId}/views": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all saved views for a project",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Views"
+                ],
+                "summary": "Get views by project",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "projectId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.ViewResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/view-board-orders": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update manual board ordering within a view",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Views"
+                ],
+                "summary": "Update board order in view",
+                "parameters": [
+                    {
+                        "description": "Board order update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateBoardOrderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/views": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new saved view with filters, sorting, and grouping",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Views"
+                ],
+                "summary": "Create a saved view",
+                "parameters": [
+                    {
+                        "description": "View creation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateViewRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ViewResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/views/{viewId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a saved view by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Views"
+                ],
+                "summary": "Get view by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "View ID",
+                        "name": "viewId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ViewResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a saved view",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Views"
+                ],
+                "summary": "Delete view",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "View ID",
+                        "name": "viewId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update a saved view",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Views"
+                ],
+                "summary": "Update view",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "View ID",
+                        "name": "viewId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "View update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateViewRequest"
                         }
                     }
                 ],
@@ -2655,7 +2789,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "string"
+                                            "$ref": "#/definitions/dto.ViewResponse"
                                         }
                                     }
                                 }
@@ -2668,8 +2802,119 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/views/{viewId}/boards": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Apply a saved view to get filtered/sorted/grouped boards",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Views"
+                ],
+                "summary": "Apply view",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "View ID",
+                        "name": "viewId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -2679,16 +2924,31 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "dto.BoardOrderResponse": {
+        "dto.BoardFieldValuesResponse": {
             "type": "object",
             "properties": {
-                "board_id": {
+                "boardId": {
                     "type": "string"
                 },
-                "displayOrder": {
-                    "type": "integer"
+                "fields": {
+                    "description": "map[field_id]value",
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "dto.BoardOrder": {
+            "type": "object",
+            "required": [
+                "boardId",
+                "position"
+            ],
+            "properties": {
+                "boardId": {
+                    "type": "string"
                 },
-                "title": {
+                "position": {
+                    "description": "Fractional index position",
                     "type": "string"
                 }
             }
@@ -2702,7 +2962,7 @@ const docTemplate = `{
                 "author": {
                     "$ref": "#/definitions/dto.UserInfo"
                 },
-                "board_id": {
+                "boardId": {
                     "type": "string"
                 },
                 "content": {
@@ -2711,23 +2971,20 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
+                "customFields": {
+                    "description": "Parsed custom_fields_cache",
+                    "type": "object",
+                    "additionalProperties": true
+                },
                 "dueDate": {
                     "type": "string"
                 },
-                "importance": {
-                    "$ref": "#/definitions/dto.CustomImportanceResponse"
-                },
-                "project_id": {
+                "position": {
+                    "description": "Board position in view",
                     "type": "string"
                 },
-                "roles": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/dto.CustomRoleResponse"
-                    }
-                },
-                "stage": {
-                    "$ref": "#/definitions/dto.CustomStageResponse"
+                "projectId": {
+                    "type": "string"
                 },
                 "title": {
                     "type": "string"
@@ -2740,13 +2997,11 @@ const docTemplate = `{
         "dto.CreateBoardRequest": {
             "type": "object",
             "required": [
-                "project_id",
-                "role_ids",
-                "stage_id",
+                "projectId",
                 "title"
             ],
             "properties": {
-                "assignee_id": {
+                "assigneeId": {
                     "type": "string"
                 },
                 "content": {
@@ -2757,20 +3012,20 @@ const docTemplate = `{
                     "description": "ISO 8601 format",
                     "type": "string"
                 },
-                "importance_id": {
+                "importanceId": {
                     "type": "string"
                 },
-                "project_id": {
+                "projectId": {
                     "type": "string"
                 },
-                "role_ids": {
+                "roleIds": {
                     "type": "array",
-                    "minItems": 1,
                     "items": {
                         "type": "string"
                     }
                 },
-                "stage_id": {
+                "stageId": {
+                    "description": "Legacy fields (deprecated - use custom fields instead)",
                     "type": "string"
                 },
                 "title": {
@@ -2780,74 +3035,83 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.CreateCustomImportanceRequest": {
+        "dto.CreateFieldRequest": {
             "type": "object",
             "required": [
+                "fieldType",
                 "name",
-                "project_id"
+                "projectId"
             ],
             "properties": {
-                "color": {
-                    "type": "string"
+                "config": {
+                    "description": "Type-specific configuration",
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                },
+                "fieldType": {
+                    "type": "string",
+                    "enum": [
+                        "text",
+                        "number",
+                        "single_select",
+                        "multi_select",
+                        "date",
+                        "datetime",
+                        "single_user",
+                        "multi_user",
+                        "checkbox",
+                        "url"
+                    ]
+                },
+                "isRequired": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string",
-                    "maxLength": 50,
+                    "maxLength": 255,
                     "minLength": 1
                 },
-                "project_id": {
+                "projectId": {
                     "type": "string"
                 }
             }
         },
-        "dto.CreateCustomRoleRequest": {
+        "dto.CreateOptionRequest": {
             "type": "object",
             "required": [
-                "name",
-                "project_id"
+                "fieldId",
+                "label"
             ],
             "properties": {
                 "color": {
                     "description": "#RRGGBB",
                     "type": "string"
                 },
-                "name": {
+                "description": {
                     "type": "string",
-                    "maxLength": 50,
-                    "minLength": 1
+                    "maxLength": 500
                 },
-                "project_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.CreateCustomStageRequest": {
-            "type": "object",
-            "required": [
-                "name",
-                "project_id"
-            ],
-            "properties": {
-                "color": {
+                "fieldId": {
                     "type": "string"
                 },
-                "name": {
+                "label": {
                     "type": "string",
-                    "maxLength": 50,
+                    "maxLength": 255,
                     "minLength": 1
-                },
-                "project_id": {
-                    "type": "string"
                 }
             }
         },
         "dto.CreateProjectJoinRequestRequest": {
             "type": "object",
             "required": [
-                "project_id"
+                "projectId"
             ],
             "properties": {
-                "project_id": {
+                "projectId": {
                     "type": "string"
                 }
             }
@@ -2856,7 +3120,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "name",
-                "workspace_id"
+                "workspaceId"
             ],
             "properties": {
                 "description": {
@@ -2868,95 +3132,52 @@ const docTemplate = `{
                     "maxLength": 100,
                     "minLength": 2
                 },
-                "workspace_id": {
+                "workspaceId": {
                     "type": "string"
                 }
             }
         },
-        "dto.CustomImportanceResponse": {
+        "dto.CreateViewRequest": {
             "type": "object",
+            "required": [
+                "name",
+                "projectId"
+            ],
             "properties": {
-                "color": {
+                "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                },
+                "filters": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "groupByFieldId": {
                     "type": "string"
                 },
-                "createdAt": {
-                    "type": "string"
+                "isDefault": {
+                    "type": "boolean"
                 },
-                "displayOrder": {
-                    "type": "integer"
-                },
-                "importance_id": {
-                    "type": "string"
-                },
-                "isSystemDefault": {
+                "isShared": {
                     "type": "boolean"
                 },
                 "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                },
+                "projectId": {
                     "type": "string"
                 },
-                "project_id": {
+                "sortBy": {
                     "type": "string"
                 },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.CustomRoleResponse": {
-            "type": "object",
-            "properties": {
-                "color": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "displayOrder": {
-                    "type": "integer"
-                },
-                "isSystemDefault": {
-                    "type": "boolean"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "project_id": {
-                    "type": "string"
-                },
-                "role_id": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.CustomStageResponse": {
-            "type": "object",
-            "properties": {
-                "color": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "displayOrder": {
-                    "type": "integer"
-                },
-                "isSystemDefault": {
-                    "type": "boolean"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "project_id": {
-                    "type": "string"
-                },
-                "stage_id": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
+                "sortDirection": {
+                    "type": "string",
+                    "enum": [
+                        "asc",
+                        "desc"
+                    ]
                 }
             }
         },
@@ -2974,22 +3195,174 @@ const docTemplate = `{
                         }
                     }
                 },
-                "request_id": {
+                "requestId": {
                     "type": "string"
                 }
             }
         },
-        "dto.ImportanceOrder": {
+        "dto.FieldOrder": {
             "type": "object",
             "required": [
-                "importance_id"
+                "fieldId"
             ],
             "properties": {
                 "displayOrder": {
                     "type": "integer",
                     "minimum": 0
                 },
-                "importance_id": {
+                "fieldId": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.FieldResponse": {
+            "type": "object",
+            "properties": {
+                "canEditRoles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "config": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "displayOrder": {
+                    "type": "integer"
+                },
+                "fieldId": {
+                    "type": "string"
+                },
+                "fieldType": {
+                    "type": "string"
+                },
+                "isRequired": {
+                    "type": "boolean"
+                },
+                "isSystemDefault": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "projectId": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.MoveBoardRequest": {
+            "type": "object",
+            "required": [
+                "groupByFieldId",
+                "newFieldValue",
+                "viewId"
+            ],
+            "properties": {
+                "afterPosition": {
+                    "description": "Position of board after insertion point (optional)",
+                    "type": "string"
+                },
+                "beforePosition": {
+                    "description": "Position of board before insertion point (optional)",
+                    "type": "string"
+                },
+                "groupByFieldId": {
+                    "description": "Which field is used for grouping",
+                    "type": "string"
+                },
+                "newFieldValue": {
+                    "description": "New option_id (destination column)",
+                    "type": "string"
+                },
+                "viewId": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.MoveBoardResponse": {
+            "type": "object",
+            "properties": {
+                "boardId": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "newFieldValue": {
+                    "type": "string"
+                },
+                "newPosition": {
+                    "description": "New fractional index position",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.OptionOrder": {
+            "type": "object",
+            "required": [
+                "optionId"
+            ],
+            "properties": {
+                "displayOrder": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "optionId": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.OptionResponse": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "displayOrder": {
+                    "type": "integer"
+                },
+                "fieldId": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "optionId": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.OrderedValue": {
+            "type": "object",
+            "required": [
+                "valueId"
+            ],
+            "properties": {
+                "displayOrder": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "valueId": {
+                    "description": "option_id or user_id",
                     "type": "string"
                 }
             }
@@ -3037,10 +3410,10 @@ const docTemplate = `{
         "dto.ProjectJoinRequestResponse": {
             "type": "object",
             "properties": {
-                "project_id": {
+                "projectId": {
                     "type": "string"
                 },
-                "request_id": {
+                "requestId": {
                     "type": "string"
                 },
                 "requestedAt": {
@@ -3055,10 +3428,10 @@ const docTemplate = `{
                 "userEmail": {
                     "type": "string"
                 },
-                "userName": {
+                "userId": {
                     "type": "string"
                 },
-                "user_id": {
+                "userName": {
                     "type": "string"
                 }
             }
@@ -3069,10 +3442,10 @@ const docTemplate = `{
                 "joinedAt": {
                     "type": "string"
                 },
-                "member_id": {
+                "memberId": {
                     "type": "string"
                 },
-                "project_id": {
+                "projectId": {
                     "type": "string"
                 },
                 "roleName": {
@@ -3081,10 +3454,10 @@ const docTemplate = `{
                 "userEmail": {
                     "type": "string"
                 },
-                "userName": {
+                "userId": {
                     "type": "string"
                 },
-                "user_id": {
+                "userName": {
                     "type": "string"
                 }
             }
@@ -3104,132 +3477,63 @@ const docTemplate = `{
                 "ownerEmail": {
                     "type": "string"
                 },
+                "ownerId": {
+                    "type": "string"
+                },
                 "ownerName": {
                     "type": "string"
                 },
-                "owner_id": {
-                    "type": "string"
-                },
-                "project_id": {
+                "projectId": {
                     "type": "string"
                 },
                 "updatedAt": {
                     "type": "string"
                 },
-                "workspace_id": {
+                "workspaceId": {
                     "type": "string"
                 }
             }
         },
-        "dto.RoleBasedBoardView": {
-            "type": "object",
-            "properties": {
-                "columns": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/dto.RoleColumnView"
-                    }
-                },
-                "project_id": {
-                    "type": "string"
-                },
-                "viewType": {
-                    "description": "\"role\"",
-                    "type": "string"
-                }
-            }
-        },
-        "dto.RoleColumnView": {
-            "type": "object",
-            "properties": {
-                "boards": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/dto.BoardOrderResponse"
-                    }
-                },
-                "custom_role_id": {
-                    "type": "string"
-                },
-                "displayOrder": {
-                    "type": "integer"
-                },
-                "roleColor": {
-                    "type": "string"
-                },
-                "roleName": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.RoleOrder": {
+        "dto.SetFieldValueRequest": {
             "type": "object",
             "required": [
-                "role_id"
+                "boardId",
+                "fieldId"
             ],
             "properties": {
-                "displayOrder": {
-                    "type": "integer",
-                    "minimum": 0
-                },
-                "role_id": {
+                "boardId": {
                     "type": "string"
+                },
+                "fieldId": {
+                    "type": "string"
+                },
+                "value": {
+                    "description": "Type depends on field type"
+                },
+                "values": {
+                    "description": "For multi_select, multi_user (array of IDs or ordered map)"
                 }
             }
         },
-        "dto.StageBasedBoardView": {
-            "type": "object",
-            "properties": {
-                "columns": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/dto.StageColumnView"
-                    }
-                },
-                "project_id": {
-                    "type": "string"
-                },
-                "viewType": {
-                    "description": "\"stage\"",
-                    "type": "string"
-                }
-            }
-        },
-        "dto.StageColumnView": {
-            "type": "object",
-            "properties": {
-                "boards": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/dto.BoardOrderResponse"
-                    }
-                },
-                "custom_stage_id": {
-                    "type": "string"
-                },
-                "displayOrder": {
-                    "type": "integer"
-                },
-                "stageColor": {
-                    "type": "string"
-                },
-                "stageName": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.StageOrder": {
+        "dto.SetMultiSelectValueRequest": {
             "type": "object",
             "required": [
-                "stage_id"
+                "boardId",
+                "fieldId",
+                "values"
             ],
             "properties": {
-                "displayOrder": {
-                    "type": "integer",
-                    "minimum": 0
-                },
-                "stage_id": {
+                "boardId": {
                     "type": "string"
+                },
+                "fieldId": {
+                    "type": "string"
+                },
+                "values": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.OrderedValue"
+                    }
                 }
             }
         },
@@ -3237,7 +3541,25 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "data": {},
-                "request_id": {
+                "requestId": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UpdateBoardOrderRequest": {
+            "type": "object",
+            "required": [
+                "boardOrders",
+                "viewId"
+            ],
+            "properties": {
+                "boardOrders": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.BoardOrder"
+                    }
+                },
+                "viewId": {
                     "type": "string"
                 }
             }
@@ -3245,7 +3567,7 @@ const docTemplate = `{
         "dto.UpdateBoardRequest": {
             "type": "object",
             "properties": {
-                "assignee_id": {
+                "assigneeId": {
                     "type": "string"
                 },
                 "content": {
@@ -3255,16 +3577,17 @@ const docTemplate = `{
                 "dueDate": {
                     "type": "string"
                 },
-                "importance_id": {
+                "importanceId": {
                     "type": "string"
                 },
-                "role_ids": {
+                "roleIds": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
-                "stage_id": {
+                "stageId": {
+                    "description": "Legacy fields (deprecated - use custom fields instead)",
                     "type": "string"
                 },
                 "title": {
@@ -3274,103 +3597,74 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.UpdateCustomImportanceOrderRequest": {
+        "dto.UpdateFieldOrderRequest": {
             "type": "object",
             "required": [
-                "importanceOrders"
+                "fieldOrders"
             ],
             "properties": {
-                "importanceOrders": {
+                "fieldOrders": {
                     "type": "array",
                     "minItems": 1,
                     "items": {
-                        "$ref": "#/definitions/dto.ImportanceOrder"
+                        "$ref": "#/definitions/dto.FieldOrder"
                     }
                 }
             }
         },
-        "dto.UpdateCustomImportanceRequest": {
+        "dto.UpdateFieldRequest": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                },
+                "displayOrder": {
+                    "type": "integer"
+                },
+                "isRequired": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                }
+            }
+        },
+        "dto.UpdateOptionOrderRequest": {
+            "type": "object",
+            "required": [
+                "optionOrders"
+            ],
+            "properties": {
+                "optionOrders": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/dto.OptionOrder"
+                    }
+                }
+            }
+        },
+        "dto.UpdateOptionRequest": {
             "type": "object",
             "properties": {
                 "color": {
                     "type": "string"
                 },
-                "name": {
+                "description": {
                     "type": "string",
-                    "maxLength": 50,
-                    "minLength": 1
-                }
-            }
-        },
-        "dto.UpdateCustomRoleOrderRequest": {
-            "type": "object",
-            "required": [
-                "roleOrders"
-            ],
-            "properties": {
-                "roleOrders": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                        "$ref": "#/definitions/dto.RoleOrder"
-                    }
-                }
-            }
-        },
-        "dto.UpdateCustomRoleRequest": {
-            "type": "object",
-            "properties": {
-                "color": {
-                    "type": "string"
+                    "maxLength": 500
                 },
-                "name": {
+                "label": {
                     "type": "string",
-                    "maxLength": 50,
+                    "maxLength": 255,
                     "minLength": 1
-                }
-            }
-        },
-        "dto.UpdateCustomStageOrderRequest": {
-            "type": "object",
-            "required": [
-                "stageOrders"
-            ],
-            "properties": {
-                "stageOrders": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                        "$ref": "#/definitions/dto.StageOrder"
-                    }
-                }
-            }
-        },
-        "dto.UpdateCustomStageRequest": {
-            "type": "object",
-            "properties": {
-                "color": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 50,
-                    "minLength": 1
-                }
-            }
-        },
-        "dto.UpdateOrderRequest": {
-            "type": "object",
-            "required": [
-                "itemIds"
-            ],
-            "properties": {
-                "itemIds": {
-                    "description": "다른 핸들러와 일치하도록 수정",
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                        "type": "string"
-                    }
                 }
             }
         },
@@ -3419,6 +3713,43 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.UpdateViewRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                },
+                "filters": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "groupByFieldId": {
+                    "type": "string"
+                },
+                "isDefault": {
+                    "type": "boolean"
+                },
+                "isShared": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                },
+                "sortBy": {
+                    "type": "string"
+                },
+                "sortDirection": {
+                    "type": "string",
+                    "enum": [
+                        "asc",
+                        "desc"
+                    ]
+                }
+            }
+        },
         "dto.UserInfo": {
             "type": "object",
             "properties": {
@@ -3431,7 +3762,52 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
-                "user_id": {
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ViewResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "createdBy": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "filters": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "groupByFieldId": {
+                    "type": "string"
+                },
+                "isDefault": {
+                    "type": "boolean"
+                },
+                "isShared": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "projectId": {
+                    "type": "string"
+                },
+                "sortBy": {
+                    "type": "string"
+                },
+                "sortDirection": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "viewId": {
                     "type": "string"
                 }
             }

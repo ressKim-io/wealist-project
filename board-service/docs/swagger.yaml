@@ -1,13 +1,24 @@
 basePath: /api
 definitions:
-  dto.BoardOrderResponse:
+  dto.BoardFieldValuesResponse:
     properties:
-      board_id:
+      boardId:
         type: string
-      displayOrder:
-        type: integer
-      title:
+      fields:
+        additionalProperties: true
+        description: map[field_id]value
+        type: object
+    type: object
+  dto.BoardOrder:
+    properties:
+      boardId:
         type: string
+      position:
+        description: Fractional index position
+        type: string
+    required:
+    - boardId
+    - position
     type: object
   dto.BoardResponse:
     properties:
@@ -15,24 +26,23 @@ definitions:
         $ref: '#/definitions/dto.UserInfo'
       author:
         $ref: '#/definitions/dto.UserInfo'
-      board_id:
+      boardId:
         type: string
       content:
         type: string
       createdAt:
         type: string
+      customFields:
+        additionalProperties: true
+        description: Parsed custom_fields_cache
+        type: object
       dueDate:
         type: string
-      importance:
-        $ref: '#/definitions/dto.CustomImportanceResponse'
-      project_id:
+      position:
+        description: Board position in view
         type: string
-      roles:
-        items:
-          $ref: '#/definitions/dto.CustomRoleResponse'
-        type: array
-      stage:
-        $ref: '#/definitions/dto.CustomStageResponse'
+      projectId:
+        type: string
       title:
         type: string
       updatedAt:
@@ -40,7 +50,7 @@ definitions:
     type: object
   dto.CreateBoardRequest:
     properties:
-      assignee_id:
+      assigneeId:
         type: string
       content:
         maxLength: 5000
@@ -48,76 +58,84 @@ definitions:
       dueDate:
         description: ISO 8601 format
         type: string
-      importance_id:
+      importanceId:
         type: string
-      project_id:
+      projectId:
         type: string
-      role_ids:
+      roleIds:
         items:
           type: string
-        minItems: 1
         type: array
-      stage_id:
+      stageId:
+        description: Legacy fields (deprecated - use custom fields instead)
         type: string
       title:
         maxLength: 200
         minLength: 1
         type: string
     required:
-    - project_id
-    - role_ids
-    - stage_id
+    - projectId
     - title
     type: object
-  dto.CreateCustomImportanceRequest:
+  dto.CreateFieldRequest:
     properties:
-      color:
+      config:
+        additionalProperties: true
+        description: Type-specific configuration
+        type: object
+      description:
+        maxLength: 1000
         type: string
+      fieldType:
+        enum:
+        - text
+        - number
+        - single_select
+        - multi_select
+        - date
+        - datetime
+        - single_user
+        - multi_user
+        - checkbox
+        - url
+        type: string
+      isRequired:
+        type: boolean
       name:
-        maxLength: 50
+        maxLength: 255
         minLength: 1
         type: string
-      project_id:
+      projectId:
         type: string
     required:
+    - fieldType
     - name
-    - project_id
+    - projectId
     type: object
-  dto.CreateCustomRoleRequest:
+  dto.CreateOptionRequest:
     properties:
       color:
         description: '#RRGGBB'
         type: string
-      name:
-        maxLength: 50
+      description:
+        maxLength: 500
+        type: string
+      fieldId:
+        type: string
+      label:
+        maxLength: 255
         minLength: 1
         type: string
-      project_id:
-        type: string
     required:
-    - name
-    - project_id
-    type: object
-  dto.CreateCustomStageRequest:
-    properties:
-      color:
-        type: string
-      name:
-        maxLength: 50
-        minLength: 1
-        type: string
-      project_id:
-        type: string
-    required:
-    - name
-    - project_id
+    - fieldId
+    - label
     type: object
   dto.CreateProjectJoinRequestRequest:
     properties:
-      project_id:
+      projectId:
         type: string
     required:
-    - project_id
+    - projectId
     type: object
   dto.CreateProjectRequest:
     properties:
@@ -128,68 +146,42 @@ definitions:
         maxLength: 100
         minLength: 2
         type: string
-      workspace_id:
+      workspaceId:
         type: string
     required:
     - name
-    - workspace_id
+    - workspaceId
     type: object
-  dto.CustomImportanceResponse:
+  dto.CreateViewRequest:
     properties:
-      color:
+      description:
+        maxLength: 1000
         type: string
-      createdAt:
+      filters:
+        additionalProperties: true
+        type: object
+      groupByFieldId:
         type: string
-      displayOrder:
-        type: integer
-      importance_id:
-        type: string
-      isSystemDefault:
+      isDefault:
+        type: boolean
+      isShared:
         type: boolean
       name:
+        maxLength: 255
+        minLength: 1
         type: string
-      project_id:
+      projectId:
         type: string
-      updatedAt:
+      sortBy:
         type: string
-    type: object
-  dto.CustomRoleResponse:
-    properties:
-      color:
+      sortDirection:
+        enum:
+        - asc
+        - desc
         type: string
-      createdAt:
-        type: string
-      displayOrder:
-        type: integer
-      isSystemDefault:
-        type: boolean
-      name:
-        type: string
-      project_id:
-        type: string
-      role_id:
-        type: string
-      updatedAt:
-        type: string
-    type: object
-  dto.CustomStageResponse:
-    properties:
-      color:
-        type: string
-      createdAt:
-        type: string
-      displayOrder:
-        type: integer
-      isSystemDefault:
-        type: boolean
-      name:
-        type: string
-      project_id:
-        type: string
-      stage_id:
-        type: string
-      updatedAt:
-        type: string
+    required:
+    - name
+    - projectId
     type: object
   dto.ErrorResponse:
     properties:
@@ -200,18 +192,121 @@ definitions:
           message:
             type: string
         type: object
-      request_id:
+      requestId:
         type: string
     type: object
-  dto.ImportanceOrder:
+  dto.FieldOrder:
     properties:
       displayOrder:
         minimum: 0
         type: integer
-      importance_id:
+      fieldId:
         type: string
     required:
-    - importance_id
+    - fieldId
+    type: object
+  dto.FieldResponse:
+    properties:
+      canEditRoles:
+        items:
+          type: string
+        type: array
+      config:
+        additionalProperties: true
+        type: object
+      createdAt:
+        type: string
+      description:
+        type: string
+      displayOrder:
+        type: integer
+      fieldId:
+        type: string
+      fieldType:
+        type: string
+      isRequired:
+        type: boolean
+      isSystemDefault:
+        type: boolean
+      name:
+        type: string
+      projectId:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  dto.MoveBoardRequest:
+    properties:
+      afterPosition:
+        description: Position of board after insertion point (optional)
+        type: string
+      beforePosition:
+        description: Position of board before insertion point (optional)
+        type: string
+      groupByFieldId:
+        description: Which field is used for grouping
+        type: string
+      newFieldValue:
+        description: New option_id (destination column)
+        type: string
+      viewId:
+        type: string
+    required:
+    - groupByFieldId
+    - newFieldValue
+    - viewId
+    type: object
+  dto.MoveBoardResponse:
+    properties:
+      boardId:
+        type: string
+      message:
+        type: string
+      newFieldValue:
+        type: string
+      newPosition:
+        description: New fractional index position
+        type: string
+    type: object
+  dto.OptionOrder:
+    properties:
+      displayOrder:
+        minimum: 0
+        type: integer
+      optionId:
+        type: string
+    required:
+    - optionId
+    type: object
+  dto.OptionResponse:
+    properties:
+      color:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      displayOrder:
+        type: integer
+      fieldId:
+        type: string
+      label:
+        type: string
+      optionId:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  dto.OrderedValue:
+    properties:
+      displayOrder:
+        minimum: 0
+        type: integer
+      valueId:
+        description: option_id or user_id
+        type: string
+    required:
+    - valueId
     type: object
   dto.PaginatedBoardsResponse:
     properties:
@@ -241,9 +336,9 @@ definitions:
     type: object
   dto.ProjectJoinRequestResponse:
     properties:
-      project_id:
+      projectId:
         type: string
-      request_id:
+      requestId:
         type: string
       requestedAt:
         type: string
@@ -251,9 +346,9 @@ definitions:
         type: string
       updatedAt:
         type: string
-      user_id:
-        type: string
       userEmail:
+        type: string
+      userId:
         type: string
       userName:
         type: string
@@ -262,15 +357,15 @@ definitions:
     properties:
       joinedAt:
         type: string
-      member_id:
+      memberId:
         type: string
-      project_id:
+      projectId:
         type: string
       roleName:
         type: string
-      user_id:
-        type: string
       userEmail:
+        type: string
+      userId:
         type: string
       userName:
         type: string
@@ -283,188 +378,137 @@ definitions:
         type: string
       name:
         type: string
-      owner_id:
-        type: string
       ownerEmail:
+        type: string
+      ownerId:
         type: string
       ownerName:
         type: string
-      project_id:
+      projectId:
         type: string
       updatedAt:
         type: string
-      workspace_id:
+      workspaceId:
         type: string
     type: object
-  dto.RoleBasedBoardView:
+  dto.SetFieldValueRequest:
     properties:
-      columns:
-        items:
-          $ref: '#/definitions/dto.RoleColumnView'
-        type: array
-      project_id:
+      boardId:
         type: string
-      viewType:
-        description: '"role"'
+      fieldId:
         type: string
-    type: object
-  dto.RoleColumnView:
-    properties:
-      boards:
-        items:
-          $ref: '#/definitions/dto.BoardOrderResponse'
-        type: array
-      custom_role_id:
-        type: string
-      displayOrder:
-        type: integer
-      roleColor:
-        type: string
-      roleName:
-        type: string
-    type: object
-  dto.RoleOrder:
-    properties:
-      displayOrder:
-        minimum: 0
-        type: integer
-      role_id:
-        type: string
+      value:
+        description: Type depends on field type
+      values:
+        description: For multi_select, multi_user (array of IDs or ordered map)
     required:
-    - role_id
+    - boardId
+    - fieldId
     type: object
-  dto.StageBasedBoardView:
+  dto.SetMultiSelectValueRequest:
     properties:
-      columns:
+      boardId:
+        type: string
+      fieldId:
+        type: string
+      values:
         items:
-          $ref: '#/definitions/dto.StageColumnView'
+          $ref: '#/definitions/dto.OrderedValue'
         type: array
-      project_id:
-        type: string
-      viewType:
-        description: '"stage"'
-        type: string
-    type: object
-  dto.StageColumnView:
-    properties:
-      boards:
-        items:
-          $ref: '#/definitions/dto.BoardOrderResponse'
-        type: array
-      custom_stage_id:
-        type: string
-      displayOrder:
-        type: integer
-      stageColor:
-        type: string
-      stageName:
-        type: string
-    type: object
-  dto.StageOrder:
-    properties:
-      displayOrder:
-        minimum: 0
-        type: integer
-      stage_id:
-        type: string
     required:
-    - stage_id
+    - boardId
+    - fieldId
+    - values
     type: object
   dto.SuccessResponse:
     properties:
       data: {}
-      request_id:
+      requestId:
         type: string
+    type: object
+  dto.UpdateBoardOrderRequest:
+    properties:
+      boardOrders:
+        items:
+          $ref: '#/definitions/dto.BoardOrder'
+        type: array
+      viewId:
+        type: string
+    required:
+    - boardOrders
+    - viewId
     type: object
   dto.UpdateBoardRequest:
     properties:
-      assignee_id:
+      assigneeId:
         type: string
       content:
         maxLength: 5000
         type: string
       dueDate:
         type: string
-      importance_id:
+      importanceId:
         type: string
-      role_ids:
+      roleIds:
         items:
           type: string
         type: array
-      stage_id:
+      stageId:
+        description: Legacy fields (deprecated - use custom fields instead)
         type: string
       title:
         maxLength: 200
         minLength: 1
         type: string
     type: object
-  dto.UpdateCustomImportanceOrderRequest:
+  dto.UpdateFieldOrderRequest:
     properties:
-      importanceOrders:
+      fieldOrders:
         items:
-          $ref: '#/definitions/dto.ImportanceOrder'
+          $ref: '#/definitions/dto.FieldOrder'
         minItems: 1
         type: array
     required:
-    - importanceOrders
+    - fieldOrders
     type: object
-  dto.UpdateCustomImportanceRequest:
+  dto.UpdateFieldRequest:
     properties:
-      color:
+      config:
+        additionalProperties: true
+        type: object
+      description:
+        maxLength: 1000
         type: string
+      displayOrder:
+        type: integer
+      isRequired:
+        type: boolean
       name:
-        maxLength: 50
+        maxLength: 255
         minLength: 1
         type: string
     type: object
-  dto.UpdateCustomRoleOrderRequest:
+  dto.UpdateOptionOrderRequest:
     properties:
-      roleOrders:
+      optionOrders:
         items:
-          $ref: '#/definitions/dto.RoleOrder'
+          $ref: '#/definitions/dto.OptionOrder'
         minItems: 1
         type: array
     required:
-    - roleOrders
+    - optionOrders
     type: object
-  dto.UpdateCustomRoleRequest:
+  dto.UpdateOptionRequest:
     properties:
       color:
         type: string
-      name:
-        maxLength: 50
+      description:
+        maxLength: 500
+        type: string
+      label:
+        maxLength: 255
         minLength: 1
         type: string
-    type: object
-  dto.UpdateCustomStageOrderRequest:
-    properties:
-      stageOrders:
-        items:
-          $ref: '#/definitions/dto.StageOrder'
-        minItems: 1
-        type: array
-    required:
-    - stageOrders
-    type: object
-  dto.UpdateCustomStageRequest:
-    properties:
-      color:
-        type: string
-      name:
-        maxLength: 50
-        minLength: 1
-        type: string
-    type: object
-  dto.UpdateOrderRequest:
-    properties:
-      itemIds:
-        description: 다른 핸들러와 일치하도록 수정
-        items:
-          type: string
-        minItems: 1
-        type: array
-    required:
-    - itemIds
     type: object
   dto.UpdateProjectJoinRequestRequest:
     properties:
@@ -497,6 +541,32 @@ definitions:
         minLength: 2
         type: string
     type: object
+  dto.UpdateViewRequest:
+    properties:
+      description:
+        maxLength: 1000
+        type: string
+      filters:
+        additionalProperties: true
+        type: object
+      groupByFieldId:
+        type: string
+      isDefault:
+        type: boolean
+      isShared:
+        type: boolean
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+      sortBy:
+        type: string
+      sortDirection:
+        enum:
+        - asc
+        - desc
+        type: string
+    type: object
   dto.UserInfo:
     properties:
       email:
@@ -505,7 +575,37 @@ definitions:
         type: boolean
       name:
         type: string
-      user_id:
+      userId:
+        type: string
+    type: object
+  dto.ViewResponse:
+    properties:
+      createdAt:
+        type: string
+      createdBy:
+        type: string
+      description:
+        type: string
+      filters:
+        additionalProperties: true
+        type: object
+      groupByFieldId:
+        type: string
+      isDefault:
+        type: boolean
+      isShared:
+        type: boolean
+      name:
+        type: string
+      projectId:
+        type: string
+      sortBy:
+        type: string
+      sortDirection:
+        type: string
+      updatedAt:
+        type: string
+      viewId:
         type: string
     type: object
 host: localhost:8000
@@ -529,28 +629,28 @@ paths:
       parameters:
       - description: Project ID
         in: query
-        name: project_id
+        name: projectId
         required: true
         type: string
       - description: Filter by Stage ID
         in: query
-        name: stage_id
+        name: stageId
         type: string
       - description: Filter by Role ID
         in: query
-        name: role_id
+        name: roleId
         type: string
       - description: Filter by Importance ID
         in: query
-        name: importance_id
+        name: importanceId
         type: string
       - description: Filter by Assignee ID
         in: query
-        name: assignee_id
+        name: assigneeId
         type: string
       - description: Filter by Author ID
         in: query
-        name: author_id
+        name: authorId
         type: string
       - description: 'Page number (default: 1)'
         in: query
@@ -625,7 +725,7 @@ paths:
       summary: Create board
       tags:
       - boards
-  /api/boards/{board_id}:
+  /api/boards/{boardId}:
     delete:
       consumes:
       - application/json
@@ -633,7 +733,7 @@ paths:
       parameters:
       - description: Board ID
         in: path
-        name: board_id
+        name: boardId
         required: true
         type: string
       produces:
@@ -663,7 +763,7 @@ paths:
       parameters:
       - description: Board ID
         in: path
-        name: board_id
+        name: boardId
         required: true
         type: string
       produces:
@@ -698,7 +798,7 @@ paths:
       parameters:
       - description: Board ID
         in: path
-        name: board_id
+        name: boardId
         required: true
         type: string
       - description: Board updates
@@ -736,115 +836,24 @@ paths:
       summary: Update board
       tags:
       - boards
-  /api/custom-fields/importance:
-    post:
-      consumes:
-      - application/json
-      description: Create a new custom importance for a project (ADMIN+ only)
-      parameters:
-      - description: Importance details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.CreateCustomImportanceRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.CustomImportanceResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create custom importance
-      tags:
-      - custom-fields
-  /api/custom-fields/importance/{importance_id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a custom importance (ADMIN+ only, system defaults cannot
-        be deleted)
-      parameters:
-      - description: Importance ID
-        in: path
-        name: importance_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.SuccessResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete custom importance
-      tags:
-      - custom-fields
-    get:
-      consumes:
-      - application/json
-      description: Get a specific custom importance by ID
-      parameters:
-      - description: Importance ID
-        in: path
-        name: importance_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.CustomImportanceResponse'
-              type: object
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get custom importance
-      tags:
-      - custom-fields
+  /api/boards/{boardId}/move:
     put:
       consumes:
       - application/json
-      description: Update a custom importance (ADMIN+ only, system defaults cannot
-        be updated)
+      description: 'Move a board to a different column/group in a view (integrated
+        API: field value change + order update in single transaction)'
       parameters:
-      - description: Importance ID
+      - description: Board ID
         in: path
-        name: importance_id
+        name: boardId
         required: true
         type: string
-      - description: Importance updates
+      - description: Move board request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.UpdateCustomImportanceRequest'
+          $ref: '#/definitions/dto.MoveBoardRequest'
       produces:
       - application/json
       responses:
@@ -855,352 +864,7 @@ paths:
             - $ref: '#/definitions/dto.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.CustomImportanceResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update custom importance
-      tags:
-      - custom-fields
-  /api/custom-fields/projects/{project_id}/importance:
-    get:
-      consumes:
-      - application/json
-      description: Get all custom importances for a project
-      parameters:
-      - description: Project ID
-        in: path
-        name: project_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/dto.CustomImportanceResponse'
-                  type: array
-              type: object
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get custom importances
-      tags:
-      - custom-fields
-  /api/custom-fields/projects/{project_id}/importance/order:
-    put:
-      consumes:
-      - application/json
-      description: Update the display order of custom importances (ADMIN+ only)
-      parameters:
-      - description: Project ID
-        in: path
-        name: project_id
-        required: true
-        type: string
-      - description: Importance orders
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.UpdateCustomImportanceOrderRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update importance display order
-      tags:
-      - custom-fields
-  /api/custom-fields/projects/{project_id}/roles:
-    get:
-      consumes:
-      - application/json
-      description: Get all custom roles for a project
-      parameters:
-      - description: Project ID
-        in: path
-        name: project_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/dto.CustomRoleResponse'
-                  type: array
-              type: object
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get custom roles
-      tags:
-      - custom-fields
-  /api/custom-fields/projects/{project_id}/roles/order:
-    put:
-      consumes:
-      - application/json
-      description: Update the display order of custom roles (ADMIN+ only)
-      parameters:
-      - description: Project ID
-        in: path
-        name: project_id
-        required: true
-        type: string
-      - description: Role orders
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.UpdateCustomRoleOrderRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update role display order
-      tags:
-      - custom-fields
-  /api/custom-fields/projects/{project_id}/stages:
-    get:
-      consumes:
-      - application/json
-      description: Get all custom stages for a project
-      parameters:
-      - description: Project ID
-        in: path
-        name: project_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/dto.CustomStageResponse'
-                  type: array
-              type: object
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get custom stages
-      tags:
-      - custom-fields
-  /api/custom-fields/projects/{project_id}/stages/order:
-    put:
-      consumes:
-      - application/json
-      description: Update the display order of custom stages (ADMIN+ only)
-      parameters:
-      - description: Project ID
-        in: path
-        name: project_id
-        required: true
-        type: string
-      - description: Stage orders
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.UpdateCustomStageOrderRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update stage display order
-      tags:
-      - custom-fields
-  /api/custom-fields/roles:
-    post:
-      consumes:
-      - application/json
-      description: Create a new custom role for a project (ADMIN+ only)
-      parameters:
-      - description: Role details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.CreateCustomRoleRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.CustomRoleResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create custom role
-      tags:
-      - custom-fields
-  /api/custom-fields/roles/{role_id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a custom role (ADMIN+ only, system defaults cannot be deleted)
-      parameters:
-      - description: Role ID
-        in: path
-        name: role_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.SuccessResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete custom role
-      tags:
-      - custom-fields
-    get:
-      consumes:
-      - application/json
-      description: Get a specific custom role by ID
-      parameters:
-      - description: Role ID
-        in: path
-        name: role_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.CustomRoleResponse'
-              type: object
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get custom role
-      tags:
-      - custom-fields
-    put:
-      consumes:
-      - application/json
-      description: Update a custom role (ADMIN+ only, system defaults cannot be updated)
-      parameters:
-      - description: Role ID
-        in: path
-        name: role_id
-        required: true
-        type: string
-      - description: Role updates
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.UpdateCustomRoleRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.CustomRoleResponse'
+                  $ref: '#/definitions/dto.MoveBoardResponse'
               type: object
         "400":
           description: Bad Request
@@ -1216,145 +880,9 @@ paths:
             $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Update custom role
+      summary: Move board to different column
       tags:
-      - custom-fields
-  /api/custom-fields/stages:
-    post:
-      consumes:
-      - application/json
-      description: Create a new custom stage for a project (ADMIN+ only)
-      parameters:
-      - description: Stage details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.CreateCustomStageRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.CustomStageResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create custom stage
-      tags:
-      - custom-fields
-  /api/custom-fields/stages/{stage_id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a custom stage (ADMIN+ only, system defaults cannot be deleted)
-      parameters:
-      - description: Stage ID
-        in: path
-        name: stage_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.SuccessResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete custom stage
-      tags:
-      - custom-fields
-    get:
-      consumes:
-      - application/json
-      description: Get a specific custom stage by ID
-      parameters:
-      - description: Stage ID
-        in: path
-        name: stage_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.CustomStageResponse'
-              type: object
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get custom stage
-      tags:
-      - custom-fields
-    put:
-      consumes:
-      - application/json
-      description: Update a custom stage (ADMIN+ only, system defaults cannot be updated)
-      parameters:
-      - description: Stage ID
-        in: path
-        name: stage_id
-        required: true
-        type: string
-      - description: Stage updates
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.UpdateCustomStageRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.CustomStageResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update custom stage
-      tags:
-      - custom-fields
+      - boards
   /api/projects:
     get:
       consumes:
@@ -1363,7 +891,7 @@ paths:
       parameters:
       - description: Workspace ID
         in: query
-        name: workspace_id
+        name: workspaceId
         required: true
         type: string
       produces:
@@ -1437,7 +965,7 @@ paths:
       summary: Create project
       tags:
       - projects
-  /api/projects/{project_id}:
+  /api/projects/{projectId}:
     delete:
       consumes:
       - application/json
@@ -1445,7 +973,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: project_id
+        name: projectId
         required: true
         type: string
       produces:
@@ -1483,7 +1011,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: project_id
+        name: projectId
         required: true
         type: string
       produces:
@@ -1518,7 +1046,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: project_id
+        name: projectId
         required: true
         type: string
       - description: Updated project details
@@ -1556,7 +1084,7 @@ paths:
       summary: Update project
       tags:
       - projects
-  /api/projects/{project_id}/join-requests:
+  /api/projects/{projectId}/join-requests:
     get:
       consumes:
       - application/json
@@ -1564,7 +1092,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: project_id
+        name: projectId
         required: true
         type: string
       - description: Filter by status (PENDING/APPROVED/REJECTED)
@@ -1598,7 +1126,7 @@ paths:
       summary: Get join requests
       tags:
       - projects
-  /api/projects/{project_id}/members:
+  /api/projects/{projectId}/members:
     get:
       consumes:
       - application/json
@@ -1606,7 +1134,7 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: project_id
+        name: projectId
         required: true
         type: string
       produces:
@@ -1636,7 +1164,7 @@ paths:
       summary: Get project members
       tags:
       - projects
-  /api/projects/{project_id}/members/{member_id}:
+  /api/projects/{projectId}/members/{memberId}:
     delete:
       consumes:
       - application/json
@@ -1645,12 +1173,12 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: project_id
+        name: projectId
         required: true
         type: string
       - description: Member ID
         in: path
-        name: member_id
+        name: memberId
         required: true
         type: string
       produces:
@@ -1685,7 +1213,7 @@ paths:
       summary: Remove member
       tags:
       - projects
-  /api/projects/{project_id}/members/{member_id}/role:
+  /api/projects/{projectId}/members/{memberId}/role:
     put:
       consumes:
       - application/json
@@ -1693,12 +1221,12 @@ paths:
       parameters:
       - description: Project ID
         in: path
-        name: project_id
+        name: projectId
         required: true
         type: string
       - description: Member ID
         in: path
-        name: member_id
+        name: memberId
         required: true
         type: string
       - description: New role
@@ -1736,260 +1264,6 @@ paths:
       summary: Update member role
       tags:
       - projects
-  /api/projects/{project_id}/orders/role-board:
-    get:
-      consumes:
-      - application/json
-      description: Get the board organized by roles with user-specific column and
-        board orders
-      parameters:
-      - description: Project ID
-        in: path
-        name: project_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.RoleBasedBoardView'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get role-based board view
-      tags:
-      - user-orders
-  /api/projects/{project_id}/orders/role-boards/{role_id}:
-    put:
-      consumes:
-      - application/json
-      description: Update the display order of boards within a specific role column
-        (drag-and-drop)
-      parameters:
-      - description: Project ID
-        in: path
-        name: project_id
-        required: true
-        type: string
-      - description: Role ID
-        in: path
-        name: role_id
-        required: true
-        type: string
-      - description: Order update details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.UpdateOrderRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  type: string
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update board order in role column
-      tags:
-      - user-orders
-  /api/projects/{project_id}/orders/role-columns:
-    put:
-      consumes:
-      - application/json
-      description: Update the display order of role columns (drag-and-drop)
-      parameters:
-      - description: Project ID
-        in: path
-        name: project_id
-        required: true
-        type: string
-      - description: Order update details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.UpdateOrderRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  type: string
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update role column order
-      tags:
-      - user-orders
-  /api/projects/{project_id}/orders/stage-board:
-    get:
-      consumes:
-      - application/json
-      description: Get the board organized by stages with user-specific column and
-        board orders
-      parameters:
-      - description: Project ID
-        in: path
-        name: project_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/dto.StageBasedBoardView'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get stage-based board view
-      tags:
-      - user-orders
-  /api/projects/{project_id}/orders/stage-boards/{stage_id}:
-    put:
-      consumes:
-      - application/json
-      description: Update the display order of boards within a specific stage column
-        (drag-and-drop)
-      parameters:
-      - description: Project ID
-        in: path
-        name: project_id
-        required: true
-        type: string
-      - description: Stage ID
-        in: path
-        name: stage_id
-        required: true
-        type: string
-      - description: Order update details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.UpdateOrderRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  type: string
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update board order in stage column
-      tags:
-      - user-orders
-  /api/projects/{project_id}/orders/stage-columns:
-    put:
-      consumes:
-      - application/json
-      description: Update the display order of stage columns (drag-and-drop)
-      parameters:
-      - description: Project ID
-        in: path
-        name: project_id
-        required: true
-        type: string
-      - description: Order update details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.UpdateOrderRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
-            - properties:
-                data:
-                  type: string
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Update stage column order
-      tags:
-      - user-orders
   /api/projects/join-requests:
     post:
       consumes:
@@ -2035,7 +1309,7 @@ paths:
       summary: Create join request
       tags:
       - projects
-  /api/projects/join-requests/{join_request_id}:
+  /api/projects/join-requests/{joinRequestId}:
     put:
       consumes:
       - application/json
@@ -2043,7 +1317,7 @@ paths:
       parameters:
       - description: Join Request ID
         in: path
-        name: join_request_id
+        name: joinRequestId
         required: true
         type: string
       - description: Status update
@@ -2089,7 +1363,7 @@ paths:
       parameters:
       - description: Workspace ID
         in: query
-        name: workspace_id
+        name: workspaceId
         required: true
         type: string
       - description: Search query
@@ -2130,6 +1404,1003 @@ paths:
       summary: Search projects
       tags:
       - projects
+  /board-field-values:
+    post:
+      consumes:
+      - application/json
+      description: Set a field value for a board
+      parameters:
+      - description: Field value request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SetFieldValueRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Set field value
+      tags:
+      - Field Values
+  /board-field-values/multi-select:
+    post:
+      consumes:
+      - application/json
+      description: Set ordered multi-select values for a board field
+      parameters:
+      - description: Multi-select value request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SetMultiSelectValueRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Set multi-select field value
+      tags:
+      - Field Values
+  /boards/{boardId}/field-values:
+    get:
+      consumes:
+      - application/json
+      description: Get all field values for a board
+      parameters:
+      - description: Board ID
+        in: path
+        name: boardId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.BoardFieldValuesResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get board field values
+      tags:
+      - Field Values
+  /boards/{boardId}/field-values/{fieldId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a field value for a board
+      parameters:
+      - description: Board ID
+        in: path
+        name: boardId
+        required: true
+        type: string
+      - description: Field ID
+        in: path
+        name: fieldId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete field value
+      tags:
+      - Field Values
+  /field-options:
+    post:
+      consumes:
+      - application/json
+      description: Create a new option for a select field
+      parameters:
+      - description: Option creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateOptionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.OptionResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create field option
+      tags:
+      - Field Options
+  /field-options/{optionId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a field option
+      parameters:
+      - description: Option ID
+        in: path
+        name: optionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete field option
+      tags:
+      - Field Options
+    patch:
+      consumes:
+      - application/json
+      description: Update a field option
+      parameters:
+      - description: Option ID
+        in: path
+        name: optionId
+        required: true
+        type: string
+      - description: Option update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateOptionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.OptionResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update field option
+      tags:
+      - Field Options
+  /fields:
+    post:
+      consumes:
+      - application/json
+      description: Create a new custom field for a project
+      parameters:
+      - description: Field creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateFieldRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.FieldResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a custom field
+      tags:
+      - Fields
+  /fields/{fieldId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a custom field
+      parameters:
+      - description: Field ID
+        in: path
+        name: fieldId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete field
+      tags:
+      - Fields
+    get:
+      consumes:
+      - application/json
+      description: Get a custom field by its ID
+      parameters:
+      - description: Field ID
+        in: path
+        name: fieldId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.FieldResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get field by ID
+      tags:
+      - Fields
+    patch:
+      consumes:
+      - application/json
+      description: Update a custom field
+      parameters:
+      - description: Field ID
+        in: path
+        name: fieldId
+        required: true
+        type: string
+      - description: Field update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateFieldRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.FieldResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update field
+      tags:
+      - Fields
+  /fields/{fieldId}/options:
+    get:
+      consumes:
+      - application/json
+      description: Get all options for a select field
+      parameters:
+      - description: Field ID
+        in: path
+        name: fieldId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.OptionResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get options by field
+      tags:
+      - Field Options
+  /fields/{fieldId}/options/order:
+    put:
+      consumes:
+      - application/json
+      description: Update display order of options for a field
+      parameters:
+      - description: Field ID
+        in: path
+        name: fieldId
+        required: true
+        type: string
+      - description: Option order update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateOptionOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update option order
+      tags:
+      - Field Options
+  /projects/{projectId}/fields:
+    get:
+      consumes:
+      - application/json
+      description: Get all custom fields for a project
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.FieldResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get fields by project
+      tags:
+      - Fields
+  /projects/{projectId}/fields/order:
+    put:
+      consumes:
+      - application/json
+      description: Update display order of fields in a project
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: string
+      - description: Field order update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateFieldOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update field order
+      tags:
+      - Fields
+  /projects/{projectId}/views:
+    get:
+      consumes:
+      - application/json
+      description: Get all saved views for a project
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.ViewResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get views by project
+      tags:
+      - Views
+  /view-board-orders:
+    put:
+      consumes:
+      - application/json
+      description: Update manual board ordering within a view
+      parameters:
+      - description: Board order update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateBoardOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update board order in view
+      tags:
+      - Views
+  /views:
+    post:
+      consumes:
+      - application/json
+      description: Create a new saved view with filters, sorting, and grouping
+      parameters:
+      - description: View creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateViewRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ViewResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a saved view
+      tags:
+      - Views
+  /views/{viewId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a saved view
+      parameters:
+      - description: View ID
+        in: path
+        name: viewId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete view
+      tags:
+      - Views
+    get:
+      consumes:
+      - application/json
+      description: Get a saved view by its ID
+      parameters:
+      - description: View ID
+        in: path
+        name: viewId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ViewResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get view by ID
+      tags:
+      - Views
+    patch:
+      consumes:
+      - application/json
+      description: Update a saved view
+      parameters:
+      - description: View ID
+        in: path
+        name: viewId
+        required: true
+        type: string
+      - description: View update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateViewRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ViewResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update view
+      tags:
+      - Views
+  /views/{viewId}/boards:
+    get:
+      consumes:
+      - application/json
+      description: Apply a saved view to get filtered/sorted/grouped boards
+      parameters:
+      - description: View ID
+        in: path
+        name: viewId
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Apply view
+      tags:
+      - Views
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.
