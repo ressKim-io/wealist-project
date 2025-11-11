@@ -21,7 +21,7 @@ const LoadingScreen = ({ msg = '로딩 중..' }) => (
 
 // 2. 인증이 필요한 페이지를 감싸는 '보호 라우트' 컴포넌트
 const ProtectedRoute = () => {
-  const accessToken = localStorage.getItem('access_token');
+  const accessToken = localStorage.getItem('accessToken');
   // 토큰이 없으면 로그인 페이지로 리다이렉트
   if (!accessToken) {
     return <Navigate to="/" replace />;
@@ -35,8 +35,10 @@ const App: React.FC = () => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user_id');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userEmail');
     // 로그아웃 후 로그인 페이지로 이동
     navigate('/');
   };
@@ -44,8 +46,8 @@ const App: React.FC = () => {
   // 5. renderContent 함수 대신 Routes를 사용합니다.
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <Suspense fallback={<LoadingScreen />}>
+      <Suspense fallback={<LoadingScreen />}>
+        <AuthProvider>
           <Routes>
             {/* 1. 로그인 페이지 */}
             <Route path="/" element={<AuthPage />} />
@@ -64,7 +66,7 @@ const App: React.FC = () => {
                 (ts(2741) 오류 해결)
               */}
               <Route
-                path="/kanban/:workspaceId"
+                path="/workspace/:workspaceId"
                 element={<MainDashboard onLogout={handleLogout} />}
               />
             </Route>
@@ -72,8 +74,8 @@ const App: React.FC = () => {
             {/* 4. 일치하는 라우트가 없으면 로그인 페이지로 */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </Suspense>
-      </AuthProvider>
+        </AuthProvider>
+      </Suspense>
     </ThemeProvider>
   );
 };

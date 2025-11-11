@@ -63,7 +63,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     setError(null);
 
     try {
-      const accessToken = localStorage.getItem('access_token') || '';
+      const accessToken = localStorage.getItem('accessToken') || '';
 
       if (isEditMode) {
         // 편집 모드

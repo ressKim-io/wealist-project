@@ -29,10 +29,10 @@ const OAuthRedirectPage: React.FC = () => {
 
     if (accessToken && userId) {
       // 2. 토큰과 유저 ID를 localStorage에 저장
-      localStorage.setItem('access_token', accessToken);
-      localStorage.setItem('user_id', userId);
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('userId', userId);
       if (email) {
-        localStorage.setItem('user_email', email); // 이메일도 저장
+        localStorage.setItem('userEmail', email); // 이메일도 저장
       }
 
       console.log('✅ 토큰 저장 성공:', {

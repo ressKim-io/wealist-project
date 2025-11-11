@@ -166,10 +166,10 @@ const AssigneeAvatarStack: React.FC<AssigneeAvatarStackProps> = ({ assignees }) 
 const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   const navigate = useNavigate();
 
-  // 1. URL에서 :workspace_id 값을 가져옵니다.
-  const { workspaceId } = useParams<{ workspace_id: string }>();
+  // 1. URL에서 :workspaceId 값을 가져옵니다.
+  const { workspaceId } = useParams<{ workspaceId: string }>();
   // 2. localStorage에서 토큰을 가져옵니다.
-  const accessToken = localStorage.getItem('access_token') || '';
+  const accessToken = localStorage.getItem('accessToken') || '';
 
   // 3. prop 대신 URL 파라미터를 사용합니다.
   const currentWorkspaceId = workspaceId || '';

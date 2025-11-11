@@ -45,7 +45,7 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
   onBoardCreated,
 }) => {
   const { theme } = useTheme();
-  const accessToken = localStorage.getItem('access_token') || '';
+  const accessToken = localStorage.getItem('accessToken') || '';
 
   // Form state
   const [title, setTitle] = useState(editData?.title || '');

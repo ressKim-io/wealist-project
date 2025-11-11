@@ -34,9 +34,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 1. 초기 로딩 시 localStorage에서 토큰 및 ID 로드
   useEffect(() => {
-    const storedToken = localStorage.getItem('access_token');
-    const storedUserId = localStorage.getItem('user_id');
-    const storedUserEmail = localStorage.getItem('user_email');
+    const storedToken = localStorage.getItem('accessToken');
+    const storedUserId = localStorage.getItem('userId');
+    const storedUserEmail = localStorage.getItem('userEmail');
 
     if (storedToken && storedUserId && storedUserEmail) {
       setToken(storedToken);
@@ -48,9 +48,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 2. [내부 전용] 로그인 상태 설정 함수 (OAuthRedirectPage에서 사용됨)
   // const setLoginState = useCallback((newToken: string, newUserId: string, newEmail: string) => {
-  //   localStorage.setItem('access_token', newToken);
-  //   localStorage.setItem('user_id', newUserId);
-  //   localStorage.setItem('user_email', newEmail);
+  //   localStorage.setItem('accessToken', newToken);
+  //   localStorage.setItem('userId', newUserId);
+  //   localStorage.setItem('userEmail', newEmail);
   //   setToken(newToken);
   //   setUserId(newUserId);
   //   setUserEmail(newEmail);
@@ -73,9 +73,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user_id');
-    localStorage.removeItem('user_email');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userEmail');
     setToken(null);
     setUserId(null);
     setUserEmail(null);
