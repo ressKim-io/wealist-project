@@ -23,6 +23,7 @@ import {
   getProjects,
   getBoards,
   getProjectStages,
+  initializeDefaultFields,
   ProjectResponse,
   BoardResponse,
   CustomStageResponse,
@@ -302,8 +303,22 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       console.log(`[Dashboard] 보드 로드 시작 (Project: ${selectedProject.name})`);
 
       // 1. 프로젝트의 모든 Stages 조회
-      const stages = await getProjectStages(selectedProject.project_id, accessToken);
+      let stages = await getProjectStages(selectedProject.project_id, accessToken);
       console.log('✅ Stages loaded:', stages);
+
+      // 1.1 Stage가 없으면 기본 필드 자동 초기화
+      if (stages.length === 0) {
+        console.log('[Dashboard] ⚠️ Stage가 없습니다. 기본 필드 초기화 시작...');
+        try {
+          await initializeDefaultFields(selectedProject.project_id, accessToken);
+          // 재조회
+          stages = await getProjectStages(selectedProject.project_id, accessToken);
+          console.log('✅ 기본 필드 초기화 완료. Stages:', stages);
+        } catch (initError) {
+          console.error('❌ 기본 필드 초기화 실패:', initError);
+          // 초기화 실패해도 계속 진행 (빈 컬럼으로 표시)
+        }
+      }
 
       // 2. 보드 조회
       const boardsResponse = await getBoards(selectedProject.project_id, accessToken);
