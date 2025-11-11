@@ -32,12 +32,12 @@ type UpdateBoardRequest struct {
 }
 
 type GetBoardsRequest struct {
-	ProjectID    string `form:"project_id" binding:"required,uuid"`
-	StageID      string `form:"stage_id"`       // Filter: by stage
-	RoleID       string `form:"role_id"`        // Filter: by role
-	ImportanceID string `form:"importance_id"`  // Filter: by importance
-	AssigneeID   string `form:"assignee_id"`    // Filter: by assignee
-	AuthorID     string `form:"author_id"`      // Filter: by author
+	ProjectID    string `form:"projectId" binding:"required,uuid"`
+	StageID      string `form:"stageId"`       // Filter: by stage
+	RoleID       string `form:"roleId"`        // Filter: by role
+	ImportanceID string `form:"importanceId"`  // Filter: by importance
+	AssigneeID   string `form:"assigneeId"`    // Filter: by assignee
+	AuthorID     string `form:"authorId"`      // Filter: by author
 	Page         int    `form:"page" binding:"omitempty,min=1"`
 	Limit        int    `form:"limit" binding:"omitempty,min=1,max=100"`
 }

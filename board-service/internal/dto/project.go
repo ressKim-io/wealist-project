@@ -16,7 +16,7 @@ type UpdateProjectRequest struct {
 }
 
 type SearchProjectsRequest struct {
-	WorkspaceID string `form:"workspace_id" binding:"required,uuid"`
+	WorkspaceID string `form:"workspaceId" binding:"required,uuid"`
 	Query       string `form:"query" binding:"required,min=1"`
 	Page        int    `form:"page" binding:"omitempty,min=1"`
 	Limit       int    `form:"limit" binding:"omitempty,min=1,max=100"`

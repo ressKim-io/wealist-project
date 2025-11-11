@@ -173,7 +173,7 @@ type ViewResponse struct {
 
 // ApplyViewRequest represents a request to apply a view and get filtered boards
 type ApplyViewRequest struct {
-	ViewID string `form:"view_id" binding:"required,uuid"`
+	ViewID string `form:"viewId" binding:"required,uuid"`
 	Page   int    `form:"page" binding:"omitempty,min=1"`
 	Limit  int    `form:"limit" binding:"omitempty,min=1,max=100"`
 }
