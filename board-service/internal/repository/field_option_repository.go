@@ -2,42 +2,43 @@ package repository
 
 import (
 	"board-service/internal/domain"
+	"board-service/internal/repository/base"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // FieldOptionRepository는 FieldOption 엔티티만 관리합니다
 type FieldOptionRepository interface {
+	// 공통 CRUD 메서드 (base repository에서 제공)
 	Create(option *domain.FieldOption) error
 	FindByID(id uuid.UUID) (*domain.FieldOption, error)
-	FindByField(fieldID uuid.UUID) ([]domain.FieldOption, error)
-	FindByIDs(ids []uuid.UUID) ([]domain.FieldOption, error)
 	Update(option *domain.FieldOption) error
 	Delete(id uuid.UUID) error
+
+	// FieldOption 전용 메서드
+	FindByField(fieldID uuid.UUID) ([]domain.FieldOption, error)
+	FindByIDs(ids []uuid.UUID) ([]domain.FieldOption, error)
 	UpdateOrder(optionID uuid.UUID, newOrder int) error
 	BatchUpdateOrders(orders map[uuid.UUID]int) error
 }
 
 type fieldOptionRepository struct {
+	base.BaseRepository[*domain.FieldOption]
 	db *gorm.DB
 }
 
 // NewFieldOptionRepository는 새로운 FieldOptionRepository를 생성합니다
 func NewFieldOptionRepository(db *gorm.DB) FieldOptionRepository {
-	return &fieldOptionRepository{db: db}
-}
-
-func (r *fieldOptionRepository) Create(option *domain.FieldOption) error {
-	return r.db.Create(option).Error
-}
-
-func (r *fieldOptionRepository) FindByID(id uuid.UUID) (*domain.FieldOption, error) {
-	var option domain.FieldOption
-	if err := r.db.Where("id = ? AND is_deleted = ?", id, false).First(&option).Error; err != nil {
-		return nil, err
+	return &fieldOptionRepository{
+		BaseRepository: base.NewBaseRepository[*domain.FieldOption](db),
+		db:             db,
 	}
-	return &option, nil
 }
+
+// ==================== 공통 CRUD는 base repository에 위임 ====================
+// Create, FindByID, Update, Delete는 BaseRepository의 구현을 사용합니다
+
+// ==================== FieldOption 전용 메서드 ====================
 
 func (r *fieldOptionRepository) FindByField(fieldID uuid.UUID) ([]domain.FieldOption, error) {
 	var options []domain.FieldOption
@@ -57,16 +58,6 @@ func (r *fieldOptionRepository) FindByIDs(ids []uuid.UUID) ([]domain.FieldOption
 		return nil, err
 	}
 	return options, nil
-}
-
-func (r *fieldOptionRepository) Update(option *domain.FieldOption) error {
-	return r.db.Save(option).Error
-}
-
-func (r *fieldOptionRepository) Delete(id uuid.UUID) error {
-	return r.db.Model(&domain.FieldOption{}).
-		Where("id = ?", id).
-		Update("is_deleted", true).Error
 }
 
 func (r *fieldOptionRepository) UpdateOrder(optionID uuid.UUID, newOrder int) error {

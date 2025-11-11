@@ -2,11 +2,13 @@ package repository
 
 import (
 	"board-service/internal/domain"
+	"board-service/internal/repository/base"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // FieldValueRepository는 BoardFieldValue 엔티티만 관리합니다
+// BoardFieldValue는 특수한 UPSERT 로직이 많아 base repository를 부분적으로만 사용합니다
 type FieldValueRepository interface {
 	Set(value *domain.BoardFieldValue) error
 	FindByBoard(boardID uuid.UUID) ([]domain.BoardFieldValue, error)
@@ -20,12 +22,16 @@ type FieldValueRepository interface {
 }
 
 type fieldValueRepository struct {
+	base.BaseRepository[*domain.BoardFieldValue]
 	db *gorm.DB
 }
 
 // NewFieldValueRepository는 새로운 FieldValueRepository를 생성합니다
 func NewFieldValueRepository(db *gorm.DB) FieldValueRepository {
-	return &fieldValueRepository{db: db}
+	return &fieldValueRepository{
+		BaseRepository: base.NewBaseRepository[*domain.BoardFieldValue](db),
+		db:             db,
+	}
 }
 
 func (r *fieldValueRepository) Set(value *domain.BoardFieldValue) error {

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"board-service/internal/domain"
+	"board-service/internal/repository/base"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -9,6 +10,7 @@ import (
 
 // BoardOrderRepository는 UserBoardOrder 엔티티만 관리합니다
 // Fractional indexing을 사용한 O(1) 순서 변경을 지원합니다
+// UPSERT와 hard delete를 사용하므로 base repository를 부분적으로만 사용합니다
 type BoardOrderRepository interface {
 	Set(order *domain.UserBoardOrder) error
 	FindByView(viewID, userID uuid.UUID) ([]domain.UserBoardOrder, error)
@@ -17,12 +19,16 @@ type BoardOrderRepository interface {
 }
 
 type boardOrderRepository struct {
+	base.BaseRepository[*domain.UserBoardOrder]
 	db *gorm.DB
 }
 
 // NewBoardOrderRepository는 새로운 BoardOrderRepository를 생성합니다
 func NewBoardOrderRepository(db *gorm.DB) BoardOrderRepository {
-	return &boardOrderRepository{db: db}
+	return &boardOrderRepository{
+		BaseRepository: base.NewBaseRepository[*domain.UserBoardOrder](db),
+		db:             db,
+	}
 }
 
 // Set은 UPSERT를 사용하여 보드 순서를 설정합니다 (PostgreSQL ON CONFLICT DO UPDATE)

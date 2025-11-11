@@ -22,3 +22,26 @@ func (b *BaseModel) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
+
+// ==================== Entity Interface Implementation ====================
+// 이 메서드들은 generic repository 패턴을 위해 필요합니다
+
+// GetID returns the entity ID
+func (b *BaseModel) GetID() uuid.UUID {
+	return b.ID
+}
+
+// SetID sets the entity ID
+func (b *BaseModel) SetID(id uuid.UUID) {
+	b.ID = id
+}
+
+// GetIsDeleted returns the soft delete flag
+func (b *BaseModel) GetIsDeleted() bool {
+	return b.IsDeleted
+}
+
+// SetIsDeleted sets the soft delete flag
+func (b *BaseModel) SetIsDeleted(deleted bool) {
+	b.IsDeleted = deleted
+}

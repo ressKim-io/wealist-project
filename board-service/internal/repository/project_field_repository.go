@@ -2,42 +2,43 @@ package repository
 
 import (
 	"board-service/internal/domain"
+	"board-service/internal/repository/base"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // ProjectFieldRepository는 ProjectField 엔티티만 관리합니다
 type ProjectFieldRepository interface {
+	// 공통 CRUD 메서드 (base repository에서 제공)
 	Create(field *domain.ProjectField) error
 	FindByID(id uuid.UUID) (*domain.ProjectField, error)
-	FindByProject(projectID uuid.UUID) ([]domain.ProjectField, error)
-	FindByIDs(ids []uuid.UUID) ([]domain.ProjectField, error)
 	Update(field *domain.ProjectField) error
 	Delete(id uuid.UUID) error
+
+	// ProjectField 전용 메서드
+	FindByProject(projectID uuid.UUID) ([]domain.ProjectField, error)
+	FindByIDs(ids []uuid.UUID) ([]domain.ProjectField, error)
 	UpdateOrder(fieldID uuid.UUID, newOrder int) error
 	BatchUpdateOrders(orders map[uuid.UUID]int) error
 }
 
 type projectFieldRepository struct {
+	base.BaseRepository[*domain.ProjectField]
 	db *gorm.DB
 }
 
 // NewProjectFieldRepository는 새로운 ProjectFieldRepository를 생성합니다
 func NewProjectFieldRepository(db *gorm.DB) ProjectFieldRepository {
-	return &projectFieldRepository{db: db}
-}
-
-func (r *projectFieldRepository) Create(field *domain.ProjectField) error {
-	return r.db.Create(field).Error
-}
-
-func (r *projectFieldRepository) FindByID(id uuid.UUID) (*domain.ProjectField, error) {
-	var field domain.ProjectField
-	if err := r.db.Where("id = ? AND is_deleted = ?", id, false).First(&field).Error; err != nil {
-		return nil, err
+	return &projectFieldRepository{
+		BaseRepository: base.NewBaseRepository[*domain.ProjectField](db),
+		db:             db,
 	}
-	return &field, nil
 }
+
+// ==================== 공통 CRUD는 base repository에 위임 ====================
+// Create, FindByID, Update, Delete는 BaseRepository의 구현을 사용합니다
+
+// ==================== ProjectField 전용 메서드 ====================
 
 func (r *projectFieldRepository) FindByProject(projectID uuid.UUID) ([]domain.ProjectField, error) {
 	var fields []domain.ProjectField
@@ -57,16 +58,6 @@ func (r *projectFieldRepository) FindByIDs(ids []uuid.UUID) ([]domain.ProjectFie
 		return nil, err
 	}
 	return fields, nil
-}
-
-func (r *projectFieldRepository) Update(field *domain.ProjectField) error {
-	return r.db.Save(field).Error
-}
-
-func (r *projectFieldRepository) Delete(id uuid.UUID) error {
-	return r.db.Model(&domain.ProjectField{}).
-		Where("id = ?", id).
-		Update("is_deleted", true).Error
 }
 
 func (r *projectFieldRepository) UpdateOrder(fieldID uuid.UUID, newOrder int) error {
