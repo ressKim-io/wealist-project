@@ -8,7 +8,7 @@ import (
 
 // CreateCommentRequest defines the structure for creating a new comment.
 type CreateCommentRequest struct {
-	BoardID uuid.UUID `json:"board_id" binding:"required"`
+	BoardID uuid.UUID `json:"boardId" binding:"required"`
 	Content  string    `json:"content" binding:"required"`
 }
 
@@ -19,8 +19,8 @@ type UpdateCommentRequest struct {
 
 // CommentResponse defines the structure for a comment response.
 type CommentResponse struct {
-	ID          uuid.UUID `json:"comment_id"`
-	UserID      uuid.UUID `json:"user_id"`
+	ID          uuid.UUID `json:"commentId"`
+	UserID      uuid.UUID `json:"userId"`
 	UserName    string    `json:"userName"`
 	UserAvatar  string    `json:"userAvatar"`
 	Content     string    `json:"content"`

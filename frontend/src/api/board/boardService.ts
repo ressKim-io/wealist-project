@@ -383,7 +383,7 @@ export const getProjects = async (
 
   try {
     const response = await boardService.get('/api/projects', {
-      params: { workspace_id: workspace_id },
+      params: { workspaceId: workspace_id },
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data?.projects || [];
@@ -617,7 +617,7 @@ export const getBoards = async (
   }
 
   try {
-    const params = { project_id, ...filters };
+    const params = { projectId: project_id, ...filters };
     const response = await boardService.get('/api/boards', {
       params,
       headers: { Authorization: `Bearer ${token}` },
@@ -1567,7 +1567,7 @@ export const getComments = async (
 ): Promise<CommentResponse[]> => {
   try {
     const response = await boardService.get('/api/comments', {
-      params: { board_id },
+      params: { boardId: board_id },
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data || [];
