@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -136,5 +137,15 @@ public class UserService {
         user.restore();
         userRepository.save(user);
         log.info("User restored: userId={}", userId);
+    }
+
+    /**
+     * 여러 사용자 ID로 일괄 조회
+     */
+    public List<User> getUsersByIds(List<UUID> userIds) {
+        log.debug("Fetching users by IDs: count={}", userIds.size());
+        List<User> users = userRepository.findAllByUserIdIn(userIds);
+        log.debug("Users retrieved: count={}", users.size());
+        return users;
     }
 }

@@ -139,47 +139,40 @@ func (c *userClient) GetUser(ctx context.Context, userID string) (*UserInfo, err
 		return nil, fmt.Errorf("user service returned status %d", resp.StatusCode)
 	}
 
-	// First, try to decode as wrapped response
-	var wrappedResp UserServiceResponse
-	bodyBytes, err := json.Marshal(nil)
-	if err == nil {
-		// Read the response body
-		var rawResponse map[string]interface{}
-		if err := json.NewDecoder(resp.Body).Decode(&rawResponse); err != nil {
-			return nil, fmt.Errorf("failed to decode response: %w", err)
-		}
+	// Read the response body
+	var rawResponse map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&rawResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
 
-		// Check if response has "data" field (wrapped response)
-		if data, ok := rawResponse["data"]; ok {
-			// Convert data to UserInfo
-			dataBytes, err := json.Marshal(data)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal data: %w", err)
-			}
-
-			var userInfo UserInfo
-			if err := json.Unmarshal(dataBytes, &userInfo); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal user info: %w", err)
-			}
-
-			return &userInfo, nil
-		}
-
-		// If no "data" field, treat as direct UserInfo response
-		bodyBytes, err = json.Marshal(rawResponse)
+	// Check if response has "data" field (wrapped response)
+	if data, ok := rawResponse["data"]; ok {
+		// Convert data to UserInfo
+		dataBytes, err := json.Marshal(data)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal response: %w", err)
+			return nil, fmt.Errorf("failed to marshal data: %w", err)
 		}
 
 		var userInfo UserInfo
-		if err := json.Unmarshal(bodyBytes, &userInfo); err != nil {
+		if err := json.Unmarshal(dataBytes, &userInfo); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal user info: %w", err)
 		}
 
 		return &userInfo, nil
 	}
 
-	return nil, fmt.Errorf("failed to process response")
+	// If no "data" field, treat as direct UserInfo response
+	bodyBytes, err := json.Marshal(rawResponse)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	var userInfo UserInfo
+	if err := json.Unmarshal(bodyBytes, &userInfo); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal user info: %w", err)
+	}
+
+	return &userInfo, nil
 }
 
 // GetUsersBatch retrieves multiple users by IDs

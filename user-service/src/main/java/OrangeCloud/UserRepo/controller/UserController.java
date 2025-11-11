@@ -1,6 +1,7 @@
 package OrangeCloud.UserRepo.controller;
 
 import OrangeCloud.UserRepo.dto.MessageApiResponse;
+import OrangeCloud.UserRepo.dto.user.UserIdRequest;
 import OrangeCloud.UserRepo.entity.User;
 import OrangeCloud.UserRepo.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -82,5 +84,17 @@ public class UserController {
         log.info("Restoring user: {}", userId);
         userService.restoreUser(userId);
         return ResponseEntity.ok(MessageApiResponse.success("사용자가 복구되었습니다."));
+    }
+
+    /**
+     * 여러 사용자 정보 일괄 조회
+     * POST /api/users/batch
+     */
+    @PostMapping("/batch")
+    @Operation(summary = "사용자 일괄 조회", description = "여러 사용자의 정보를 한 번에 조회합니다.")
+    public ResponseEntity<MessageApiResponse> getUsersBatch(@RequestBody UserIdRequest request) {
+        log.debug("Batch fetching users: count={}", request.getUserIds().size());
+        List<User> users = userService.getUsersByIds(request.getUserIds());
+        return ResponseEntity.ok(MessageApiResponse.success("사용자 조회 성공", users));
     }
 }
