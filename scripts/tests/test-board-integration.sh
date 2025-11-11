@@ -420,7 +420,7 @@ create_comment() {
 get_comments() {
     print_step "16" "Board Comments 조회"
 
-    response=$(curl -s "$BOARD_SERVICE_URL/api/comments?board_id=$BOARD_ID" \
+    response=$(curl -s "$BOARD_SERVICE_URL/api/comments?boardId=$BOARD_ID" \
         -H "Authorization: Bearer $TOKEN")
 
     if echo "$response" | grep -q '"data"'; then

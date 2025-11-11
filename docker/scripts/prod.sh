@@ -39,6 +39,9 @@ fi
 # Docker Compose 파일 경로
 COMPOSE_FILES="-f docker/compose/docker-compose.yml -f docker/compose/docker-compose.prod.yml"
 
+# 환경변수 파일을 명시적으로 지정 (compose 파일 내 변수 치환용)
+ENV_FILE_OPTION="--env-file $ENV_FILE"
+
 # 커맨드 처리
 COMMAND=${1:-up}
 
@@ -49,11 +52,11 @@ case $COMMAND in
         read -p "확인 (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            docker compose $COMPOSE_FILES up -d
+            docker compose $ENV_FILE_OPTION $COMPOSE_FILES up -d
             echo -e "${GREEN}✅ 프로덕션 환경이 시작되었습니다.${NC}"
             echo ""
             echo -e "${BLUE}📊 서비스 상태를 확인하세요:${NC}"
-            docker compose $COMPOSE_FILES ps
+            docker compose $ENV_FILE_OPTION $COMPOSE_FILES ps
         else
             echo -e "${YELLOW}취소되었습니다.${NC}"
             exit 0
@@ -66,7 +69,7 @@ case $COMMAND in
         read -p "확인 (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            docker compose $COMPOSE_FILES down
+            docker compose $ENV_FILE_OPTION $COMPOSE_FILES down
             echo -e "${GREEN}✅ 프로덕션 환경이 중지되었습니다.${NC}"
         else
             echo -e "${YELLOW}취소되었습니다.${NC}"
@@ -78,9 +81,9 @@ case $COMMAND in
         echo -e "${YELLOW}🔄 프로덕션 환경을 재시작합니다...${NC}"
         SERVICE=${2:-}
         if [ -z "$SERVICE" ]; then
-            docker compose $COMPOSE_FILES restart
+            docker compose $ENV_FILE_OPTION $COMPOSE_FILES restart
         else
-            docker compose $COMPOSE_FILES restart "$SERVICE"
+            docker compose $ENV_FILE_OPTION $COMPOSE_FILES restart "$SERVICE"
         fi
         echo -e "${GREEN}✅ 재시작이 완료되었습니다.${NC}"
         ;;
@@ -89,15 +92,15 @@ case $COMMAND in
         SERVICE=${2:-}
         LINES=${3:-100}
         if [ -z "$SERVICE" ]; then
-            docker compose $COMPOSE_FILES logs --tail="$LINES" -f
+            docker compose $ENV_FILE_OPTION $COMPOSE_FILES logs --tail="$LINES" -f
         else
-            docker compose $COMPOSE_FILES logs --tail="$LINES" -f "$SERVICE"
+            docker compose $ENV_FILE_OPTION $COMPOSE_FILES logs --tail="$LINES" -f "$SERVICE"
         fi
         ;;
 
     status)
         echo -e "${BLUE}📊 프로덕션 서비스 상태:${NC}"
-        docker compose $COMPOSE_FILES ps
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES ps
         echo ""
         echo -e "${BLUE}💾 볼륨 사용량:${NC}"
         docker volume ls | grep wealist
@@ -105,7 +108,7 @@ case $COMMAND in
 
     health)
         echo -e "${BLUE}🏥 서비스 헬스체크:${NC}"
-        docker compose $COMPOSE_FILES ps --format json | jq -r '.[] | "\(.Name): \(.Health)"'
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES ps --format json | jq -r '.[] | "\(.Name): \(.Health)"'
         ;;
 
     backup)
@@ -121,7 +124,7 @@ case $COMMAND in
 
     pull)
         echo -e "${BLUE}📥 최신 이미지를 가져옵니다...${NC}"
-        docker compose $COMPOSE_FILES pull
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES pull
         echo -e "${GREEN}✅ 이미지 업데이트 완료${NC}"
         ;;
 
@@ -131,8 +134,8 @@ case $COMMAND in
         read -p "확인 (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            docker compose $COMPOSE_FILES pull
-            docker compose $COMPOSE_FILES up -d --build
+            docker compose $ENV_FILE_OPTION $COMPOSE_FILES pull
+            docker compose $ENV_FILE_OPTION $COMPOSE_FILES up -d --build
             echo -e "${GREEN}✅ 업데이트가 완료되었습니다.${NC}"
         else
             echo -e "${YELLOW}취소되었습니다.${NC}"

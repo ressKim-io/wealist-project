@@ -41,18 +41,21 @@ fi
 # Docker Compose 파일 경로
 COMPOSE_FILES="-f docker/compose/docker-compose.yml -f docker/compose/docker-compose.dev.yml"
 
+# 환경변수 파일을 명시적으로 지정 (compose 파일 내 변수 치환용)
+ENV_FILE_OPTION="--env-file $ENV_FILE"
+
 # 커맨드 처리
 COMMAND=${1:-up}
 
 case $COMMAND in
     up)
         echo -e "${BLUE}🚀 개발 환경을 시작합니다...${NC}"
-        docker compose $COMPOSE_FILES up
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES up
         ;;
 
     up-d)
         echo -e "${BLUE}🚀 개발 환경을 백그라운드로 시작합니다...${NC}"
-        docker compose $COMPOSE_FILES up -d
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES up -d
         echo -e "${GREEN}✅ 개발 환경이 시작되었습니다.${NC}"
         echo -e "${BLUE}📊 서비스 접속 정보:${NC}"
         echo -e "   - Frontend:    http://localhost:3000"
@@ -64,34 +67,34 @@ case $COMMAND in
 
     down)
         echo -e "${YELLOW}⏹️  개발 환경을 중지합니다...${NC}"
-        docker compose $COMPOSE_FILES down
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES down
         echo -e "${GREEN}✅ 개발 환경이 중지되었습니다.${NC}"
         ;;
 
     restart)
         echo -e "${YELLOW}🔄 개발 환경을 재시작합니다...${NC}"
-        docker compose $COMPOSE_FILES restart
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES restart
         echo -e "${GREEN}✅ 개발 환경이 재시작되었습니다.${NC}"
         ;;
 
     logs)
         SERVICE=${2:-}
         if [ -z "$SERVICE" ]; then
-            docker compose $COMPOSE_FILES logs -f
+            docker compose $ENV_FILE_OPTION $COMPOSE_FILES logs -f
         else
-            docker compose $COMPOSE_FILES logs -f "$SERVICE"
+            docker compose $ENV_FILE_OPTION $COMPOSE_FILES logs -f "$SERVICE"
         fi
         ;;
 
     build)
         echo -e "${BLUE}🔨 이미지를 다시 빌드합니다...${NC}"
-        docker compose $COMPOSE_FILES build --no-cache
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES build --no-cache
         echo -e "${GREEN}✅ 빌드가 완료되었습니다.${NC}"
         ;;
 
     rebuild)
         echo -e "${BLUE}🔨 이미지를 다시 빌드하고 시작합니다...${NC}"
-        docker compose $COMPOSE_FILES up -d --build
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES up -d --build
         echo -e "${GREEN}✅ 빌드 및 시작이 완료되었습니다.${NC}"
         ;;
 
@@ -100,7 +103,7 @@ case $COMMAND in
         read -p "계속하시겠습니까? (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            docker compose $COMPOSE_FILES down -v --remove-orphans
+            docker compose $ENV_FILE_OPTION $COMPOSE_FILES down -v --remove-orphans
             echo -e "${GREEN}✅ 정리가 완료되었습니다.${NC}"
         else
             echo -e "${YELLOW}취소되었습니다.${NC}"
@@ -108,13 +111,13 @@ case $COMMAND in
         ;;
 
     ps)
-        docker compose $COMPOSE_FILES ps
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES ps
         ;;
 
     exec)
         SERVICE=${2:-user-service}
         SHELL=${3:-bash}
-        docker compose $COMPOSE_FILES exec "$SERVICE" "$SHELL"
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES exec "$SERVICE" "$SHELL"
         ;;
 
     *)

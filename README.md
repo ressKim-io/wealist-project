@@ -25,77 +25,150 @@
 
 ### 1. 환경 변수 설정
 
-`.env.example` 파일을 참고하여 `.env` 파일을 생성하고 필요한 값을 입력합니다.
+개발 환경용 환경변수 파일을 생성합니다:
 
 ```bash
-cp .env.example .env
-# .env 파일을 열어 필요한 값 수정
+# 개발 환경 템플릿 복사
+cp docker/env/.env.dev.example docker/env/.env.dev
+
+# .env.dev 파일을 열어 필요한 값 수정 (특히 OAuth 관련)
+vi docker/env/.env.dev
 ```
 
-### 2. Docker Compose 실행
+### 2. 개발 환경 시작
+
+**방법 1: 스크립트 사용 (권장)**
 
 ```bash
-# 일반 실행
-docker compose up -d
+# 서비스 시작 (포그라운드)
+./docker/scripts/dev.sh up
 
-# 빌드 캐시 없이 실행 (업데이트 후 문제 발생 시)
-docker compose build --no-cache
-docker compose up -d
+# 서비스 시작 (백그라운드)
+./docker/scripts/dev.sh up-d
+
+# 로그 확인
+./docker/scripts/dev.sh logs
+
+# 서비스 종료
+./docker/scripts/dev.sh down
 ```
+
+**방법 2: Docker Compose 직접 사용**
+
+```bash
+# --env-file 옵션 필수!
+docker compose --env-file docker/env/.env.dev \
+  -f docker/compose/docker-compose.yml \
+  -f docker/compose/docker-compose.dev.yml \
+  up -d
+```
+
+> **중요**: `--env-file` 옵션을 빼먹으면 환경변수 인식 오류가 발생합니다. 스크립트 사용을 권장합니다.
 
 ### 3. 서비스 확인
 
+개발 환경에서 접속 가능한 서비스:
+
+- **Frontend**: http://localhost:3000
 - **User Service**: http://localhost:8080/health
 - **User Service Swagger**: http://localhost:8080/swagger-ui/index.html
 - **Board Service**: http://localhost:8000/health
-- **Board Service Swagger** (dev 모드만): http://localhost:8000/swagger/index.html
+- **Board Service Swagger**: http://localhost:8000/swagger/index.html
+- **PostgreSQL**: localhost:5432
+- **Redis**: localhost:6379
 
 ### 4. 테스트
 
 Board Service 통합 테스트:
 ```bash
-cd scripts/board_test_script
-./test_board_service.sh
+./scripts/tests/test-board-integration.sh
 ```
 
-### 5. 추가 정보
+User Service 테스트:
+```bash
+./scripts/tests/test-user-service.sh
+```
 
-- **API 테스트**: Board Service Swagger UI에서 직접 테스트 가능
+자세한 내용은 [테스트 가이드](./scripts/tests/README.md)를 참고하세요.
 
-## ⚙️ 중지 및 삭제
+### 5. 추가 명령어
 
 ```bash
-# 서비스 중지
-docker compose down
+# 서비스 재시작
+./docker/scripts/dev.sh restart
 
-# 서비스 중지 및 볼륨 삭제 (데이터베이스 초기화)
-docker compose down -v
+# 실행 중인 서비스 확인
+./docker/scripts/dev.sh ps
+
+# 이미지 다시 빌드
+./docker/scripts/dev.sh build
+
+# 컨테이너 접속
+./docker/scripts/dev.sh exec user-service
+
+# 모든 서비스 및 볼륨 삭제
+./docker/scripts/dev.sh clean
 ```
+
+## 🔧 문제 해결
+
+### 환경변수 인식 문제
+
+만약 다음과 같은 경고가 나온다면:
+
+```
+WARN[0000] The "POSTGRES_SUPERUSER" variable is not set. Defaulting to a blank string.
+```
+
+**해결 방법**:
+
+1. 환경변수 파일이 있는지 확인: `ls -la docker/env/.env.dev`
+2. 스크립트를 사용하거나 `--env-file` 옵션을 추가하세요
+
+자세한 내용은 [Docker 가이드](./docker/README.md)를 참조하세요.
 
 ## 🛠️ 개발 가이드
 
 ### 디렉토리 구조
 
 ```
-wealist/
-├── user/               # User Service (Spring Boot)
+wealist-project/
+├── user-service/       # User Service (Spring Boot)
 ├── board-service/      # Board Service (Go)
 ├── frontend/           # Frontend (React)
-├── scripts/            # 테스트 스크립트
-├── docker-compose.yaml # 서비스 오케스트레이션
-├── CLAUDE.md          # 프로젝트 전체 가이드
-└── README.md          # 이 파일
+├── docker/             # Docker 관련 파일
+│   ├── compose/        # Docker Compose 파일
+│   ├── env/            # 환경변수 파일
+│   ├── scripts/        # 실행 스크립트 (dev.sh, prod.sh)
+│   └── README.md       # Docker 가이드
+├── docs/               # 프로젝트 문서
+│   ├── api/            # API 레퍼런스
+│   ├── guides/         # 개발 가이드
+│   ├── planning/       # 계획 문서
+│   └── migration/      # 마이그레이션 가이드
+├── scripts/            # 유틸리티 스크립트
+│   └── tests/          # 테스트 스크립트
+├── CHANGELOG.md        # 변경 이력
+└── README.md           # 이 파일
 ```
 
 ### 개발 시 주의사항
 
-- **Board Service (Go)** 사용 권장 -
+- **Board Service (Go)** 사용 권장
 - JWT 토큰은 User Service와 Board Service 간 공유 (`SECRET_KEY` 일치 필요)
 - 모든 ID는 UUID 타입 사용
 - Foreign Key 없음 (샤딩 대비, 애플리케이션 레벨에서 관계 관리)
 - Soft Delete 방식 (`is_deleted` 플래그)
 
-- **User Service API**: [.claude/api-user-documentation.md](./.claude/api-user-documentation.md)
+### 추가 문서
+
+- **API 레퍼런스**: [docs/api/](./docs/api/)
+  - [Board Service API](./docs/api/board-service-api.md)
+  - [User Service API](./docs/api/user-service-api.md)
+- **개발 가이드**: [docs/guides/](./docs/guides/)
+- **Docker 가이드**: [docker/README.md](./docker/README.md)
+- **테스트 가이드**: [scripts/tests/README.md](./scripts/tests/README.md)
+- **전체 문서 목록**: [docs/README.md](./docs/README.md)
 
 ## 📦 기술 스택
 
