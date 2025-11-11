@@ -31,11 +31,11 @@ func NewFieldHandler(fieldService service.FieldService, fieldValueService servic
 // @Accept json
 // @Produce json
 // @Param request body dto.CreateFieldRequest true "Field creation request"
-// @Success 201 {object} dto.Success{data=dto.FieldResponse}
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Success 201 {object} dto.SuccessResponse{data=dto.FieldResponse}
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /fields [post]
 // @Security BearerAuth
 func (h *FieldHandler) CreateField(c *gin.Context) {
@@ -68,11 +68,11 @@ func (h *FieldHandler) CreateField(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param projectId path string true "Project ID"
-// @Success 200 {object} dto.Success{data=[]dto.FieldResponse}
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Success 200 {object} dto.SuccessResponse{data=[]dto.FieldResponse}
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /projects/{projectId}/fields [get]
 // @Security BearerAuth
 func (h *FieldHandler) GetFieldsByProject(c *gin.Context) {
@@ -99,12 +99,12 @@ func (h *FieldHandler) GetFieldsByProject(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param fieldId path string true "Field ID"
-// @Success 200 {object} dto.Success{data=dto.FieldResponse}
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 404 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Success 200 {object} dto.SuccessResponse{data=dto.FieldResponse}
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /fields/{fieldId} [get]
 // @Security BearerAuth
 func (h *FieldHandler) GetField(c *gin.Context) {
@@ -132,12 +132,12 @@ func (h *FieldHandler) GetField(c *gin.Context) {
 // @Produce json
 // @Param fieldId path string true "Field ID"
 // @Param request body dto.UpdateFieldRequest true "Field update request"
-// @Success 200 {object} dto.Success{data=dto.FieldResponse}
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 404 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Success 200 {object} dto.SuccessResponse{data=dto.FieldResponse}
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /fields/{fieldId} [patch]
 // @Security BearerAuth
 func (h *FieldHandler) UpdateField(c *gin.Context) {
@@ -172,11 +172,11 @@ func (h *FieldHandler) UpdateField(c *gin.Context) {
 // @Produce json
 // @Param fieldId path string true "Field ID"
 // @Success 204
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 404 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /fields/{fieldId} [delete]
 // @Security BearerAuth
 func (h *FieldHandler) DeleteField(c *gin.Context) {
@@ -204,10 +204,10 @@ func (h *FieldHandler) DeleteField(c *gin.Context) {
 // @Param projectId path string true "Project ID"
 // @Param request body dto.UpdateFieldOrderRequest true "Field order update request"
 // @Success 204
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /projects/{projectId}/fields/order [put]
 // @Security BearerAuth
 func (h *FieldHandler) UpdateFieldOrder(c *gin.Context) {
@@ -242,11 +242,11 @@ func (h *FieldHandler) UpdateFieldOrder(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body dto.CreateOptionRequest true "Option creation request"
-// @Success 201 {object} dto.Success{data=dto.OptionResponse}
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Success 201 {object} dto.SuccessResponse{data=dto.OptionResponse}
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /field-options [post]
 // @Security BearerAuth
 func (h *FieldHandler) CreateOption(c *gin.Context) {
@@ -279,11 +279,11 @@ func (h *FieldHandler) CreateOption(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param fieldId path string true "Field ID"
-// @Success 200 {object} dto.Success{data=[]dto.OptionResponse}
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Success 200 {object} dto.SuccessResponse{data=[]dto.OptionResponse}
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /fields/{fieldId}/options [get]
 // @Security BearerAuth
 func (h *FieldHandler) GetOptionsByField(c *gin.Context) {
@@ -311,12 +311,12 @@ func (h *FieldHandler) GetOptionsByField(c *gin.Context) {
 // @Produce json
 // @Param optionId path string true "Option ID"
 // @Param request body dto.UpdateOptionRequest true "Option update request"
-// @Success 200 {object} dto.Success{data=dto.OptionResponse}
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 404 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Success 200 {object} dto.SuccessResponse{data=dto.OptionResponse}
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /field-options/{optionId} [patch]
 // @Security BearerAuth
 func (h *FieldHandler) UpdateOption(c *gin.Context) {
@@ -351,11 +351,11 @@ func (h *FieldHandler) UpdateOption(c *gin.Context) {
 // @Produce json
 // @Param optionId path string true "Option ID"
 // @Success 204
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 404 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /field-options/{optionId} [delete]
 // @Security BearerAuth
 func (h *FieldHandler) DeleteOption(c *gin.Context) {
@@ -383,10 +383,10 @@ func (h *FieldHandler) DeleteOption(c *gin.Context) {
 // @Param fieldId path string true "Field ID"
 // @Param request body dto.UpdateOptionOrderRequest true "Option order update request"
 // @Success 204
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /fields/{fieldId}/options/order [put]
 // @Security BearerAuth
 func (h *FieldHandler) UpdateOptionOrder(c *gin.Context) {
@@ -422,10 +422,10 @@ func (h *FieldHandler) UpdateOptionOrder(c *gin.Context) {
 // @Produce json
 // @Param request body dto.SetFieldValueRequest true "Field value request"
 // @Success 204
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /board-field-values [post]
 // @Security BearerAuth
 func (h *FieldHandler) SetFieldValue(c *gin.Context) {
@@ -457,12 +457,12 @@ func (h *FieldHandler) SetFieldValue(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param boardId path string true "Board ID"
-// @Success 200 {object} dto.Success{data=dto.BoardFieldValuesResponse}
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 404 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Success 200 {object} dto.SuccessResponse{data=dto.BoardFieldValuesResponse}
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /boards/{boardId}/field-values [get]
 // @Security BearerAuth
 func (h *FieldHandler) GetBoardFieldValues(c *gin.Context) {
@@ -491,10 +491,10 @@ func (h *FieldHandler) GetBoardFieldValues(c *gin.Context) {
 // @Param boardId path string true "Board ID"
 // @Param fieldId path string true "Field ID"
 // @Success 204
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /boards/{boardId}/field-values/{fieldId} [delete]
 // @Security BearerAuth
 func (h *FieldHandler) DeleteFieldValue(c *gin.Context) {
@@ -522,10 +522,10 @@ func (h *FieldHandler) DeleteFieldValue(c *gin.Context) {
 // @Produce json
 // @Param request body dto.SetMultiSelectValueRequest true "Multi-select value request"
 // @Success 204
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /board-field-values/multi-select [post]
 // @Security BearerAuth
 func (h *FieldHandler) SetMultiSelectValue(c *gin.Context) {

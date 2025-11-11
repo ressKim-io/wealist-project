@@ -28,11 +28,11 @@ func NewViewHandler(viewService service.ViewService) *ViewHandler {
 // @Accept json
 // @Produce json
 // @Param request body dto.CreateViewRequest true "View creation request"
-// @Success 201 {object} dto.Success{data=dto.ViewResponse}
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Success 201 {object} dto.SuccessResponse{data=dto.ViewResponse}
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /views [post]
 // @Security BearerAuth
 func (h *ViewHandler) CreateView(c *gin.Context) {
@@ -65,11 +65,11 @@ func (h *ViewHandler) CreateView(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param projectId path string true "Project ID"
-// @Success 200 {object} dto.Success{data=[]dto.ViewResponse}
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Success 200 {object} dto.SuccessResponse{data=[]dto.ViewResponse}
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /projects/{projectId}/views [get]
 // @Security BearerAuth
 func (h *ViewHandler) GetViewsByProject(c *gin.Context) {
@@ -96,12 +96,12 @@ func (h *ViewHandler) GetViewsByProject(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param viewId path string true "View ID"
-// @Success 200 {object} dto.Success{data=dto.ViewResponse}
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 404 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Success 200 {object} dto.SuccessResponse{data=dto.ViewResponse}
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /views/{viewId} [get]
 // @Security BearerAuth
 func (h *ViewHandler) GetView(c *gin.Context) {
@@ -129,12 +129,12 @@ func (h *ViewHandler) GetView(c *gin.Context) {
 // @Produce json
 // @Param viewId path string true "View ID"
 // @Param request body dto.UpdateViewRequest true "View update request"
-// @Success 200 {object} dto.Success{data=dto.ViewResponse}
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 404 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Success 200 {object} dto.SuccessResponse{data=dto.ViewResponse}
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /views/{viewId} [patch]
 // @Security BearerAuth
 func (h *ViewHandler) UpdateView(c *gin.Context) {
@@ -169,11 +169,11 @@ func (h *ViewHandler) UpdateView(c *gin.Context) {
 // @Produce json
 // @Param viewId path string true "View ID"
 // @Success 204
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 404 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /views/{viewId} [delete]
 // @Security BearerAuth
 func (h *ViewHandler) DeleteView(c *gin.Context) {
@@ -203,12 +203,12 @@ func (h *ViewHandler) DeleteView(c *gin.Context) {
 // @Param viewId path string true "View ID"
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(20)
-// @Success 200 {object} dto.Success{data=object}
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 404 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Success 200 {object} dto.SuccessResponse{data=object}
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /views/{viewId}/boards [get]
 // @Security BearerAuth
 func (h *ViewHandler) ApplyView(c *gin.Context) {
@@ -242,10 +242,10 @@ func (h *ViewHandler) ApplyView(c *gin.Context) {
 // @Produce json
 // @Param request body dto.UpdateBoardOrderRequest true "Board order update request"
 // @Success 204
-// @Failure 400 {object} dto.Error
-// @Failure 401 {object} dto.Error
-// @Failure 403 {object} dto.Error
-// @Failure 500 {object} dto.Error
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /view-board-orders [put]
 // @Security BearerAuth
 func (h *ViewHandler) UpdateBoardOrder(c *gin.Context) {
