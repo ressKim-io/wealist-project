@@ -123,14 +123,14 @@ create_workspace() {
 create_project() {
     print_step "4" "Project 생성"
 
-    project_data="{\"workspace_id\":\"$WORKSPACE_ID\",\"name\":\"Test Project $(date +%s)\",\"description\":\"자동 테스트용 프로젝트\"}"
+    project_data="{\"workspaceId\":\"$WORKSPACE_ID\",\"name\":\"Test Project $(date +%s)\",\"description\":\"자동 테스트용 프로젝트\"}"
     project_response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/projects" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "$project_data")
 
     if echo "$project_response" | grep -q '"data"'; then
-        PROJECT_ID=$(echo "$project_response" | grep -o '"project_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        PROJECT_ID=$(echo "$project_response" | grep -o '"projectId":"[^"]*"' | head -1 | cut -d'"' -f4)
         print_success "Project 생성 성공 (ID: ${PROJECT_ID:0:8}...)"
     else
         print_error "Project 생성 실패: $project_response"
@@ -144,16 +144,16 @@ create_field_status() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"project_id\": \"$PROJECT_ID\",
+            \"projectId\": \"$PROJECT_ID\",
             \"name\": \"Status\",
-            \"field_type\": \"single_select\",
+            \"fieldType\": \"single_select\",
             \"description\": \"Task status\",
-            \"is_required\": true,
+            \"isRequired\": true,
             \"config\": {}
         }")
 
     if echo "$response" | grep -q '"data"'; then
-        FIELD_STATUS_ID=$(echo "$response" | grep -o '"field_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        FIELD_STATUS_ID=$(echo "$response" | grep -o '"fieldId":"[^"]*"' | head -1 | cut -d'"' -f4)
         print_success "Status 필드 생성 성공 (ID: ${FIELD_STATUS_ID:0:8}...)"
     else
         print_error "Status 필드 생성 실패: $response"
@@ -168,13 +168,13 @@ create_status_options() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"field_id\": \"$FIELD_STATUS_ID\",
-            \"value\": \"To Do\",
+            \"fieldId\": \"$FIELD_STATUS_ID\",
+            \"label\": \"To Do\",
             \"color\": \"#94A3B8\"
         }")
 
     if echo "$response" | grep -q '"data"'; then
-        OPTION_TODO_ID=$(echo "$response" | grep -o '"option_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        OPTION_TODO_ID=$(echo "$response" | grep -o '"optionId":"[^"]*"' | head -1 | cut -d'"' -f4)
         print_success "To Do 옵션 생성 성공"
     fi
 
@@ -183,13 +183,13 @@ create_status_options() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"field_id\": \"$FIELD_STATUS_ID\",
-            \"value\": \"In Progress\",
+            \"fieldId\": \"$FIELD_STATUS_ID\",
+            \"label\": \"In Progress\",
             \"color\": \"#3B82F6\"
         }")
 
     if echo "$response" | grep -q '"data"'; then
-        OPTION_INPROGRESS_ID=$(echo "$response" | grep -o '"option_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        OPTION_INPROGRESS_ID=$(echo "$response" | grep -o '"optionId":"[^"]*"' | head -1 | cut -d'"' -f4)
         print_success "In Progress 옵션 생성 성공"
     fi
 
@@ -198,13 +198,13 @@ create_status_options() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"field_id\": \"$FIELD_STATUS_ID\",
-            \"value\": \"Done\",
+            \"fieldId\": \"$FIELD_STATUS_ID\",
+            \"label\": \"Done\",
             \"color\": \"#10B981\"
         }")
 
     if echo "$response" | grep -q '"data"'; then
-        OPTION_DONE_ID=$(echo "$response" | grep -o '"option_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        OPTION_DONE_ID=$(echo "$response" | grep -o '"optionId":"[^"]*"' | head -1 | cut -d'"' -f4)
         print_success "Done 옵션 생성 성공"
     fi
 }
@@ -216,16 +216,16 @@ create_field_priority() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"project_id\": \"$PROJECT_ID\",
+            \"projectId\": \"$PROJECT_ID\",
             \"name\": \"Priority\",
-            \"field_type\": \"single_select\",
+            \"fieldType\": \"single_select\",
             \"description\": \"Task priority level\",
-            \"is_required\": false,
+            \"isRequired\": false,
             \"config\": {}
         }")
 
     if echo "$response" | grep -q '"data"'; then
-        FIELD_PRIORITY_ID=$(echo "$response" | grep -o '"field_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        FIELD_PRIORITY_ID=$(echo "$response" | grep -o '"fieldId":"[^"]*"' | head -1 | cut -d'"' -f4)
         print_success "Priority 필드 생성 성공 (ID: ${FIELD_PRIORITY_ID:0:8}...)"
     else
         print_error "Priority 필드 생성 실패: $response"
@@ -240,13 +240,13 @@ create_priority_options() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"field_id\": \"$FIELD_PRIORITY_ID\",
-            \"value\": \"High\",
+            \"fieldId\": \"$FIELD_PRIORITY_ID\",
+            \"label\": \"High\",
             \"color\": \"#EF4444\"
         }")
 
     if echo "$response" | grep -q '"data"'; then
-        OPTION_HIGH_ID=$(echo "$response" | grep -o '"option_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        OPTION_HIGH_ID=$(echo "$response" | grep -o '"optionId":"[^"]*"' | head -1 | cut -d'"' -f4)
         print_success "High 옵션 생성 성공"
     fi
 
@@ -255,13 +255,13 @@ create_priority_options() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"field_id\": \"$FIELD_PRIORITY_ID\",
-            \"value\": \"Medium\",
+            \"fieldId\": \"$FIELD_PRIORITY_ID\",
+            \"label\": \"Medium\",
             \"color\": \"#F59E0B\"
         }")
 
     if echo "$response" | grep -q '"data"'; then
-        OPTION_MEDIUM_ID=$(echo "$response" | grep -o '"option_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        OPTION_MEDIUM_ID=$(echo "$response" | grep -o '"optionId":"[^"]*"' | head -1 | cut -d'"' -f4)
         print_success "Medium 옵션 생성 성공"
     fi
 
@@ -270,13 +270,13 @@ create_priority_options() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"field_id\": \"$FIELD_PRIORITY_ID\",
-            \"value\": \"Low\",
+            \"fieldId\": \"$FIELD_PRIORITY_ID\",
+            \"label\": \"Low\",
             \"color\": \"#6B7280\"
         }")
 
     if echo "$response" | grep -q '"data"'; then
-        OPTION_LOW_ID=$(echo "$response" | grep -o '"option_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        OPTION_LOW_ID=$(echo "$response" | grep -o '"optionId":"[^"]*"' | head -1 | cut -d'"' -f4)
         print_success "Low 옵션 생성 성공"
     fi
 }
@@ -288,16 +288,16 @@ create_field_tags() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"project_id\": \"$PROJECT_ID\",
+            \"projectId\": \"$PROJECT_ID\",
             \"name\": \"Tags\",
-            \"field_type\": \"multi_select\",
+            \"fieldType\": \"multi_select\",
             \"description\": \"Task tags\",
-            \"is_required\": false,
+            \"isRequired\": false,
             \"config\": {\"max_selections\": 5}
         }")
 
     if echo "$response" | grep -q '"data"'; then
-        FIELD_TAGS_ID=$(echo "$response" | grep -o '"field_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        FIELD_TAGS_ID=$(echo "$response" | grep -o '"fieldId":"[^"]*"' | head -1 | cut -d'"' -f4)
         print_success "Tags 필드 생성 성공 (ID: ${FIELD_TAGS_ID:0:8}...)"
     else
         print_error "Tags 필드 생성 실패: $response"
@@ -311,7 +311,7 @@ list_project_fields() {
         -H "Authorization: Bearer $TOKEN")
 
     if echo "$response" | grep -q '"data"'; then
-        field_count=$(echo "$response" | grep -o '"field_id"' | wc -l)
+        field_count=$(echo "$response" | grep -o '"fieldId"' | wc -l)
         print_success "Retrieved $field_count custom fields"
     else
         print_error "Failed to list project fields"
@@ -325,14 +325,14 @@ create_board() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"project_id\": \"$PROJECT_ID\",
+            \"projectId\": \"$PROJECT_ID\",
             \"title\": \"Test Board $(date +%s)\",
-            \"description\": \"Board with custom fields\",
-            \"assignee_id\": \"$USER_ID\"
+            \"content\": \"Board with custom fields\",
+            \"assigneeId\": \"$USER_ID\"
         }")
 
     if echo "$response" | grep -q '"data"'; then
-        BOARD_ID=$(echo "$response" | grep -o '"board_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        BOARD_ID=$(echo "$response" | grep -o '"boardId":"[^"]*"' | head -1 | cut -d'"' -f4)
         print_success "Board 생성 성공 (ID: ${BOARD_ID:0:8}...)"
     else
         print_error "Board 생성 실패: $response"
@@ -344,11 +344,12 @@ set_board_field_values() {
 
     # Set Status = In Progress
     print_info "Setting Status to 'In Progress'..."
-    response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/boards/$BOARD_ID/field-values" \
+    response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/board-field-values" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"field_id\": \"$FIELD_STATUS_ID\",
+            \"boardId\": \"$BOARD_ID\",
+            \"fieldId\": \"$FIELD_STATUS_ID\",
             \"value\": \"$OPTION_INPROGRESS_ID\"
         }")
 
@@ -358,11 +359,12 @@ set_board_field_values() {
 
     # Set Priority = High
     print_info "Setting Priority to 'High'..."
-    response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/boards/$BOARD_ID/field-values" \
+    response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/board-field-values" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"field_id\": \"$FIELD_PRIORITY_ID\",
+            \"boardId\": \"$BOARD_ID\",
+            \"fieldId\": \"$FIELD_PRIORITY_ID\",
             \"value\": \"$OPTION_HIGH_ID\"
         }")
 
@@ -387,11 +389,11 @@ get_board_with_fields() {
 get_boards_in_project() {
     print_step "14" "Project의 모든 Board 조회"
 
-    response=$(curl -s "$BOARD_SERVICE_URL/api/boards?project_id=$PROJECT_ID" \
+    response=$(curl -s "$BOARD_SERVICE_URL/api/boards?projectId=$PROJECT_ID" \
         -H "Authorization: Bearer $TOKEN")
 
     if echo "$response" | grep -q '"data"'; then
-        board_count=$(echo "$response" | grep -o '"board_id"' | wc -l)
+        board_count=$(echo "$response" | grep -o '"boardId"' | wc -l)
         print_success "$board_count개의 Board 조회 성공"
     else
         print_error "Boards 조회 실패"
@@ -405,12 +407,12 @@ create_comment() {
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
-            \"board_id\": \"$BOARD_ID\",
+            \"boardId\": \"$BOARD_ID\",
             \"content\": \"This is a test comment from integration test script\"
         }")
 
     if echo "$response" | grep -q '"data"'; then
-        COMMENT_ID=$(echo "$response" | grep -o '"comment_id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        COMMENT_ID=$(echo "$response" | grep -o '"commentId":"[^"]*"' | head -1 | cut -d'"' -f4)
         print_success "Comment 생성 성공 (ID: ${COMMENT_ID:0:8}...)"
     else
         print_error "Comment 생성 실패"
@@ -424,7 +426,7 @@ get_comments() {
         -H "Authorization: Bearer $TOKEN")
 
     if echo "$response" | grep -q '"data"'; then
-        comment_count=$(echo "$response" | grep -o '"comment_id"' | wc -l)
+        comment_count=$(echo "$response" | grep -o '"commentId"' | wc -l)
         print_success "$comment_count개의 Comment 조회 성공"
     else
         print_error "Comments 조회 실패"
@@ -435,11 +437,11 @@ test_board_filtering() {
     print_step "17" "Board 필터링 테스트"
 
     print_info "Filter by Status = In Progress..."
-    response=$(curl -s "$BOARD_SERVICE_URL/api/boards?project_id=$PROJECT_ID&status=In%20Progress" \
+    response=$(curl -s "$BOARD_SERVICE_URL/api/boards?projectId=$PROJECT_ID&status=In%20Progress" \
         -H "Authorization: Bearer $TOKEN")
 
     if echo "$response" | grep -q '"data"'; then
-        filtered_count=$(echo "$response" | grep -o '"board_id"' | wc -l)
+        filtered_count=$(echo "$response" | grep -o '"boardId"' | wc -l)
         print_success "필터링된 Board: $filtered_count개"
     fi
 }
