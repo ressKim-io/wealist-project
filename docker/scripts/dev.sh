@@ -49,11 +49,6 @@ COMMAND=${1:-up}
 
 case $COMMAND in
     up)
-        echo -e "${BLUE}🚀 개발 환경을 시작합니다...${NC}"
-        docker compose $ENV_FILE_OPTION $COMPOSE_FILES up
-        ;;
-
-    up-d)
         echo -e "${BLUE}🚀 개발 환경을 백그라운드로 시작합니다...${NC}"
         docker compose $ENV_FILE_OPTION $COMPOSE_FILES up -d
         echo -e "${GREEN}✅ 개발 환경이 시작되었습니다.${NC}"
@@ -63,6 +58,13 @@ case $COMMAND in
         echo -e "   - Board API:   http://localhost:8000"
         echo -e "   - PostgreSQL:  localhost:5432"
         echo -e "   - Redis:       localhost:6379"
+        echo -e ""
+        echo -e "${BLUE}💡 로그 확인: ./docker/scripts/dev.sh logs${NC}"
+        ;;
+
+    up-fg)
+        echo -e "${BLUE}🚀 개발 환경을 포그라운드로 시작합니다...${NC}"
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES up
         ;;
 
     down)
@@ -124,8 +126,8 @@ case $COMMAND in
         echo -e "${RED}❌ 알 수 없는 명령어: $COMMAND${NC}"
         echo ""
         echo "사용 가능한 명령어:"
-        echo "  up         - 개발 환경 시작 (포그라운드)"
-        echo "  up-d       - 개발 환경 시작 (백그라운드)"
+        echo "  up         - 개발 환경 시작 (백그라운드)"
+        echo "  up-fg      - 개발 환경 시작 (포그라운드)"
         echo "  down       - 개발 환경 중지"
         echo "  restart    - 개발 환경 재시작"
         echo "  logs       - 로그 확인 (logs [service])"
