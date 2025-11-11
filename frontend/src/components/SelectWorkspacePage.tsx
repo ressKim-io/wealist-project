@@ -34,8 +34,8 @@ const SelectWorkspacePage: React.FC = () => {
   const { theme } = useTheme();
 
   // 5. localStorage에서 토큰 및 ID 직접 조회
-  const accessToken = localStorage.getItem('access_token') || '';
-  const userId = localStorage.getItem('user_id') || ''; // OWNER 확인용
+  const accessToken = localStorage.getItem('accessToken') || '';
+  const userId = localStorage.getItem('userId') || ''; // OWNER 확인용
 
   // 페이지 상태
   const [step, setStep] = useState<WorkspacePageStep>('list');

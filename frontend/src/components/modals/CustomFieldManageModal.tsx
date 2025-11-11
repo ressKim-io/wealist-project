@@ -34,7 +34,7 @@ export const CustomFieldManageModal: React.FC<CustomFieldManageModalProps> = ({
   onFieldsUpdated,
 }) => {
   const { theme } = useTheme();
-  const accessToken = localStorage.getItem('access_token') || '';
+  const accessToken = localStorage.getItem('accessToken') || '';
 
   const [activeTab, setActiveTab] = useState<TabType>('stages');
   const [stages, setStages] = useState<CustomStageResponse[]>([]);

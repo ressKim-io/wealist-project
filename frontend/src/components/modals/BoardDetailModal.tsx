@@ -55,7 +55,7 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
   onEdit,
 }) => {
   const { theme } = useTheme();
-  const accessToken = localStorage.getItem('access_token') || '';
+  const accessToken = localStorage.getItem('accessToken') || '';
 
   // Form state
   const [projectId, setProjectId] = useState<string>('');
