@@ -4,6 +4,9 @@ import (
 	"board-service/internal/apperrors"
 	"board-service/internal/cache"
 	"board-service/internal/client"
+	"board-service/internal/common/pagination"
+	"board-service/internal/common/parser"
+	"board-service/internal/common/validator"
 	"board-service/internal/domain"
 	"board-service/internal/dto"
 	"board-service/internal/repository"
@@ -63,14 +66,15 @@ func NewBoardService(
 // ==================== Create Board ====================
 
 func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (*dto.BoardResponse, error) {
-	userUUID, err := uuid.Parse(userID)
+	// Parse and validate UUIDs using common parser
+	userUUID, err := parser.ParseUserID(userID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
+		return nil, err
 	}
 
-	projectUUID, err := uuid.Parse(req.ProjectID)
+	projectUUID, err := parser.ParseProjectID(req.ProjectID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 프로젝트 ID", 400)
+		return nil, err
 	}
 
 	// 1. Check if user is project member
@@ -82,16 +86,14 @@ func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
 	}
 
-	// 2. Validate Assignee (optional)
-	var assigneeUUID *uuid.UUID
-	if req.AssigneeID != nil {
-		parsedAssigneeUUID, err := uuid.Parse(*req.AssigneeID)
-		if err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 담당자 ID", 400)
-		}
-		assigneeUUID = &parsedAssigneeUUID
+	// 2. Validate Assignee (optional) using common parser
+	assigneeUUID, err := parser.ParseOptionalUUID(req.AssigneeID, "담당자")
+	if err != nil {
+		return nil, err
+	}
 
-		_, err = s.projectRepo.FindMemberByUserAndProject(parsedAssigneeUUID, projectUUID)
+	if assigneeUUID != nil {
+		_, err = s.projectRepo.FindMemberByUserAndProject(*assigneeUUID, projectUUID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil, apperrors.New(apperrors.ErrCodeNotFound, "담당자가 프로젝트 멤버가 아닙니다", 404)
@@ -100,14 +102,14 @@ func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (
 		}
 	}
 
-	// 3. Parse DueDate (optional)
+	// 3. Parse DueDate (optional) using common validator
 	var dueDate *time.Time
 	if req.DueDate != nil {
-		parsed, err := time.Parse(time.RFC3339, *req.DueDate)
+		parsed, err := validator.ValidateDateFormat(*req.DueDate, "마감일")
 		if err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 마감일 형식입니다 (ISO 8601 required)", 400)
+			return nil, err
 		}
-		dueDate = &parsed
+		dueDate = parsed
 	}
 
 	// 4. Create Board
@@ -137,14 +139,15 @@ func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (
 // ==================== Get Single Board ====================
 
 func (s *boardService) GetBoard(boardID, userID string) (*dto.BoardResponse, error) {
-	boardUUID, err := uuid.Parse(boardID)
+	// Parse UUIDs using common parser
+	boardUUID, err := parser.ParseBoardID(boardID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 보드 ID", 400)
+		return nil, err
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	userUUID, err := parser.ParseUserID(userID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
+		return nil, err
 	}
 
 	// 1. Find board
@@ -174,14 +177,15 @@ func (s *boardService) GetBoard(boardID, userID string) (*dto.BoardResponse, err
 // ==================== Get Boards (List with Filters) ====================
 
 func (s *boardService) GetBoards(userID string, req *dto.GetBoardsRequest) (*dto.PaginatedBoardsResponse, error) {
-	projectUUID, err := uuid.Parse(req.ProjectID)
+	// Parse UUIDs using common parser
+	projectUUID, err := parser.ParseProjectID(req.ProjectID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 프로젝트 ID", 400)
+		return nil, err
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	userUUID, err := parser.ParseUserID(userID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
+		return nil, err
 	}
 
 	ctx := context.Background()
@@ -196,31 +200,22 @@ func (s *boardService) GetBoards(userID string, req *dto.GetBoardsRequest) (*dto
 	}
 
 	// 2. Build filters
-	// Note: Custom field filtering (stage, role, importance, etc.) is now done
-	// via ViewService using JSONB queries on custom_fields_cache column
 	filters := repository.BoardFilters{}
 	if req.AssigneeID != "" {
-		assigneeUUID, err := uuid.Parse(req.AssigneeID)
+		assigneeUUID, err := parser.ParseUUID(req.AssigneeID, "담당자")
 		if err == nil {
 			filters.AssigneeID = assigneeUUID
 		}
 	}
 	if req.AuthorID != "" {
-		authorUUID, err := uuid.Parse(req.AuthorID)
+		authorUUID, err := parser.ParseUUID(req.AuthorID, "작성자")
 		if err == nil {
 			filters.AuthorID = authorUUID
 		}
 	}
 
-	// 3. Default pagination
-	page := req.Page
-	if page < 1 {
-		page = 1
-	}
-	limit := req.Limit
-	if limit < 1 {
-		limit = 20
-	}
+	// 3. Validate pagination using common pagination utility
+	page, limit := pagination.ValidatePaginationParams(req.Page, req.Limit)
 
 	// 4. Fetch boards
 	boards, total, err := s.repo.FindByProject(projectUUID, filters, page, limit)
@@ -270,14 +265,15 @@ func (s *boardService) GetBoards(userID string, req *dto.GetBoardsRequest) (*dto
 // ==================== Update Board ====================
 
 func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardRequest) (*dto.BoardResponse, error) {
-	boardUUID, err := uuid.Parse(boardID)
+	// Parse UUIDs using common parser
+	boardUUID, err := parser.ParseBoardID(boardID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 보드 ID", 400)
+		return nil, err
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	userUUID, err := parser.ParseUserID(userID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
+		return nil, err
 	}
 
 	// 1. Find board
@@ -321,24 +317,26 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 	// using /field-values API endpoints
 
 	if req.AssigneeID != nil {
-		assigneeUUID, err := uuid.Parse(*req.AssigneeID)
+		assigneeUUID, err := parser.ParseOptionalUUID(req.AssigneeID, "담당자")
 		if err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 담당자 ID", 400)
+			return nil, err
 		}
 
-		_, err = s.projectRepo.FindMemberByUserAndProject(assigneeUUID, board.ProjectID)
-		if err != nil {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, "담당자가 프로젝트 멤버가 아닙니다", 404)
+		if assigneeUUID != nil {
+			_, err = s.projectRepo.FindMemberByUserAndProject(*assigneeUUID, board.ProjectID)
+			if err != nil {
+				return nil, apperrors.New(apperrors.ErrCodeNotFound, "담당자가 프로젝트 멤버가 아닙니다", 404)
+			}
 		}
-		board.AssigneeID = &assigneeUUID
+		board.AssigneeID = assigneeUUID
 	}
 
 	if req.DueDate != nil {
-		parsed, err := time.Parse(time.RFC3339, *req.DueDate)
+		dueDate, err := validator.ValidateDateFormat(*req.DueDate, "마감일")
 		if err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 마감일 형식입니다 (ISO 8601 required)", 400)
+			return nil, err
 		}
-		board.DueDate = &parsed
+		board.DueDate = dueDate
 	}
 
 	// 4. Save board
@@ -353,14 +351,15 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 // ==================== Delete Board (Soft) ====================
 
 func (s *boardService) DeleteBoard(boardID, userID string) error {
-	boardUUID, err := uuid.Parse(boardID)
+	// Parse UUIDs using common parser
+	boardUUID, err := parser.ParseBoardID(boardID)
 	if err != nil {
-		return apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 보드 ID", 400)
+		return err
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	userUUID, err := parser.ParseUserID(userID)
 	if err != nil {
-		return apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
+		return err
 	}
 
 	// 1. Find board
@@ -614,29 +613,30 @@ func (s *boardService) getUserInfoBatch(ctx context.Context, userIDs []string) m
 // This API combines field value change + position update in a single transaction
 // Uses fractional indexing for O(1) operations - only 1 row updated!
 func (s *boardService) MoveBoard(userID, boardID string, req *dto.MoveBoardRequest) (*dto.MoveBoardResponse, error) {
-	userUUID, err := uuid.Parse(userID)
+	// Parse UUIDs using common parser
+	userUUID, err := parser.ParseUserID(userID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
+		return nil, err
 	}
 
-	boardUUID, err := uuid.Parse(boardID)
+	boardUUID, err := parser.ParseBoardID(boardID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 보드 ID", 400)
+		return nil, err
 	}
 
-	viewUUID, err := uuid.Parse(req.ViewID)
+	viewUUID, err := parser.ParseUUID(req.ViewID, "뷰")
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 뷰 ID", 400)
+		return nil, err
 	}
 
-	fieldUUID, err := uuid.Parse(req.GroupByFieldID)
+	fieldUUID, err := parser.ParseFieldID(req.GroupByFieldID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 필드 ID", 400)
+		return nil, err
 	}
 
-	newValueUUID, err := uuid.Parse(req.NewFieldValue)
+	newValueUUID, err := parser.ParseUUID(req.NewFieldValue, "필드 값")
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 필드 값 ID", 400)
+		return nil, err
 	}
 
 	// 1. Fetch board
