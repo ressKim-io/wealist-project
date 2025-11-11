@@ -1,3 +1,15 @@
+import {
+  CreateWorkspaceRequest,
+  InvitableUser,
+  PendingMember,
+  UpdateProfileRequest,
+  UpdateWorkspaceSettingsRequest,
+  UserProfileResponse,
+  WorkspaceMember,
+  WorkspaceMemberRole,
+  WorkspaceResponse,
+  WorkspaceSettings,
+} from '../../types/user';
 import { userRepoClient } from '../apiConfig';
 import { AxiosResponse } from 'axios';
 
@@ -13,93 +25,6 @@ import { AxiosResponse } from 'axios';
  * 백엔드 API 구현 후 아래 플래그를 false로 변경하세요.
  */
 const USE_MOCK_DATA = false;
-
-// --- DTO Interfaces ---
-
-export interface AuthResponse {
-  accessToken: string;
-  refreshToken: string;
-  userId: string; // (format: uuid)
-  name: string; // Google OAuth에서 받은 사용자 이름 (UserProfile.nickName 값)
-  email: string;
-  tokenType: string; // e.g., "bearer"
-}
-
-export interface WorkspaceResponse {
-  workspaceId: string;
-  workspaceName: string;
-  workspaceDescription: string;
-  ownerId: string;
-  ownerName: string;
-  ownerEmail: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateWorkspaceRequest {
-  workspaceName: string;
-  workspaceDescription?: string;
-}
-
-export interface UserProfileResponse {
-  profileId: string;
-  userId: string;
-  workspaceId?: string | null; // [추가] 워크스페이스별 프로필용
-  nickName: string;
-  email: string | null;
-  profileImageUrl: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface UpdateProfileRequest {
-  nickName?: string;
-  email?: string;
-  profileImageUrl?: string;
-}
-
-// --- Workspace Management Interfaces ---
-
-export type WorkspaceMemberRole = 'OWNER' | 'ADMIN' | 'MEMBER';
-
-export interface WorkspaceMember {
-  userId: string;
-  userName: string; // Changed from 'name' to match backend DTO
-  userEmail: string; // Changed from 'email' to match backend DTO
-  roleName: WorkspaceMemberRole; // Changed from 'role' to match backend DTO
-  profileImageUrl?: string | null;
-  joinedAt: string;
-}
-
-export interface PendingMember {
-  userId: string;
-  nickName: string;
-  email: string;
-  requestedAt: string;
-}
-
-export interface InvitableUser {
-  userId: string;
-  nickName: string;
-  email: string;
-}
-
-export interface WorkspaceSettings {
-  workspaceId: string;
-  workspaceName: string;
-  workspaceDescription: string;
-  isPublic: boolean; // 공개/비공개
-  requiresApproval: boolean; // 승인제/비승인제
-  onlyOwnerCanInvite: boolean; // OWNER만 초대 가능
-}
-
-export interface UpdateWorkspaceSettingsRequest {
-  workspaceName?: string;
-  workspaceDescription?: string;
-  isPublic?: boolean;
-  requiresApproval?: boolean;
-  onlyOwnerCanInvite?: boolean;
-}
 
 // ========================================
 // 목업 데이터 (백엔드 개발자가 수정 가능)
@@ -183,52 +108,6 @@ let MOCK_WORKSPACE_SETTINGS: Record<string, WorkspaceSettings> = {
     requiresApproval: true,
     onlyOwnerCanInvite: false,
   },
-};
-
-// 목업: 워크스페이스 회원 목록
-let MOCK_WORKSPACE_MEMBERS: Record<string, WorkspaceMember[]> = {
-  'workspace-1': [
-    {
-      userId: 'user-123',
-      userName: '김개발',
-      userEmail: 'dev.kim@orangecloud.com',
-      roleName: 'OWNER',
-      profileImageUrl: 'https://i.pravatar.cc/150?img=12',
-      joinedAt: '2024-01-01T00:00:00Z',
-    },
-    {
-      userId: 'user-456',
-      userName: '이디자인',
-      userEmail: 'design.lee@orangecloud.com',
-      roleName: 'ADMIN',
-      profileImageUrl: 'https://i.pravatar.cc/150?img=5',
-      joinedAt: '2024-01-05T00:00:00Z',
-    },
-    {
-      userId: 'user-789',
-      userName: '박프론트',
-      userEmail: 'frontend.park@orangecloud.com',
-      roleName: 'MEMBER',
-      profileImageUrl: null,
-      joinedAt: '2024-01-10T00:00:00Z',
-    },
-    {
-      userId: 'user-101',
-      userName: '정백엔드',
-      userEmail: 'backend.jung@orangecloud.com',
-      roleName: 'MEMBER',
-      profileImageUrl: 'https://i.pravatar.cc/150?img=33',
-      joinedAt: '2024-01-12T00:00:00Z',
-    },
-    {
-      userId: 'user-202',
-      userName: '최데브옵스',
-      userEmail: 'devops.choi@orangecloud.com',
-      roleName: 'MEMBER',
-      profileImageUrl: null,
-      joinedAt: '2024-01-15T00:00:00Z',
-    },
-  ],
 };
 
 // 목업: 승인 대기 회원
@@ -587,14 +466,6 @@ export const getWorkspaceMembers = async (
   workspaceId: string,
   accessToken: string,
 ): Promise<WorkspaceMember[]> => {
-  if (USE_MOCK_DATA) {
-    console.log('[MOCK] getWorkspaceMembers 호출:', workspaceId);
-    const members = MOCK_WORKSPACE_MEMBERS[workspaceId] || [];
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(members), 300);
-    });
-  }
-
   const response: AxiosResponse<WorkspaceMember[]> = await userRepoClient.get(
     `/api/workspaces/${workspaceId}/members`,
     {
@@ -646,29 +517,6 @@ export const approveMember = async (
   userId: string,
   accessToken: string,
 ): Promise<void> => {
-  if (USE_MOCK_DATA) {
-    console.log('[MOCK] approveMember 호출:', workspaceId, userId);
-    // 승인 대기 목록에서 제거
-    const pending = MOCK_PENDING_MEMBERS[workspaceId] || [];
-    const member = pending.find((m) => m.userId === userId);
-    if (member) {
-      MOCK_PENDING_MEMBERS[workspaceId] = pending.filter((m) => m.userId !== userId);
-      // 회원 목록에 추가
-      const members = MOCK_WORKSPACE_MEMBERS[workspaceId] || [];
-      members.push({
-        userId: member.userId,
-        userName: member.nickName,
-        userEmail: member.email,
-        roleName: 'MEMBER',
-        joinedAt: new Date().toISOString(),
-      });
-      MOCK_WORKSPACE_MEMBERS[workspaceId] = members;
-    }
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(), 300);
-    });
-  }
-
   await userRepoClient.post(
     `/api/workspaces/${workspaceId}/members/${userId}/approve`,
     {},
@@ -724,18 +572,6 @@ export const updateMemberRole = async (
   role: WorkspaceMemberRole,
   accessToken: string,
 ): Promise<void> => {
-  if (USE_MOCK_DATA) {
-    console.log('[MOCK] updateMemberRole 호출:', workspaceId, userId, role);
-    const members = MOCK_WORKSPACE_MEMBERS[workspaceId] || [];
-    const member = members.find((m) => m.userId === userId);
-    if (member) {
-      member.roleName = role;
-    }
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(), 300);
-    });
-  }
-
   await userRepoClient.put(
     `/api/workspaces/${workspaceId}/members/${userId}/role`,
     { roleName: role },
@@ -758,15 +594,6 @@ export const removeMember = async (
   userId: string,
   accessToken: string,
 ): Promise<void> => {
-  if (USE_MOCK_DATA) {
-    console.log('[MOCK] removeMember 호출:', workspaceId, userId);
-    const members = MOCK_WORKSPACE_MEMBERS[workspaceId] || [];
-    MOCK_WORKSPACE_MEMBERS[workspaceId] = members.filter((m) => m.userId !== userId);
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(), 300);
-    });
-  }
-
   await userRepoClient.delete(`/api/workspaces/${workspaceId}/members/${userId}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
@@ -822,38 +649,6 @@ export const inviteUser = async (
   userId: string,
   accessToken: string,
 ): Promise<void> => {
-  if (USE_MOCK_DATA) {
-    console.log('[MOCK] inviteUser 호출:', workspaceId, userId);
-    const user = MOCK_INVITABLE_USERS.find((u) => u.userId === userId);
-    if (user) {
-      // 승인제라면 승인 대기 목록에 추가, 아니면 바로 회원으로 추가
-      const settings = MOCK_WORKSPACE_SETTINGS[workspaceId];
-      if (settings?.requiresApproval) {
-        const pending = MOCK_PENDING_MEMBERS[workspaceId] || [];
-        pending.push({
-          userId: user.userId,
-          nickName: user.nickName,
-          email: user.email,
-          requestedAt: new Date().toISOString(),
-        });
-        MOCK_PENDING_MEMBERS[workspaceId] = pending;
-      } else {
-        const members = MOCK_WORKSPACE_MEMBERS[workspaceId] || [];
-        members.push({
-          userId: user.userId,
-          userName: user.nickName,
-          userEmail: user.email,
-          roleName: 'MEMBER',
-          joinedAt: new Date().toISOString(),
-        });
-        MOCK_WORKSPACE_MEMBERS[workspaceId] = members;
-      }
-    }
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(), 300);
-    });
-  }
-
   await userRepoClient.post(
     `/api/workspaces/${workspaceId}/invite/${userId}`,
     {},

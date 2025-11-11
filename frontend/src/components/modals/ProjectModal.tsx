@@ -8,10 +8,10 @@ import { useAuth } from '../../contexts/AuthContext';
  * - project prop이 있으면 편집 모드, 없으면 생성 모드
  */
 interface ProjectData {
-  project_id: string;
+  projectId: string;
   name: string;
   description?: string;
-  workspace_id: string;
+  workspaceId: string;
   ownerId: string;
   ownerName: string;
   ownerEmail: string;
@@ -72,7 +72,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         // 편집 모드
         const { updateProject } = await import('../../api/board/boardService');
         await updateProject(
-          project.project_id,
+          project.projectId,
           {
             name: name.trim(),
             description: description.trim() || undefined,
@@ -86,7 +86,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         const { createProject } = await import('../../api/board/boardService');
         await createProject(
           {
-            workspace_id: workspaceId,
+            workspaceId: workspaceId,
             name: name.trim(),
             description: description.trim() || undefined,
           },

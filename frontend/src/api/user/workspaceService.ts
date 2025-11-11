@@ -1,29 +1,8 @@
+import { InviteMemberRequest, UpdateMemberRoleRequest, WorkspaceMember } from '../../types/user';
 import { userRepoClient, getAuthHeaders } from '../apiConfig';
 import { AxiosResponse } from 'axios';
 
 // --- DTO Interfaces ---
-
-export interface WorkspaceMember {
-  id: string; // WorkspaceMember ID (not userId)
-  workspaceId: string;
-  userId: string;
-  userName: string;
-  userEmail: string;
-  roleName: 'OWNER' | 'ADMIN' | 'MEMBER';
-  isDefault: boolean;
-  joinedAt: string;
-}
-
-// 멤버 역할 변경 요청 DTO
-interface UpdateMemberRoleRequest {
-  roleName: 'ADMIN' | 'MEMBER';
-}
-
-// 멤버 초대 요청 DTO (기능 요구사항에 따라 POST 요청을 가정)
-interface InviteMemberRequest {
-  email: string;
-  roleName: 'ADMIN' | 'MEMBER';
-}
 
 // 백엔드 역할을 프론트엔드 역할로 매핑하는 함수 (OWNER -> MASTER, ADMIN -> ORGANIZER)
 const mapRole = (role: string): WorkspaceMember['roleName'] => {

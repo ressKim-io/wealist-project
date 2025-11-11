@@ -25,7 +25,6 @@ import java.util.UUID;
 public class UserProfileController {
 
     private final UserProfileService userProfileService;
-
     // 💡 인증 객체에서 userId (UUID String) 추출
     private UUID extractUserId(Principal principal) {
         if (principal instanceof Authentication authentication) {

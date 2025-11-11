@@ -19,21 +19,90 @@ import { ProjectModal } from '../components/modals/ProjectModal';
 import { CreateBoardModal } from '../components/modals/CreateBoardModal';
 import { CustomFieldManageModal } from '../components/modals/CustomFieldManageModal';
 import { FilterBar } from '../components/FilterBar';
-import {
-  getProjects,
-  getBoards,
-  getProjectStages,
-  ProjectResponse,
-  BoardResponse,
-  CustomStageResponse,
-} from '../api/board/boardService';
+import { getProjects, getBoards, ProjectResponse, BoardResponse } from '../api/board/boardService';
 import { getDefaultColorByIndex } from '../constants/colors';
-import { WorkspaceMember, getWorkspaceMembers } from '../api/user/userService';
+import { getWorkspaceMembers } from '../api/user/userService';
 import { BoardDetailModal } from '../components/modals/BoardDetailModal';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { CustomRoleResponse, CustomImportanceResponse, CustomStageResponse } from '../types/board';
+import { WorkspaceMember } from '../types/user';
+import { AssigneeAvatarStack, AvatarStack } from '../components/common/AvartarStack';
+
+// ⚠️ Mock Data (API 호출 제거를 위한 임시 대안)
+const MOCK_ROLES: CustomRoleResponse[] = [
+  {
+    roleId: 'r-dev',
+    label: '개발',
+    color: '#8B5CF6',
+    displayOrder: 0,
+    fieldId: 'role',
+    description: '기본값',
+    isSystemDefault: true,
+  },
+  {
+    roleId: 'r-design',
+    label: '디자인',
+    color: '#F59E0B',
+    displayOrder: 1,
+    fieldId: 'role',
+    description: '',
+    isSystemDefault: false,
+  },
+];
+const MOCK_IMPORTANCES: CustomImportanceResponse[] = [
+  {
+    importanceId: 'i-high',
+    label: '긴급',
+    color: '#EF4444',
+    displayOrder: 0,
+    fieldId: 'importance',
+    description: '',
+    isSystemDefault: false,
+    level: 5,
+  },
+  {
+    importanceId: 'i-low',
+    label: '낮음',
+    color: '#10B981',
+    displayOrder: 1,
+    fieldId: 'importance',
+    description: '기본값',
+    isSystemDefault: true,
+    level: 1,
+  },
+];
+const MOCK_STAGES_LIST: CustomStageResponse[] = [
+  {
+    stageId: 's-triage',
+    label: '트리아지',
+    color: '#64748B',
+    displayOrder: 0,
+    fieldId: 'stage',
+    description: '기본값',
+    isSystemDefault: true,
+  },
+  {
+    stageId: 's-progress',
+    label: '진행중',
+    color: '#3B82F6',
+    displayOrder: 1,
+    fieldId: 'stage',
+    description: '',
+    isSystemDefault: false,
+  },
+  {
+    stageId: 's-done',
+    label: '완료',
+    color: '#10B981',
+    displayOrder: 2,
+    fieldId: 'stage',
+    description: '',
+    isSystemDefault: true,
+  },
+];
 
 interface Column {
-  stage_id: string;
+  stageId: string;
   title: string;
   color?: string; // hex color from API
   boards: BoardResponse[];
@@ -43,122 +112,6 @@ interface Column {
 interface MainDashboardProps {
   onLogout: () => void;
 }
-
-// =============================================================================
-// AvatarStack (워크스페이스 회원)
-// =============================================================================
-interface AvatarStackProps {
-  members: WorkspaceMember[];
-}
-
-const AvatarStack: React.FC<AvatarStackProps> = ({ members }) => {
-  const displayCount = 3;
-  const displayMembers = members.slice(0, displayCount);
-  const remainingCount = members.length - displayCount;
-
-  const getColorByIndex = (index: number) => {
-    const colors = [
-      'bg-indigo-500',
-      'bg-pink-500',
-      'bg-green-500',
-      'bg-purple-500',
-      'bg-yellow-500',
-    ];
-    return colors[index % colors.length];
-  };
-
-  return (
-    <div className="flex -space-x-1.5 p-1 pr-0 overflow-hidden">
-      {displayMembers.map((member, index) => (
-        <div
-          key={member.userId}
-          className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-white overflow-hidden"
-          style={{ zIndex: members.length - index }}
-          title={`${member.userName} (${member.roleName})`}
-        >
-          {member.profileImageUrl ? (
-            <img
-              src={member.profileImageUrl}
-              alt={member.userName}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div
-              className={`w-full h-full flex items-center justify-center text-white ${getColorByIndex(
-                index,
-              )}`}
-            >
-              {member.userName[0]}
-            </div>
-          )}
-        </div>
-      ))}
-      {remainingCount > 0 && (
-        <div
-          className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-white bg-gray-400 text-white"
-          style={{ zIndex: 0 }}
-        >
-          +{remainingCount}
-        </div>
-      )}
-    </div>
-  );
-};
-
-interface AssigneeAvatarStackProps {
-  assignees: string | string[];
-}
-
-// =============================================================================
-// AssigneeAvatarStack (정상)
-// =============================================================================
-const AssigneeAvatarStack: React.FC<AssigneeAvatarStackProps> = ({ assignees }) => {
-  const assigneeList = Array.isArray(assignees)
-    ? assignees
-    : (assignees as string)
-        .split(',')
-        .map((name) => name.trim())
-        .filter((name) => name.length > 0);
-
-  const initials = assigneeList.map((name) => name[0]).filter((i) => i);
-  const displayCount = 3;
-
-  if (initials.length === 0) {
-    return (
-      <div
-        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-gray-200 bg-gray-200 text-gray-700`}
-      >
-        ?
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex -space-x-1 p-1 pr-0 overflow-hidden">
-      {initials.slice(0, displayCount).map((initial, index) => (
-        <div
-          key={index}
-          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-white text-white ${
-            index === 0 ? 'bg-indigo-500' : index === 1 ? 'bg-pink-500' : 'bg-green-500'
-          }`}
-          style={{ zIndex: initials.length - index }}
-          title={assigneeList[index]}
-        >
-          {initial}
-        </div>
-      ))}
-      {initials.length > displayCount && (
-        <div
-          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-white bg-gray-400 text-white`}
-          style={{ zIndex: 0 }}
-          title={`${initials.length - displayCount}명 외`}
-        >
-          +{initials.length - displayCount}
-        </div>
-      )}
-    </div>
-  );
-};
 
 // =============================================================================
 // MainDashboard
@@ -182,11 +135,17 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   const { theme } = useTheme();
   const currentRole = useRef<'OWNER' | 'ORGANIZER' | 'MEMBER'>('ORGANIZER');
   const canAccessSettings = currentRole.current === 'OWNER' || currentRole.current === 'ORGANIZER';
+
   // 상태 관리
   const [projects, setProjects] = useState<ProjectResponse[]>([]);
   const [columns, setColumns] = useState<Column[]>([]);
   const [selectedProject, setSelectedProject] = useState<ProjectResponse | null>(null);
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>([]);
+
+  // 💡 [추가] Custom Field Option 상태 (Role, Importance)
+  const [roleOptions, setRoleOptions] = useState<CustomRoleResponse[]>(MOCK_ROLES);
+  const [importanceOptions, setImportanceOptions] =
+    useState<CustomImportanceResponse[]>(MOCK_IMPORTANCES);
 
   const [userProfile, _setUserProfile] = useState<UserProfile>({
     profileId: '',
@@ -225,14 +184,6 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   >(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  // TODO: Implement search and filter logic
-  console.log('Current filters:', {
-    currentView,
-    searchQuery,
-    filterOption,
-    currentLayout,
-    showCompleted,
-  });
   useEffect(() => {
     console.log(`Selected Board ID changed: ${selectedBoardId}`);
   }, [selectedBoardId]);
@@ -240,6 +191,12 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   // Ref
   const userMenuRef = useRef<HTMLDivElement>(null);
   const projectSelectorRef = useRef<HTMLDivElement>(null);
+
+  // 💡 [추가] Custom Field Option Lookup Helper
+  const getRoleOption = (roleId: string | undefined) =>
+    roleId ? roleOptions.find((r) => r.roleId === roleId) : undefined;
+  const getImportanceOption = (importanceId: string | undefined) =>
+    importanceId ? importanceOptions.find((i) => i.importanceId === importanceId) : undefined;
 
   // 1. 프로젝트 목록 조회 함수 (재사용 가능)
   const fetchProjects = React.useCallback(async () => {
@@ -272,7 +229,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     }
   }, [currentWorkspaceId, accessToken]);
 
-  // 2. 워크스페이스 회원 조회 함수
+  // 2. 워크스페이스 회원 조회 함수 (변경 없음)
   const fetchWorkspaceMembers = React.useCallback(async () => {
     if (!currentWorkspaceId || !accessToken) return;
 
@@ -288,7 +245,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     }
   }, [currentWorkspaceId, accessToken]);
 
-  // 3. 초기 로드
+  // 3. 초기 로드 (변경 없음)
   useEffect(() => {
     fetchProjects();
     fetchWorkspaceMembers();
@@ -306,27 +263,28 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     setError(null);
     console.log(selectedProject);
     try {
-      console.log(`[Dashboard] 보드 로드 시작 (Project: ${selectedProject.name})`);
+      // console.log(`[Dashboard] 보드 로드 시작 (Project: ${selectedProject.name})`);
 
       // 1. 프로젝트의 모든 Stages 조회
-      const stages = await getProjectStages(selectedProject.project_id, accessToken);
-      console.log('✅ Stages loaded:', stages);
+      const stages = MOCK_STAGES_LIST;
+      // console.log('✅ Stages loaded:', stages);
 
       // 2. 보드 조회
-      const boardsResponse = await getBoards(selectedProject.project_id, accessToken);
-      console.log('✅ Boards loaded:', boardsResponse);
+      const boardsResponse = await getBoards(selectedProject.projectId, accessToken);
+      // console.log('✅ Boards loaded:', boardsResponse);
 
       // 3. Stage별로 빈 컬럼 먼저 생성
       const stageMap = new Map<string, { stage: CustomStageResponse; boards: BoardResponse[] }>();
-      stages.forEach((stage) => {
-        stageMap.set(stage.stage_id, { stage, boards: [] });
+      stages.forEach((stage: CustomStageResponse) => {
+        stageMap.set(stage.stageId, { stage, boards: [] });
       });
 
       // 4. 보드를 해당 Stage 컬럼에 추가
       boardsResponse.boards.forEach((board) => {
-        const stage_id = board.stage?.stage_id;
-        if (stage_id && stageMap.has(stage_id)) {
-          stageMap.get(stage_id)!.boards.push(board);
+        // 💡 [수정] board.stage 속성이 BoardResponse에서 제거되었으므로, customFields를 통해 stageId를 가져옵니다.
+        const stageId = board.customFields?.stageId;
+        if (stageId && stageMap.has(stageId)) {
+          stageMap.get(stageId)!.boards.push(board);
         }
       });
 
@@ -336,8 +294,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       );
 
       const columns: Column[] = sortedStages.map(({ stage, boards }) => ({
-        stage_id: stage.stage_id,
-        title: stage.name,
+        stageId: stage.stageId,
+        title: stage.label, // 💡 name 대신 label 사용
         color: stage.color, // Store the color from API
         boards: boards,
       }));
@@ -353,12 +311,12 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     }
   }, [selectedProject, accessToken]);
 
-  // 4. 프로젝트 선택 시 보드 로드
+  // 4. 프로젝트 선택 시 보드 로드 (변경 없음)
   useEffect(() => {
     fetchBoards();
   }, [fetchBoards]);
 
-  // 2. 드래그 앤 드롭 (용어 변경)
+  // 2. 드래그 앤 드롭 (로직은 변경하지 않음)
   const [draggedBoard, setDraggedBoard] = useState<BoardResponse | null>(null);
   const [draggedFromColumn, setDraggedFromColumn] = useState<string | null>(null);
   const [draggedColumn, setDraggedColumn] = useState<Column | null>(null);
@@ -382,14 +340,14 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
     // Same column: reorder boards within column
     if (draggedFromColumn === targetColumnId) {
-      if (!dragOverBoardId || dragOverBoardId === draggedBoard.board_id) {
+      if (!dragOverBoardId || dragOverBoardId === draggedBoard.boardId) {
         setDraggedBoard(null);
         setDraggedFromColumn(null);
         setDragOverBoardId(null);
         return;
       }
 
-      const targetColumn = columns.find((col) => col.stage_id === targetColumnId);
+      const targetColumn = columns.find((col) => col.stageId === targetColumnId);
       if (!targetColumn || !selectedProject) {
         setDraggedBoard(null);
         setDraggedFromColumn(null);
@@ -398,10 +356,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       }
 
       // Reorder boards
-      const draggedIndex = targetColumn.boards.findIndex(
-        (b) => b.board_id === draggedBoard.board_id,
-      );
-      const targetIndex = targetColumn.boards.findIndex((b) => b.board_id === dragOverBoardId);
+      const draggedIndex = targetColumn.boards.findIndex((b) => b.boardId === draggedBoard.boardId);
+      const targetIndex = targetColumn.boards.findIndex((b) => b.boardId === dragOverBoardId);
 
       if (draggedIndex === -1 || targetIndex === -1) {
         setDraggedBoard(null);
@@ -415,7 +371,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       newBoards.splice(targetIndex, 0, removed);
 
       const newColumns = columns.map((col) => {
-        if (col.stage_id === targetColumnId) {
+        if (col.stageId === targetColumnId) {
           return { ...col, boards: newBoards };
         }
         return col;
@@ -426,24 +382,25 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       setDraggedFromColumn(null);
       setDragOverBoardId(null);
 
-      console.log(`✅ Stage 내 Board 순서 변경 (로컬)`);
+      // console.log(`✅ Stage 내 Board 순서 변경 (로컬)`);
       return;
     }
 
+    // 💡 [수정] 스테이지 변경 시 customFields를 업데이트합니다.
     const updatedBoard: BoardResponse = {
       ...draggedBoard,
-      stage: { ...draggedBoard.stage!, id: targetColumnId },
+      customFields: { ...draggedBoard.customFields, stageId: targetColumnId },
     };
 
     // Optimistic UI update
     const newColumns = columns.map((col) => {
-      if (col.stage_id === draggedFromColumn) {
-        return { ...col, boards: col.boards.filter((t) => t.board_id !== draggedBoard.board_id) };
+      if (col.stageId === draggedFromColumn) {
+        return { ...col, boards: col.boards.filter((t) => t.boardId !== draggedBoard.boardId) };
       }
-      if (col.stage_id === targetColumnId) {
+      if (col.stageId === targetColumnId) {
         // Insert at the position indicated by dragOverBoardId
         if (dragOverBoardId) {
-          const targetIndex = col.boards.findIndex((b) => b.board_id === dragOverBoardId);
+          const targetIndex = col.boards.findIndex((b) => b.boardId === dragOverBoardId);
           if (targetIndex !== -1) {
             const newBoards = [...col.boards];
             newBoards.splice(targetIndex, 0, updatedBoard);
@@ -461,10 +418,10 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     setDraggedFromColumn(null);
     setDragOverBoardId(null);
 
-    console.log(`✅ Board ${draggedBoard.board_id} Stage 변경 (로컬): ${targetColumnId}`);
+    console.log(`✅ Board ${draggedBoard.boardId} Stage 변경 (로컬): ${targetColumnId}`);
   };
 
-  // Column drag handlers
+  // Column drag handlers (변경 없음)
   const handleColumnDragStart = (column: Column): void => {
     setDraggedColumn(column);
   };
@@ -474,13 +431,13 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
   };
 
   const handleColumnDrop = async (targetColumn: Column): Promise<void> => {
-    if (!draggedColumn || draggedColumn.stage_id === targetColumn.stage_id) {
+    if (!draggedColumn || draggedColumn.stageId === targetColumn.stageId) {
       setDraggedColumn(null);
       return;
     }
 
-    const draggedIndex = columns.findIndex((col) => col.stage_id === draggedColumn.stage_id);
-    const targetIndex = columns.findIndex((col) => col.stage_id === targetColumn.stage_id);
+    const draggedIndex = columns.findIndex((col) => col.stageId === draggedColumn.stageId);
+    const targetIndex = columns.findIndex((col) => col.stageId === targetColumn.stageId);
 
     if (draggedIndex === -1 || targetIndex === -1) {
       setDraggedColumn(null);
@@ -495,10 +452,10 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     setColumns(newColumns);
     setDraggedColumn(null);
 
-    console.log(`✅ Stage 컬럼 순서 변경 (로컬)`);
+    // console.log(`✅ Stage 컬럼 순서 변경 (로컬)`);
   };
 
-  // 💡 [추가] 드래그 종료 시 상태를 초기화하는 핸들러
+  // 💡 [추가] 드래그 종료 시 상태를 초기화하는 핸들러 (변경 없음)
   const handleDragEnd = (): void => {
     // 마우스를 놓았을 때, 드래그 상태와 컬럼 드래그 상태를 모두 초기화
     setDraggedBoard(null);
@@ -506,7 +463,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     setDraggedColumn(null);
     setDragOverBoardId(null);
     setDragOverColumn(null);
-    console.log('✅ Drag End: 드래그 상태 초기화');
+    // console.log('✅ Drag End: 드래그 상태 초기화');
   };
 
   // Table sorting handler
@@ -523,7 +480,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  // 외부 클릭 감지 (동일)
+  // 외부 클릭 감지 (변경 없음)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
@@ -547,7 +504,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
   return (
     <div className={`min-h-screen flex ${theme.colors.background} relative`}>
-      {/* 백그라운드 패턴 (동일) */}
+      {/* 백그라운드 패턴 (변경 없음) */}
       <div
         className="fixed inset-0 opacity-5"
         style={{
@@ -557,7 +514,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
         }}
       ></div>
 
-      {/* 사이드바 */}
+      {/* 사이드바, 헤더 (변경 없음) */}
       <aside
         className={`${sidebarWidth} fixed top-0 left-0 h-full flex flex-col justify-between ${theme.colors.primary} text-white shadow-xl z-50 flex-shrink-0`}
       >
@@ -628,12 +585,12 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
         </div>
       </aside>
 
-      {/* 메인 콘텐츠 (동일) */}
+      {/* 메인 콘텐츠 */}
       <div
         className="flex-grow flex flex-col relative z-10"
         style={{ marginLeft: sidebarWidth, minHeight: '100vh' }}
       >
-        {/* 헤더 (동일) */}
+        {/* 헤더 */}
         <header
           className={`fixed top-0 left-0 h-16 flex items-center justify-between pl-20 pr-6 sm:pl-28 sm:pr-4 py-2 sm:py-3 ${theme.colors.card} shadow-md z-20 w-full`}
           style={{
@@ -643,10 +600,12 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
         >
           <div className="flex items-center gap-1 relative">
             <button
-              onClick={() => setShowProjectSelector(!showProjectSelector)}
+              onClick={() => {
+                setShowProjectSelector(!showProjectSelector);
+              }}
               className={`flex items-center gap-2 font-bold text-xl ${theme.colors.text} hover:opacity-80 transition`}
             >
-              {selectedProject?.name || '프로젝트 선택'}
+              {selectedProject?.name || '프로젝트를 선택'}
             </button>
             {canAccessSettings && selectedProject && (
               <button
@@ -671,20 +630,20 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
               >
                 <div className="p-3 max-h-80 overflow-y-auto">
                   <h3 className="text-xs text-gray-400 mb-2 px-1 font-semibold">
-                    프로젝트 ({projects.length})
+                    프로젝트 ({projects?.length})
                   </h3>
-                  {projects.length === 0 ? (
+                  {projects?.length === 0 ? (
                     <p className="text-sm text-gray-500 p-2">프로젝트가 없습니다.</p>
                   ) : (
                     projects?.map((project) => (
                       <button
-                        key={project.project_id}
+                        key={project.projectId}
                         onClick={() => {
                           setSelectedProject(project);
                           setShowProjectSelector(false);
                         }}
                         className={`w-full px-3 py-2 text-left text-sm rounded transition truncate ${
-                          selectedProject?.project_id === project.project_id
+                          selectedProject?.projectId === project.projectId
                             ? 'bg-blue-100 text-blue-700 font-semibold'
                             : 'hover:bg-gray-100 text-gray-800'
                         }`}
@@ -720,7 +679,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
           )}
         </header>
 
-        {/* 보드 영역 (동일) */}
+        {/* 보드 영역 */}
         <div className="flex-grow flex flex-col p-3 sm:p-6 overflow-auto mt-16 ml-20">
           {error && (
             <div className="mb-4 p-4 bg-red-50 border border-red-300 rounded-lg text-red-700">
@@ -732,7 +691,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
             <LoadingSpinner message="프로젝트를 로드 중..." />
           ) : selectedProject ? (
             <>
-              {/* FilterBar */}
+              {/* FilterBar (변경 없음) */}
               <FilterBar
                 onSearchChange={setSearchQuery}
                 onViewChange={setCurrentView}
@@ -754,7 +713,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                   >
                     <thead className="bg-gray-100 border-b border-gray-200">
                       <tr>
-                        {/* Title Column */}
+                        {/* Column Headers (변경 없음) */}
                         <th className="px-4 py-3 text-left">
                           <button
                             onClick={() => handleSort('title')}
@@ -850,14 +809,21 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                       {(() => {
                         // Flatten all boards from all columns
                         const allBoards = columns.flatMap((column) =>
-                          column.boards.map((board) => ({
-                            ...board,
-                            stageName: column.title,
-                            stageColor: column.color,
-                          })),
+                          column.boards.map((board) => {
+                            const roleId = board.customFields?.roleIds?.[0];
+                            const importanceId = board.customFields?.importanceId;
+                            return {
+                              ...board,
+                              stageName: column.title,
+                              stageColor: column.color,
+                              // 💡 [추가] 룩업 데이터 추가
+                              roleOption: getRoleOption(roleId),
+                              importanceOption: getImportanceOption(importanceId),
+                            };
+                          }),
                         );
 
-                        // Filter boards based on search query
+                        // Filter boards based on search query (변경 없음)
                         const filteredBoards = searchQuery.trim()
                           ? allBoards.filter((board) => {
                               const query = searchQuery.toLowerCase();
@@ -884,12 +850,14 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                               bValue = b.stageName.toLowerCase();
                               break;
                             case 'role':
-                              aValue = a.roles?.[0]?.name?.toLowerCase() || '';
-                              bValue = b.roles?.[0]?.name?.toLowerCase() || '';
+                              // 💡 [수정] roles 대신 roleOption.label을 사용
+                              aValue = a.roleOption?.label?.toLowerCase() || '';
+                              bValue = b.roleOption?.label?.toLowerCase() || '';
                               break;
                             case 'importance':
-                              aValue = a.importance?.level || 0;
-                              bValue = b.importance?.level || 0;
+                              // 💡 [수정] importance.level 대신 importanceOption.level을 사용
+                              aValue = a.importanceOption?.level || 0;
+                              bValue = b.importanceOption?.level || 0;
                               break;
                             case 'assignee':
                               aValue = a.assignee?.name?.toLowerCase() || '';
@@ -910,13 +878,13 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
                         return sortedBoards.map((board) => (
                           <tr
-                            key={board.board_id}
-                            onClick={() => setSelectedBoardId(board.board_id)}
+                            key={board.boardId}
+                            onClick={() => setSelectedBoardId(board.boardId)}
                             className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition"
                           >
-                            {/* Title */}
+                            {/* Title (변경 없음) */}
                             <td className="px-4 py-3 font-semibold text-gray-800">{board.title}</td>
-                            {/* Stage */}
+                            {/* Stage (변경 없음) */}
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
                                 <span
@@ -928,13 +896,14 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                             </td>
                             {/* Role */}
                             <td className="px-4 py-3">
-                              {board.roles && board.roles.length > 0 ? (
+                              {/* 💡 [수정] 룩업 데이터 사용 */}
+                              {board.roleOption ? (
                                 <div className="flex items-center gap-2">
                                   <span
                                     className="w-3 h-3 rounded-full"
-                                    style={{ backgroundColor: board.roles[0].color || '#6B7280' }}
+                                    style={{ backgroundColor: board.roleOption.color || '#6B7280' }}
                                   />
-                                  <span className="text-sm">{board.roles[0].name}</span>
+                                  <span className="text-sm">{board.roleOption.label}</span>
                                 </div>
                               ) : (
                                 <span className="text-sm text-gray-500">없음</span>
@@ -942,25 +911,28 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                             </td>
                             {/* Importance */}
                             <td className="px-4 py-3">
-                              {board.importance ? (
+                              {/* 💡 [수정] 룩업 데이터 사용 */}
+                              {board.importanceOption ? (
                                 <div className="flex items-center gap-2">
                                   <span
                                     className="w-3 h-3 rounded-full"
-                                    style={{ backgroundColor: board.importance.color || '#6B7280' }}
+                                    style={{
+                                      backgroundColor: board.importanceOption.color || '#6B7280',
+                                    }}
                                   />
-                                  <span className="text-sm">{board.importance.name}</span>
+                                  <span className="text-sm">{board.importanceOption.label}</span>
                                 </div>
                               ) : (
                                 <span className="text-sm text-gray-500">없음</span>
                               )}
                             </td>
-                            {/* Assignee */}
+                            {/* Assignee (변경 없음) */}
                             <td className="px-4 py-3">
                               <AssigneeAvatarStack
                                 assignees={board.assignee?.name || 'Unassigned'}
                               />
                             </td>
-                            {/* Due Date */}
+                            {/* Due Date (변경 없음) */}
                             <td className="px-4 py-3 text-sm text-gray-600">
                               {board.dueDate
                                 ? new Date(board.dueDate).toLocaleDateString('ko-KR')
@@ -970,7 +942,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                         ));
                       })()}
 
-                      {/* Add Board Row */}
+                      {/* Add Board Row (변경 없음) */}
                       <tr
                         onClick={() => {
                           setCreateBoardStageId('');
@@ -994,7 +966,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                   )}
                 </div>
               ) : (
-                // Board Layout
+                // Board Layout (변경 없음)
                 <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 min-w-max pb-4 mt-4">
                   {(() => {
                     // Filter columns based on search query
@@ -1012,7 +984,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
                     return filteredColumns?.map((column, idx) => (
                       <div
-                        key={column.stage_id}
+                        key={column.stageId}
                         draggable
                         onDragStart={() => handleColumnDragStart(column)}
                         onDragEnd={handleDragEnd}
@@ -1020,7 +992,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                           handleDragOver(e);
                           handleColumnDragOver(e);
                           if (draggedBoard && !draggedColumn) {
-                            setDragOverColumn(column.stage_id);
+                            setDragOverColumn(column.stageId);
                           }
                         }}
                         onDragLeave={() => {
@@ -1032,19 +1004,19 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                           if (draggedColumn) {
                             handleColumnDrop(column);
                           } else {
-                            handleDrop(column.stage_id);
+                            handleDrop(column.stageId);
                           }
                         }}
                         className={`w-full lg:w-80 lg:flex-shrink-0 relative transition-all cursor-move ${
-                          draggedColumn?.stage_id === column.stage_id
+                          draggedColumn?.stageId === column.stageId
                             ? 'opacity-50 scale-95 shadow-2xl rotate-2'
                             : 'opacity-100'
                         }`}
                       >
                         <div
                           className={`relative ${theme.effects.cardBorderWidth} ${
-                            dragOverColumn === column.stage_id &&
-                            draggedFromColumn !== column.stage_id
+                            dragOverColumn === column.stageId &&
+                            draggedFromColumn !== column.stageId
                               ? 'border-blue-500 border-2 bg-blue-50 dark:bg-blue-900/20 shadow-lg'
                               : theme.colors.border
                           } p-3 sm:p-4 ${theme.colors.card} ${
@@ -1074,13 +1046,13 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                             {column.boards.map((board) => (
                               <div
                                 onDragEnd={handleDragEnd}
-                                key={board.board_id + column.stage_id} // 보드 감싸는 최상위 div
+                                key={board.boardId + column.stageId} // 보드 감싸는 최상위 div
                                 className="relative"
                                 onDragOver={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  if (draggedBoard && draggedBoard.board_id !== board.board_id) {
-                                    setDragOverBoardId(board.board_id);
+                                  if (draggedBoard && draggedBoard.boardId !== board.boardId) {
+                                    setDragOverBoardId(board.boardId);
                                   }
                                 }}
                                 onDragLeave={(e) => {
@@ -1089,20 +1061,20 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                                 }}
                               >
                                 {/* Drop indicator line - shows where the dragged board will be inserted */}
-                                {dragOverBoardId === board.board_id &&
+                                {dragOverBoardId === board.boardId &&
                                   draggedBoard &&
-                                  draggedBoard.board_id !== board.board_id && (
+                                  draggedBoard.boardId !== board.boardId && (
                                     <div className="absolute -top-2 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 z-10"></div>
                                   )}
                                 <div
                                   draggable
                                   onDragStart={(e) => {
                                     e.stopPropagation();
-                                    handleDragStart(board, column.stage_id);
+                                    handleDragStart(board, column.stageId);
                                   }}
                                   // 💡 [추가] 보드 카드 드래그 종료 시 상태 초기화
                                   onDragEnd={handleDragEnd}
-                                  onClick={() => setSelectedBoardId(board.board_id)}
+                                  onClick={() => setSelectedBoardId(board.boardId)}
                                   className={`relative ${theme.colors.card} p-3 sm:p-4 ${
                                     theme.effects.cardBorderWidth
                                   } ${
@@ -1111,7 +1083,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                                     theme.effects.borderRadius
                                   } 
                                   ${
-                                    draggedBoard?.board_id === board.board_id
+                                    draggedBoard?.boardId === board.boardId
                                       ? 'opacity-50 scale-95 shadow-2xl rotate-1'
                                       : 'opacity-100'
                                   }
@@ -1132,7 +1104,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                             ))}
 
                             {/* Drop indicator for empty column or below all boards */}
-                            {dragOverColumn === column.stage_id &&
+                            {dragOverColumn === column.stageId &&
                               draggedBoard &&
                               !draggedColumn &&
                               !dragOverBoardId && (
@@ -1144,14 +1116,14 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                             <button
                               className={`relative w-full py-3 sm:py-4 ${theme.effects.cardBorderWidth} border-dashed ${theme.colors.border} ${theme.colors.card} hover:bg-gray-100 transition flex items-center justify-center gap-2 ${theme.font.size.xs} ${theme.effects.borderRadius}`}
                               onClick={() => {
-                                setCreateBoardStageId(column.stage_id);
+                                setCreateBoardStageId(column.stageId);
                                 setShowCreateBoard(true);
                               }}
                               onDragOver={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 if (draggedBoard && !draggedColumn) {
-                                  setDragOverColumn(column.stage_id);
+                                  setDragOverColumn(column.stageId);
                                   setDragOverBoardId(null);
                                 }
                               }}
@@ -1179,7 +1151,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
         </div>
       </div>
 
-      {/* 모달 (하단) (동일) */}
+      {/* 모달 (하단) (변경 없음) */}
       {showUserMenu && (
         <div
           ref={userMenuRef}
@@ -1247,8 +1219,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
       {showCreateBoard && selectedProject && (
         <CreateBoardModal
-          projectId={selectedProject.project_id}
-          stage_id={createBoardStageId}
+          projectId={selectedProject.projectId}
+          stageId={createBoardStageId}
           editData={editBoardData}
           workspaceId={currentWorkspaceId}
           onClose={() => {
@@ -1277,7 +1249,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       {/* Custom Field Manage Modal */}
       {showManageModal && selectedProject && (
         <CustomFieldManageModal
-          projectId={selectedProject.project_id}
+          projectId={selectedProject.projectId}
           onClose={() => setShowManageModal(false)}
           onFieldsUpdated={fetchBoards}
         />

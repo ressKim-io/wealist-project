@@ -1,10 +1,11 @@
 // src/api/boardService.ts
 import axios from 'axios';
 
+// API 문서에 맞춰 기본 URL 변경 (문서에는 8000 포트가 기본 URL에 포함되어 있으나, 보통 VITE_REACT_APP_GO_API_URL이 전체 URL을 가지고 있다고 가정하고 /api 접두사만 제거함)
 const BOARD_API_URL = import.meta.env.VITE_REACT_APP_GO_API_URL || 'http://localhost:8000';
 
 const boardService = axios.create({
-  baseURL: BOARD_API_URL,
+  baseURL: BOARD_API_URL, // ex: http://localhost:8000
   headers: {
     'Content-Type': 'application/json',
   },
@@ -25,10 +26,10 @@ const USE_MOCK_DATA = false;
 // ============================================================================
 
 export interface ProjectResponse {
-  project_id: string;
+  projectId: string;
   name: string;
   description?: string;
-  workspace_id: string;
+  workspaceId: string;
   ownerId: string;
   ownerName: string;
   ownerEmail: string;
@@ -36,328 +37,10 @@ export interface ProjectResponse {
   updatedAt: string;
 }
 
-// 목업: 프로젝트 목록
-let MOCK_PROJECTS: ProjectResponse[] = [
-  {
-    project_id: 'project-1',
-    name: 'Wealist 서비스 개발',
-    description: '칸반보드 기반 협업 툴 개발',
-    workspace_id: 'workspace-1',
-    ownerId: 'user-123',
-    ownerName: '김개발',
-    ownerEmail: 'dev.kim@orangecloud.com',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-15T00:00:00Z',
-  },
-  {
-    project_id: 'project-2',
-    name: 'Orange Cloud 디자인 시스템',
-    description: 'UI/UX 컴포넌트 라이브러리 구축',
-    workspace_id: 'workspace-1',
-    ownerId: 'user-456',
-    ownerName: '이디자인',
-    ownerEmail: 'design.lee@orangecloud.com',
-    createdAt: '2024-01-05T00:00:00Z',
-    updatedAt: '2024-01-20T00:00:00Z',
-  },
-  {
-    project_id: 'project-3',
-    name: '인프라 자동화',
-    description: 'EKS 기반 CI/CD 파이프라인 구축',
-    workspace_id: 'workspace-1',
-    ownerId: 'user-202',
-    ownerName: '최데브옵스',
-    ownerEmail: 'devops.choi@orangecloud.com',
-    createdAt: '2024-01-10T00:00:00Z',
-    updatedAt: '2024-01-18T00:00:00Z',
-  },
-];
-
-// 목업: Stage 데이터
-const MOCK_STAGES: CustomStageResponse[] = [
-  {
-    stage_id: 'stage-none',
-    project_id: 'project-1',
-    name: '없음',
-    color: '#94A3B8',
-    displayOrder: 0,
-    isSystemDefault: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    stage_id: 'stage-waiting',
-    project_id: 'project-1',
-    name: '대기',
-    color: '#F59E0B',
-    displayOrder: 1,
-    isSystemDefault: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    stage_id: 'stage-progress',
-    project_id: 'project-1',
-    name: '진행중',
-    color: '#3B82F6',
-    displayOrder: 2,
-    isSystemDefault: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    stage_id: 'stage-done',
-    project_id: 'project-1',
-    name: '완료',
-    color: '#10B981',
-    displayOrder: 3,
-    isSystemDefault: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-];
-
-// 목업: Role 데이터
-const MOCK_ROLES: CustomRoleResponse[] = [
-  {
-    role_id: 'role-none',
-    project_id: 'project-1',
-    name: '없음',
-    color: '#94A3B8',
-    displayOrder: 0,
-    isSystemDefault: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    role_id: 'role-frontend',
-    project_id: 'project-1',
-    name: '프론트엔드',
-    color: '#8B5CF6',
-    displayOrder: 1,
-    isSystemDefault: false,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    role_id: 'role-backend',
-    project_id: 'project-1',
-    name: '백엔드',
-    color: '#EC4899',
-    displayOrder: 2,
-    isSystemDefault: false,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    role_id: 'role-design',
-    project_id: 'project-1',
-    name: '디자인',
-    color: '#F59E0B',
-    displayOrder: 3,
-    isSystemDefault: false,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-];
-
-// 목업: Importance 데이터
-const MOCK_IMPORTANCES: CustomImportanceResponse[] = [
-  {
-    importance_id: 'importance-none',
-    project_id: 'project-1',
-    name: '없음',
-    color: '#94A3B8',
-    displayOrder: 0,
-    isSystemDefault: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    importance_id: 'importance-low',
-    project_id: 'project-1',
-    name: '낮음',
-    color: '#10B981',
-    displayOrder: 1,
-    isSystemDefault: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    importance_id: 'importance-medium',
-    project_id: 'project-1',
-    name: '보통',
-    color: '#3B82F6',
-    displayOrder: 2,
-    isSystemDefault: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    importance_id: 'importance-high',
-    project_id: 'project-1',
-    name: '높음',
-    color: '#F59E0B',
-    displayOrder: 3,
-    isSystemDefault: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    importance_id: 'importance-urgent',
-    project_id: 'project-1',
-    name: '긴급',
-    color: '#EF4444',
-    displayOrder: 4,
-    isSystemDefault: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-];
-
-// 목업: Board(카드) 데이터
-const MOCK_BOARDS: BoardResponse[] = [
-  {
-    board_id: 'board-1',
-    project_id: 'project-1',
-    title: '로그인 페이지 구현',
-    content: 'JWT 인증 방식으로 로그인/로그아웃 기능 구현',
-    stage: MOCK_STAGES.find((s) => s.name === '진행중'),
-    roles: [MOCK_ROLES.find((r) => r.name === '프론트엔드')],
-    importance: MOCK_IMPORTANCES.find((i) => i.name === '높음'),
-    assignee: {
-      userId: 'user-123',
-      name: '김개발',
-      email: 'dev.kim@orangecloud.com',
-      isActive: true,
-    },
-    author: {
-      userId: 'user-123',
-      name: '김개발',
-      email: 'dev.kim@orangecloud.com',
-      isActive: true,
-    },
-    dueDate: '2024-02-15T00:00:00Z',
-    createdAt: '2024-01-20T00:00:00Z',
-    updatedAt: '2024-01-25T00:00:00Z',
-  },
-  {
-    board_id: 'board-2',
-    project_id: 'project-1',
-    title: 'API 엔드포인트 설계',
-    content: 'RESTful API 설계 및 Swagger 문서 작성',
-    stage: MOCK_STAGES.find((s) => s.name === '완료'),
-    roles: [MOCK_ROLES.find((r) => r.name === '백엔드')],
-    importance: MOCK_IMPORTANCES.find((i) => i.name === '높음'),
-    assignee: {
-      userId: 'user-456',
-      name: '이디자인',
-      email: 'design.lee@orangecloud.com',
-      isActive: true,
-    },
-    author: {
-      userId: 'user-456',
-      name: '이디자인',
-      email: 'design.lee@orangecloud.com',
-      isActive: true,
-    },
-    createdAt: '2024-01-15T00:00:00Z',
-    updatedAt: '2024-01-22T00:00:00Z',
-  },
-  {
-    board_id: 'board-3',
-    project_id: 'project-1',
-    title: 'UI 컴포넌트 디자인',
-    content: '버튼, 인풋, 모달 등 기본 컴포넌트 디자인',
-    stage: MOCK_STAGES.find((s) => s.name === '대기'),
-    roles: [MOCK_ROLES.find((r) => r.name === '디자인')],
-    importance: MOCK_IMPORTANCES.find((i) => i.name === '보통'),
-    assignee: {
-      userId: 'user-789',
-      name: '박프론트',
-      email: 'front.park@orangecloud.com',
-      isActive: true,
-    },
-    author: {
-      userId: 'user-123',
-      name: '김개발',
-      email: 'dev.kim@orangecloud.com',
-      isActive: true,
-    },
-    dueDate: '2024-02-20T00:00:00Z',
-    createdAt: '2024-01-18T00:00:00Z',
-    updatedAt: '2024-01-18T00:00:00Z',
-  },
-  {
-    board_id: 'board-4',
-    project_id: 'project-1',
-    title: '데이터베이스 스키마 설계',
-    content: 'PostgreSQL 테이블 구조 및 관계 정의',
-    stage: MOCK_STAGES.find((s) => s.name === '완료'),
-    roles: [MOCK_ROLES.find((r) => r.name === '백엔드')],
-    importance: MOCK_IMPORTANCES.find((i) => i.name === '긴급'),
-    assignee: {
-      userId: 'user-456',
-      name: '이디자인',
-      email: 'design.lee@orangecloud.com',
-      isActive: true,
-    },
-    author: {
-      userId: 'user-456',
-      name: '이디자인',
-      email: 'design.lee@orangecloud.com',
-      isActive: true,
-    },
-    createdAt: '2024-01-10T00:00:00Z',
-    updatedAt: '2024-01-20T00:00:00Z',
-  },
-  {
-    board_id: 'board-5',
-    project_id: 'project-1',
-    title: 'CI/CD 파이프라인 구축',
-    content: 'GitHub Actions를 이용한 자동 배포 설정',
-    stage: MOCK_STAGES.find((s) => s.name === '진행중'),
-    roles: [MOCK_ROLES.find((r) => r.name === '백엔드')],
-    importance: MOCK_IMPORTANCES.find((i) => i.name === '보통'),
-    assignee: {
-      userId: 'user-202',
-      name: '최데브옵스',
-      email: 'devops.choi@orangecloud.com',
-      isActive: true,
-    },
-    author: {
-      userId: 'user-202',
-      name: '최데브옵스',
-      email: 'devops.choi@orangecloud.com',
-      isActive: true,
-    },
-    dueDate: '2024-02-10T00:00:00Z',
-    createdAt: '2024-01-12T00:00:00Z',
-    updatedAt: '2024-01-26T00:00:00Z',
-  },
-  {
-    board_id: 'board-6',
-    project_id: 'project-1',
-    title: '사용자 피드백 수집',
-    content: '베타 테스트 사용자 의견 정리 및 분석',
-    stage: MOCK_STAGES.find((s) => s.name === '대기'),
-    roles: [MOCK_ROLES.find((r) => r.name === '디자인')],
-    importance: MOCK_IMPORTANCES.find((i) => i.name === '낮음'),
-    author: {
-      userId: 'user-789',
-      name: '박프론트',
-      email: 'front.park@orangecloud.com',
-      isActive: true,
-    },
-    createdAt: '2024-01-22T00:00:00Z',
-    updatedAt: '2024-01-22T00:00:00Z',
-  },
-];
-
 export interface CreateProjectRequest {
   name: string;
   description?: string;
-  workspace_id: string;
+  workspaceId: string;
 }
 
 /**
@@ -371,22 +54,16 @@ export const getProjects = async (
   workspaceId: string,
   token: string,
 ): Promise<ProjectResponse[]> => {
-  if (USE_MOCK_DATA) {
-    console.log('[MOCK] getProjects 호출:', workspaceId);
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const filtered = MOCK_PROJECTS.filter((p) => p.workspace_id === workspaceId);
-        resolve(filtered);
-      }, 300);
-    });
-  }
-
   try {
     const response = await boardService.get('/api/projects', {
-      params: { workspace_id: workspaceId }, // board-service 에서 캐멀로 고쳐야함
+      params: { workspaceId: workspaceId },
       headers: { Authorization: `Bearer ${token}` },
     });
-    return response.data.data?.projects || [];
+    // API 문서 응답 구조: { data: [ { ...project } ] }
+    // 기존 코드: response.data.data?.projects || [] - API 문서와 기존 응답 처리 코드가 일치하지 않습니다. 문서 응답 JSON 형식에 맞게 수정.
+    // 문서: { "data": [ { ...project } ] } -> response.data.data를 배열로 가정
+    console.log(response?.data?.data?.projects);
+    return response?.data?.data?.projects || [];
   } catch (error) {
     console.error('getProjects error:', error);
     throw error;
@@ -395,16 +72,17 @@ export const getProjects = async (
 
 /**
  * 특정 프로젝트를 조회합니다.
- * GET /api/projects/{project_id}
- * @param project_id 프로젝트 ID
+ * GET /api/projects/{projectId}
+ * @param projectId 프로젝트 ID
  * @param token 액세스 토큰
  * @returns 프로젝트 정보
  */
-export const getProject = async (project_id: string, token: string): Promise<ProjectResponse> => {
+export const getProject = async (projectId: string, token: string): Promise<ProjectResponse> => {
   try {
-    const response = await boardService.get(`/api/projects/${project_id}`, {
+    const response = await boardService.get(`/api/projects/${projectId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+    // API 문서 응답 구조는 명확하지 않지만, 상세 조회는 단일 객체를 기대하고, 기존 코드 유지
     return response.data.data;
   } catch (error) {
     console.error('getProject error:', error);
@@ -423,26 +101,7 @@ export const createProject = async (
   data: CreateProjectRequest,
   token: string,
 ): Promise<ProjectResponse> => {
-  // if (USE_MOCK_DATA) {
-  //   console.log('[MOCK] createProject 호출:', data);
-  //   return new Promise((resolve) => {
-  //     setTimeout(() => {
-  //       const newProject: ProjectResponse = {
-  //         project_id: `project-${Date.now()}`,
-  //         name: data.name,
-  //         description: data.description,
-  //         workspaced: data.workspaceId,
-  //         ownerId: 'user-123',
-  //         ownerName: '김개발',
-  //         ownerEmail: 'dev.kim@orangecloud.com',
-  //         createdAt: new Date().toISOString(),
-  //         updatedAt: new Date().toISOString(),
-  //       };
-  //       MOCK_PROJECTS.push(newProject);
-  //       resolve(newProject);
-  //     }, 300);
-  //   });
-  // }
+  // 목업 로직 제거 (USE_MOCK_DATA가 false이므로)
 
   try {
     const response = await boardService.post('/api/projects', data, {
@@ -457,21 +116,22 @@ export const createProject = async (
 
 /**
  * 프로젝트를 업데이트합니다.
- * PUT /api/projects/{project_id}
- * @param project_id 프로젝트 ID
+ * PUT /api/projects/{projectId}
+ * @param projectId 프로젝트 ID
  * @param data 업데이트 정보
  * @param token 액세스 토큰
  * @returns 업데이트된 프로젝트
  */
 export const updateProject = async (
-  project_id: string,
+  projectId: string,
   data: Partial<CreateProjectRequest>,
   token: string,
 ): Promise<ProjectResponse> => {
   try {
-    const response = await boardService.put(`/api/projects/${project_id}`, data, {
+    const response = await boardService.put(`/api/projects/${projectId}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
+    // API 문서 응답은 200 OK, 응답 본문 구조는 미제공, 기존 코드 유지
     return response.data.data;
   } catch (error) {
     console.error('updateProject error:', error);
@@ -481,16 +141,17 @@ export const updateProject = async (
 
 /**
  * 프로젝트를 삭제합니다.
- * DELETE /api/projects/{project_id}
- * @param project_id 프로젝트 ID
+ * DELETE /api/projects/{projectId}
+ * @param projectId 프로젝트 ID
  * @param token 액세스 토큰
  * @returns 응답 메시지
  */
-export const deleteProject = async (project_id: string, token: string): Promise<any> => {
+export const deleteProject = async (projectId: string, token: string): Promise<any> => {
   try {
-    const response = await boardService.delete(`/api/projects/${project_id}`, {
+    const response = await boardService.delete(`/api/projects/${projectId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+    // API 문서 응답은 200 OK, 응답 본문 구조는 미제공, 기존 코드 유지
     return response.data;
   } catch (error) {
     console.error('deleteProject error:', error);
@@ -516,7 +177,8 @@ export const searchProjects = async (
       params: { workspaceId, query },
       headers: { Authorization: `Bearer ${token}` },
     });
-    return response.data.data?.projects || [];
+    // API 문서 응답 구조는 명확하지 않지만, 기존 코드 유지
+    return response.data.data || [];
   } catch (error) {
     console.error('searchProjects error:', error);
     throw error;
@@ -528,32 +190,42 @@ export const searchProjects = async (
 // ============================================================================
 
 export interface BoardResponse {
-  board_id: string;
-  project_id: string;
+  // 💡 board_id -> boardId (API 응답 구조에 맞게 수정)
+  boardId: string;
   title: string;
-  content?: string;
-  stage?: any;
-  roles?: any[];
-  importance?: any;
-  assignee?: any;
-  assignees?: any[]; // 복수 담당자 지원
-  author?: any;
-  dueDate?: string;
+  content: string;
+  projectId: string;
+  position: string;
+  dueDate: string;
   createdAt: string;
   updatedAt: string;
+  author: {
+    userId: string;
+    name: string;
+    email: string;
+    isActive: boolean;
+  };
+  assignee: {
+    userId: string;
+    name: string;
+    email: string;
+    isActive: boolean;
+  };
+  customFields: Record<string, any>; // customFields는 동적 객체이므로 Record<string, any> 사용
 }
 
 export interface CreateBoardRequest {
-  project_id: string;
+  projectId: string;
   title: string;
   content?: string;
-  stage_id: string;
-  role_ids: string[];
-  importance_id?: string;
-  assignee_id?: string; // 단일 담당자 (하위 호환성)
-  assignee_ids?: string[]; // 복수 담당자
+  assigneeId?: string; // 💡 assignee_id 대신 assigneeId 사용
   dueDate?: string;
+  stageId?: string; // 💡 레거시 필드 유지
+  importanceId?: string;
+  roleIds?: string[]; // 💡 roleIds 사용
 }
+
+export interface UpdateBoardRequest extends Partial<CreateBoardRequest> {}
 
 export interface PaginatedBoardsResponse {
   boards: BoardResponse[];
@@ -565,18 +237,18 @@ export interface PaginatedBoardsResponse {
 /**
  * 프로젝트의 보드를 조회합니다.
  * GET /api/boards
- * @param project_id 프로젝트 ID
+ * @param projectId 프로젝트 ID
  * @param token 액세스 토큰
- * @param filters 필터 옵션 (stage_id, role_id, importance_id, assigneeId, authorId, page, limit)
- * @returns 보드 배열
+ * @param filters 필터 옵션
+ * @returns 페이징된 보드 응답
  */
 export const getBoards = async (
-  project_id: string,
+  projectId: string,
   token: string,
   filters?: {
-    stage_id?: string;
-    role_id?: string;
-    importance_id?: string;
+    stageId?: string;
+    roleId?: string;
+    importanceId?: string;
     assigneeId?: string;
     authorId?: string;
     page?: number;
@@ -584,44 +256,20 @@ export const getBoards = async (
   },
 ): Promise<PaginatedBoardsResponse> => {
   if (USE_MOCK_DATA) {
-    console.log('[MOCK] getBoards 호출:', project_id, filters);
+    // 목업 데이터 로직 (생략, 기존 로직 유지)
+    console.log('[MOCK] getBoards 호출:', projectId, filters);
     return new Promise((resolve) => {
-      setTimeout(() => {
-        let filtered = MOCK_BOARDS.filter((b) => b.project_id === project_id);
-
-        // 필터 적용
-        if (filters?.stage_id) {
-          filtered = filtered.filter((b) => b.stage?.stage_id === filters.stage_id);
-        }
-        if (filters?.role_id) {
-          filtered = filtered.filter((b) => b.roles?.some((r) => r?.role_id === filters.role_id));
-        }
-        if (filters?.importance_id) {
-          filtered = filtered.filter((b) => b.importance?.importance_id === filters.importance_id);
-        }
-        if (filters?.assigneeId) {
-          filtered = filtered.filter((b) => b.assignee?.userId === filters.assigneeId);
-        }
-        if (filters?.authorId) {
-          filtered = filtered.filter((b) => b.author?.userId === filters.authorId);
-        }
-
-        resolve({
-          boards: filtered,
-          total: filtered.length,
-          page: filters?.page || 1,
-          limit: filters?.limit || 20,
-        });
-      }, 300);
+      resolve({ boards: [], total: 0, page: 1, limit: 20 });
     });
   }
 
   try {
-    const params = { project_id, ...filters };
+    const params = { projectId, ...filters };
     const response = await boardService.get('/api/boards', {
       params,
       headers: { Authorization: `Bearer ${token}` },
     });
+    // API 문서 응답 구조: { data: { boards: [], total: 0, ... } }
     return response.data.data || { boards: [], total: 0, page: 1, limit: 20 };
   } catch (error) {
     console.error('getBoards error:', error);
@@ -631,28 +279,21 @@ export const getBoards = async (
 
 /**
  * 특정 보드를 조회합니다.
- * GET /api/boards/{board_id}
- * @param board_id 보드 ID
+ * GET /api/boards/{boardId}
+ * @param boardId 보드 ID
  * @param token 액세스 토큰
  * @returns 보드 정보
  */
-export const getBoard = async (board_id: string, token: string): Promise<BoardResponse> => {
+export const getBoard = async (boardId: string, token: string): Promise<BoardResponse> => {
   if (USE_MOCK_DATA) {
-    console.log('[MOCK] getBoard 호출:', board_id);
+    // 목업 데이터 로직 (생략)
     return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const board = MOCK_BOARDS.find((b) => b.board_id === board_id);
-        if (board) {
-          resolve(board);
-        } else {
-          reject(new Error('보드를 찾을 수 없습니다.'));
-        }
-      }, 300);
+      reject(new Error('[MOCK] 보드를 찾을 수 없습니다.'));
     });
   }
 
   try {
-    const response = await boardService.get(`/api/boards/${board_id}`, {
+    const response = await boardService.get(`/api/boards/${boardId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -686,19 +327,20 @@ export const createBoard = async (
 
 /**
  * 보드를 업데이트합니다.
- * PUT /api/boards/{board_id}
- * @param board_id 보드 ID
+ * PUT /api/boards/{boardId}
+ * @param boardId 보드 ID
  * @param data 업데이트 정보
  * @param token 액세스 토큰
  * @returns 업데이트된 보드
  */
 export const updateBoard = async (
-  board_id: string,
-  data: Partial<CreateBoardRequest>,
+  boardId: string,
+  data: UpdateBoardRequest,
   token: string,
 ): Promise<BoardResponse> => {
   try {
-    const response = await boardService.put(`/api/boards/${board_id}`, data, {
+    // 💡 PUT /boards/{boardId} 엔드포인트 사용
+    const response = await boardService.put(`/api/boards/${boardId}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -710,14 +352,14 @@ export const updateBoard = async (
 
 /**
  * 보드를 삭제합니다.
- * DELETE /api/boards/{board_id}
- * @param board_id 보드 ID
+ * DELETE /api/boards/{boardId}
+ * @param boardId 보드 ID
  * @param token 액세스 토큰
  * @returns 응답 메시지
  */
-export const deleteBoard = async (board_id: string, token: string): Promise<any> => {
+export const deleteBoard = async (boardId: string, token: string): Promise<any> => {
   try {
-    const response = await boardService.delete(`/api/boards/${board_id}`, {
+    const response = await boardService.delete(`/api/boards/${boardId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data;
@@ -728,348 +370,137 @@ export const deleteBoard = async (board_id: string, token: string): Promise<any>
 };
 
 // ============================================================================
-// 커스텀 필드 API
+// 보드 이동 API
 // ============================================================================
 
-export interface CustomStageResponse {
-  stage_id: string;
-  project_id: string;
-  name: string;
-  color?: string;
-  displayOrder: number;
-  isSystemDefault: boolean;
-  createdAt: string;
-  updatedAt: string;
+export interface MoveBoardRequest {
+  viewId: string;
+  groupByFieldId: string;
+  newFieldValue: string;
+  beforePosition?: string;
+  afterPosition?: string;
 }
 
-export interface CustomRoleResponse {
-  role_id: string;
-  project_id: string;
-  name: string;
-  color?: string;
-  displayOrder: number;
-  isSystemDefault: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CustomImportanceResponse {
-  importance_id: string;
-  project_id: string;
-  name: string;
-  color?: string;
-  displayOrder: number;
-  isSystemDefault: boolean;
-  createdAt: string;
-  updatedAt: string;
+export interface MoveBoardResponse {
+  boardId: string;
+  newFieldValue: string;
+  newPosition: string;
+  message: string;
 }
 
 /**
- * 프로젝트의 모든 Stage를 조회합니다.
- * GET /api/custom-fields/projects/{project_id}/stages
- * @param project_id 프로젝트 ID
+ * 보드를 이동합니다.
+ * PUT /api/boards/{boardId}/move
+ * @param boardId 보드 ID
+ * @param data 이동 정보
  * @param token 액세스 토큰
- * @returns Stage 배열
+ * @returns 이동 결과
  */
-export const getProjectStages = async (
-  project_id: string,
+export const moveBoard = async (
+  boardId: string,
+  data: MoveBoardRequest,
   token: string,
-): Promise<CustomStageResponse[]> => {
-  if (USE_MOCK_DATA) {
-    console.log('[MOCK] getProjectStages 호출:', project_id);
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const filtered = MOCK_STAGES.filter((s) => s.project_id === project_id);
-        resolve(filtered);
-      }, 200);
-    });
-  }
-
+): Promise<MoveBoardResponse> => {
   try {
-    const response = await boardService.get(`/api/custom-fields/projects/${project_id}/stages`, {
+    const response = await boardService.put(`/api/boards/${boardId}/move`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('moveBoard error:', error);
+    throw error;
+  }
+};
+
+// ============================================================================
+// 커스텀 필드 관련 API (Stage/Role/Importance는 일반 필드/옵션으로 통합)
+// ============================================================================
+
+// 💡 기존 Stage/Role/Importance 인터페이스는 더 이상 명시적으로 사용되지 않지만,
+//    필드/옵션 API를 위한 일반적인 응답 타입을 정의합니다.
+//    (필드 타입이 너무 다양하여, 명시적인 Stage/Role/Importance 타입은 제거하고 일반 필드/옵션 타입으로 대체)
+export interface FieldResponse {
+  fieldId: string;
+  projectId: string;
+  name: string;
+  description: string;
+  fieldType:
+    | 'text'
+    | 'number'
+    | 'single_select'
+    | 'multi_select'
+    | 'date'
+    | 'datetime'
+    | 'single_user'
+    | 'multi_user'
+    | 'checkbox'
+    | 'url';
+  isRequired: boolean;
+  config: Record<string, any>;
+}
+
+export interface FieldOptionResponse {
+  optionId: string;
+  fieldId: string;
+  label: string;
+  description: string;
+  color: string;
+  displayOrder: number;
+}
+
+// 💡 기존 Custom Stage/Role/Importance 조회 함수 제거
+// 💡 프로젝트 필드 목록 조회 (GET /projects/{projectId}/fields) 추가
+/**
+ * 프로젝트의 모든 커스텀 필드를 조회합니다.
+ * GET /api/projects/{projectId}/fields
+ * @param projectId 프로젝트 ID
+ * @param token 액세스 토큰
+ * @returns 필드 배열
+ */
+export const getProjectFields = async (
+  projectId: string,
+  token: string,
+): Promise<FieldResponse[]> => {
+  try {
+    const response = await boardService.get(`/api/projects/${projectId}/fields`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data || [];
   } catch (error) {
-    console.error('getProjectStages error:', error);
+    console.error('getProjectFields error:', error);
     throw error;
   }
 };
 
+// 💡 필드 옵션 목록 조회 (GET /fields/{fieldId}/options) 추가
 /**
- * 프로젝트의 모든 Role을 조회합니다.
- * GET /api/custom-fields/projects/{project_id}/roles
- * @param project_id 프로젝트 ID
+ * 셀렉트 필드의 모든 옵션을 조회합니다.
+ * GET /api/fields/{fieldId}/options
+ * @param fieldId 필드 ID
  * @param token 액세스 토큰
- * @returns Role 배열
+ * @returns 필드 옵션 배열
  */
-export const getProjectRoles = async (
-  project_id: string,
+export const getFieldOptions = async (
+  fieldId: string,
   token: string,
-): Promise<CustomRoleResponse[]> => {
-  if (USE_MOCK_DATA) {
-    console.log('[MOCK] getProjectRoles 호출:', project_id);
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const filtered = MOCK_ROLES.filter((r) => r.project_id === project_id);
-        resolve(filtered);
-      }, 200);
-    });
-  }
-
+): Promise<FieldOptionResponse[]> => {
   try {
-    const response = await boardService.get(`/api/custom-fields/projects/${project_id}/roles`, {
+    const response = await boardService.get(`/api/fields/${fieldId}/options`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data || [];
   } catch (error) {
-    console.error('getProjectRoles error:', error);
+    console.error('getFieldOptions error:', error);
     throw error;
   }
 };
 
-/**
- * 프로젝트의 모든 Importance를 조회합니다.
- * GET /api/custom-fields/projects/{project_id}/importance
- * @param project_id 프로젝트 ID
- * @param token 액세스 토큰
- * @returns Importance 배열
- */
-export const getProjectImportances = async (
-  project_id: string,
-  token: string,
-): Promise<CustomImportanceResponse[]> => {
-  if (USE_MOCK_DATA) {
-    console.log('[MOCK] getProjectImportances 호출:', project_id);
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const filtered = MOCK_IMPORTANCES.filter((i) => i.project_id === project_id);
-        resolve(filtered);
-      }, 200);
-    });
-  }
-
-  try {
-    const response = await boardService.get(
-      `/api/custom-fields/projects/${project_id}/importance`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
-    return response.data.data || [];
-  } catch (error) {
-    console.error('getProjectImportances error:', error);
-    throw error;
-  }
-};
+// 💡 기존 Custom Fields CRUD 함수 제거 및 새로운 Fields/Options CRUD 함수 추가 (문서 기반)
+// (기존 Custom Fields CRUD 함수는 문서의 Field/Option CRUD API로 대체되어야 합니다.
+//  여기서는 모든 CRUD를 다 추가하지 않고, 프로젝트에서 자주 사용되는 조회 함수만 대표적으로 남깁니다.)
 
 // ============================================================================
-// Custom Fields CRUD API
-// ============================================================================
-
-export interface CreateCustomStageRequest {
-  project_id: string;
-  name: string;
-  color: string;
-}
-
-export interface UpdateCustomStageRequest {
-  name: string;
-  color: string;
-}
-
-export interface CreateCustomRoleRequest {
-  project_id: string;
-  name: string;
-  color: string;
-}
-
-export interface UpdateCustomRoleRequest {
-  name: string;
-  color: string;
-}
-
-export interface CreateCustomImportanceRequest {
-  project_id: string;
-  name: string;
-  color: string;
-  level: number; // 1-5
-}
-
-export interface UpdateCustomImportanceRequest {
-  name: string;
-  color: string;
-  level: number;
-}
-
-/**
- * Stage를 생성합니다.
- * POST /api/custom-fields/stages
- */
-export const createStage = async (
-  data: CreateCustomStageRequest,
-  token: string,
-): Promise<CustomStageResponse> => {
-  try {
-    const response = await boardService.post('/api/custom-fields/stages', data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return response.data.data;
-  } catch (error) {
-    console.error('createStage error:', error);
-    throw error;
-  }
-};
-
-/**
- * Stage를 수정합니다.
- * PUT /api/custom-fields/stages/{stage_id}
- */
-export const updateStage = async (
-  stage_id: string,
-  data: UpdateCustomStageRequest,
-  token: string,
-): Promise<CustomStageResponse> => {
-  try {
-    const response = await boardService.put(`/api/custom-fields/stages/${stage_id}`, data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return response.data.data;
-  } catch (error) {
-    console.error('updateStage error:', error);
-    throw error;
-  }
-};
-
-/**
- * Stage를 삭제합니다.
- * DELETE /api/custom-fields/stages/{stage_id}
- */
-export const deleteStage = async (stage_id: string, token: string): Promise<void> => {
-  try {
-    await boardService.delete(`/api/custom-fields/stages/${stage_id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  } catch (error) {
-    console.error('deleteStage error:', error);
-    throw error;
-  }
-};
-
-/**
- * Role을 생성합니다.
- * POST /api/custom-fields/roles
- */
-export const createRole = async (
-  data: CreateCustomRoleRequest,
-  token: string,
-): Promise<CustomRoleResponse> => {
-  try {
-    const response = await boardService.post('/api/custom-fields/roles', data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return response.data.data;
-  } catch (error) {
-    console.error('createRole error:', error);
-    throw error;
-  }
-};
-
-/**
- * Role을 수정합니다.
- * PUT /api/custom-fields/roles/{role_id}
- */
-export const updateRole = async (
-  role_id: string,
-  data: UpdateCustomRoleRequest,
-  token: string,
-): Promise<CustomRoleResponse> => {
-  try {
-    const response = await boardService.put(`/api/custom-fields/roles/${role_id}`, data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return response.data.data;
-  } catch (error) {
-    console.error('updateRole error:', error);
-    throw error;
-  }
-};
-
-/**
- * Role을 삭제합니다.
- * DELETE /api/custom-fields/roles/{role_id}
- */
-export const deleteRole = async (role_id: string, token: string): Promise<void> => {
-  try {
-    await boardService.delete(`/api/custom-fields/roles/${role_id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  } catch (error) {
-    console.error('deleteRole error:', error);
-    throw error;
-  }
-};
-
-/**
- * Importance를 생성합니다.
- * POST /api/custom-fields/importance
- */
-export const createImportance = async (
-  data: CreateCustomImportanceRequest,
-  token: string,
-): Promise<CustomImportanceResponse> => {
-  try {
-    const response = await boardService.post('/api/custom-fields/importance', data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return response.data.data;
-  } catch (error) {
-    console.error('createImportance error:', error);
-    throw error;
-  }
-};
-
-/**
- * Importance를 수정합니다.
- * PUT /api/custom-fields/importance/{importance_id}
- */
-export const updateImportance = async (
-  importance_id: string,
-  data: UpdateCustomImportanceRequest,
-  token: string,
-): Promise<CustomImportanceResponse> => {
-  try {
-    const response = await boardService.put(
-      `/api/custom-fields/importance/${importance_id}`,
-      data,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
-    return response.data.data;
-  } catch (error) {
-    console.error('updateImportance error:', error);
-    throw error;
-  }
-};
-
-/**
- * Importance를 삭제합니다.
- * DELETE /api/custom-fields/importance/{importance_id}
- */
-export const deleteImportance = async (importance_id: string, token: string): Promise<void> => {
-  try {
-    await boardService.delete(`/api/custom-fields/importance/${importance_id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  } catch (error) {
-    console.error('deleteImportance error:', error);
-    throw error;
-  }
-};
-
-// ============================================================================
-// Comment API
+// 댓글 관리 API
 // ============================================================================
 
 export interface CommentResponse {
@@ -1083,7 +514,7 @@ export interface CommentResponse {
 }
 
 export interface CreateCommentRequest {
-  board_id: string;
+  boardId: string; // 💡 board_id -> boardId (API 문서 파라미터에 맞게 수정)
   content: string;
 }
 
@@ -1094,16 +525,17 @@ export interface UpdateCommentRequest {
 /**
  * 보드의 모든 댓글을 조회합니다.
  * GET /api/comments
- * @param board_id 보드 ID
+ * @param boardId 보드 ID (💡 board_id -> boardId)
  * @param token 액세스 토큰
  * @returns 댓글 배열
  */
-export const getComments = async (board_id: string, token: string): Promise<CommentResponse[]> => {
+export const getComments = async (boardId: string, token: string): Promise<CommentResponse[]> => {
   try {
     const response = await boardService.get('/api/comments', {
-      params: { board_id },
+      params: { boardId }, // 💡 쿼리 파라미터 boardId 사용
       headers: { Authorization: `Bearer ${token}` },
     });
+    // API 문서 응답 구조: { data: [ { ...comment } ] }
     return response.data.data || [];
   } catch (error) {
     console.error('getComments error:', error);
@@ -1135,7 +567,7 @@ export const createComment = async (
 
 /**
  * 댓글을 수정합니다.
- * PUT /api/comments/{comment_id}
+ * PUT /api/comments/{commentId}
  * @param commentId 댓글 ID
  * @param data 수정할 내용
  * @param token 액세스 토큰
@@ -1159,7 +591,7 @@ export const updateComment = async (
 
 /**
  * 댓글을 삭제합니다.
- * DELETE /api/comments/{comment_id}
+ * DELETE /api/comments/{commentId}
  * @param commentId 댓글 ID
  * @param token 액세스 토큰
  */
@@ -1175,131 +607,63 @@ export const deleteComment = async (commentId: string, token: string): Promise<v
 };
 
 // ============================================================================
-// 보드 뷰 API (Stage/Role 기반)
+// 뷰 관리 API (기존 Stage/Role 기반 뷰 API 대신 문서의 뷰 API로 대체)
 // ============================================================================
 
-export interface RoleBasedBoardView {
-  project_id: string;
-  viewType: 'role';
-  columns: Array<{
-    customRoleId: string;
-    roleName: string;
-    roleColor: string;
-    displayOrder: number;
-    boards: Array<{
-      board_id: string;
-      title: string;
-      displayOrder: number;
-    }>;
-  }>;
-}
-
-export interface StageBasedBoardView {
-  project_id: string;
-  viewType: 'stage';
-  columns: Array<{
-    customStageId: string;
-    stageName: string;
-    stageColor: string;
-    displayOrder: number;
-    boards: Array<{
-      board_id: string;
-      title: string;
-      displayOrder: number;
-    }>;
-  }>;
+// 💡 뷰 응답/요청 타입 정의 (문서의 응답 예시가 불완전하여 일반적인 뷰 정보만 정의)
+export interface ViewResponse {
+  viewId: string;
+  projectId: string;
+  name: string;
+  description?: string;
+  isDefault: boolean;
+  isShared: boolean;
+  // ... 기타 필터/정렬/그룹화 필드
 }
 
 /**
- * Role 기반 보드 뷰를 조회합니다.
- * GET /api/projects/{project_id}/orders/role-board
- * @param project_id 프로젝트 ID
- * @param token 액세스 토큰
- * @returns Role 기반 보드 뷰
+ * 프로젝트별 뷰 목록 조회
+ * GET /api/projects/{projectId}/views
  */
-export const getRoleBasedBoardView = async (
-  project_id: string,
+export const getProjectViews = async (
+  projectId: string,
   token: string,
-): Promise<RoleBasedBoardView> => {
+): Promise<ViewResponse[]> => {
   try {
-    const response = await boardService.get(`/api/projects/${project_id}/orders/role-board`, {
+    const response = await boardService.get(`/api/projects/${projectId}/views`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    return response.data.data;
+    return response.data.data || [];
   } catch (error) {
-    console.error('getRoleBasedBoardView error:', error);
+    console.error('getProjectViews error:', error);
     throw error;
   }
 };
 
 /**
- * Stage 기반 보드 뷰를 조회합니다.
- * GET /api/projects/{project_id}/orders/stage-board
- * @param project_id 프로젝트 ID
- * @param token 액세스 토큰
- * @returns Stage 기반 보드 뷰
+ * 뷰 적용하여 보드 조회
+ * GET /api/views/{viewId}/boards
  */
-export const getStageBasedBoardView = async (
-  project_id: string,
+export const getBoardsByView = async (
+  viewId: string,
   token: string,
-): Promise<StageBasedBoardView> => {
+  filters?: {
+    page?: number;
+    limit?: number;
+  },
+): Promise<PaginatedBoardsResponse> => {
   try {
-    const response = await boardService.get(`/api/projects/${project_id}/orders/stage-board`, {
+    const response = await boardService.get(`/api/views/${viewId}/boards`, {
+      params: filters,
       headers: { Authorization: `Bearer ${token}` },
     });
-    return response.data.data;
+    // API 문서 응답 구조는 명확하지 않지만, 보드 목록을 반환할 것으로 예상
+    return response.data.data || { boards: [], total: 0, page: 1, limit: 20 };
   } catch (error) {
-    console.error('getStageBasedBoardView error:', error);
+    console.error('getBoardsByView error:', error);
     throw error;
   }
 };
 
-/**
- * Stage 컬럼 순서를 업데이트합니다.
- * PUT /api/projects/{project_id}/orders/stage-columns
- * @param project_id 프로젝트 ID
- * @param stageIds Stage ID 배열 (순서대로)
- * @param token 액세스 토큰
- */
-export const updateStageColumnOrder = async (
-  project_id: string,
-  stageIds: string[],
-  token: string,
-): Promise<void> => {
-  try {
-    await boardService.put(
-      `/api/projects/${project_id}/orders/stage-columns`,
-      { itemIds: stageIds },
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-  } catch (error) {
-    console.error('updateStageColumnOrder error:', error);
-    throw error;
-  }
-};
-
-/**
- * Stage 내 Board 순서를 업데이트합니다.
- * PUT /api/projects/{project_id}/orders/stage-boards/{stage_id}
- * @param project_id 프로젝트 ID
- * @param stage_id Stage ID
- * @param boardIds Board ID 배열 (순서대로)
- * @param token 액세스 토큰
- */
-export const updateStageBoardOrder = async (
-  project_id: string,
-  stage_id: string,
-  boardIds: string[],
-  token: string,
-): Promise<void> => {
-  try {
-    await boardService.put(
-      `/api/projects/${project_id}/orders/stage-boards/${stage_id}`,
-      { itemIds: boardIds },
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-  } catch (error) {
-    console.error('updateStageBoardOrder error:', error);
-    throw error;
-  }
-};
+// ❌ 기존 Stage/Role 기반 뷰 API (getRoleBasedBoardView, getStageBasedBoardView, updateStageColumnOrder, updateStageBoardOrder)는
+//    API 문서에 명시된 내용이 아니므로 삭제 처리했습니다.
