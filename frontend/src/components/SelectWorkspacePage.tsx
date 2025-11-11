@@ -150,7 +150,7 @@ const SelectWorkspacePage: React.FC = () => {
 
       resetCreateForm();
       // 6. [수정] props 콜백 대신 navigate로 페이지 이동
-      navigate(`/kanban/${newWorkspaceId}`);
+      navigate(`/workspace/${newWorkspaceId}`);
     } catch (e) {
       const err = e as Error;
       setError(`워크스페이스 생성 실패: ${err.message}`);
@@ -166,7 +166,7 @@ const SelectWorkspacePage: React.FC = () => {
       alert(`워크스페이스 '${workspace.name}'에 참여 완료!`);
 
       // 6. [수정] props 콜백 대신 navigate로 페이지 이동
-      navigate(`/kanban/${workspace.id}`);
+      navigate(`/workspace/${workspace.id}`);
     } catch (e) {
       const err = e as Error;
       setError(`워크스페이스 참여 실패: ${err.message}`);
