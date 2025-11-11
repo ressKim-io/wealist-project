@@ -25,11 +25,11 @@ const USE_MOCK_DATA = false;
 // ============================================================================
 
 export interface ProjectResponse {
-  project_id: string;
+  projectId: string;
   name: string;
   description?: string;
-  workspace_id: string;
-  owner_id: string;
+  workspaceId: string;
+  ownerId: string;
   ownerName: string;
   ownerEmail: string;
   createdAt: string;
@@ -39,33 +39,33 @@ export interface ProjectResponse {
 // 목업: 프로젝트 목록
 let MOCK_PROJECTS: ProjectResponse[] = [
   {
-    project_id: 'project-1',
+    projectId: 'project-1',
     name: 'Wealist 서비스 개발',
     description: '칸반보드 기반 협업 툴 개발',
-    workspace_id: 'workspace-1',
-    owner_id: 'user-123',
+    workspaceId: 'workspace-1',
+    ownerId: 'user-123',
     ownerName: '김개발',
     ownerEmail: 'dev.kim@orangecloud.com',
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-15T00:00:00Z',
   },
   {
-    project_id: 'project-2',
+    projectId: 'project-2',
     name: 'Orange Cloud 디자인 시스템',
     description: 'UI/UX 컴포넌트 라이브러리 구축',
-    workspace_id: 'workspace-1',
-    owner_id: 'user-456',
+    workspaceId: 'workspace-1',
+    ownerId: 'user-456',
     ownerName: '이디자인',
     ownerEmail: 'design.lee@orangecloud.com',
     createdAt: '2024-01-05T00:00:00Z',
     updatedAt: '2024-01-20T00:00:00Z',
   },
   {
-    project_id: 'project-3',
+    projectId: 'project-3',
     name: '인프라 자동화',
     description: 'EKS 기반 CI/CD 파이프라인 구축',
-    workspace_id: 'workspace-1',
-    owner_id: 'user-202',
+    workspaceId: 'workspace-1',
+    ownerId: 'user-202',
     ownerName: '최데브옵스',
     ownerEmail: 'devops.choi@orangecloud.com',
     createdAt: '2024-01-10T00:00:00Z',
@@ -357,7 +357,7 @@ const MOCK_BOARDS: BoardResponse[] = [
 export interface CreateProjectRequest {
   name: string;
   description?: string;
-  workspace_id: string;
+  workspaceId: string;
 }
 
 /**
@@ -507,7 +507,7 @@ export const deleteProject = async (project_id: string, token: string): Promise<
  * @returns 검색된 프로젝트 배열
  */
 export const searchProjects = async (
-  workspace_id: string,
+  workspaceId: string,
   query: string,
   token: string,
 ): Promise<ProjectResponse[]> => {
@@ -528,8 +528,8 @@ export const searchProjects = async (
 // ============================================================================
 
 export interface BoardResponse {
-  board_id: string;
-  project_id: string;
+  boardId: string;
+  projectId: string;
   title: string;
   content?: string;
   stage?: any;
@@ -544,13 +544,13 @@ export interface BoardResponse {
 }
 
 export interface CreateBoardRequest {
-  project_id: string;
+  projectId: string;
   title: string;
   content?: string;
-  stage_id: string;
-  role_ids: string[];
-  importance_id?: string;
-  assignee_id?: string; // 단일 담당자 (하위 호환성)
+  stageId: string;
+  roleIds: string[];
+  importanceId?: string;
+  assigneeId?: string; // 단일 담당자 (하위 호환성)
   assigneeIds?: string[]; // 복수 담당자
   dueDate?: string;
 }
