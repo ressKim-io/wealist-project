@@ -89,7 +89,7 @@ func main() {
 
 	// 5.7. Initialize services
 	boardService := service.NewBoardService(boardRepo, projectRepo, roleRepo, fieldRepo, userClient, userInfoCache, log, db)
-	projectService := service.NewProjectService(projectRepo, roleRepo, userClient, workspaceCache, userInfoCache, log, db)
+	projectService := service.NewProjectService(projectRepo, roleRepo, fieldRepo, userClient, workspaceCache, userInfoCache, log, db)
 	commentService := service.NewCommentService(commentRepo, boardRepo, projectRepo, userClient, userInfoCache, log, db)
 	// Custom fields services (new ProjectField system)
 	fieldService := service.NewFieldService(fieldRepo, projectRepo, fieldCache, log, db)

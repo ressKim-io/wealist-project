@@ -38,6 +38,7 @@ type ProjectService interface {
 type projectService struct {
 	repo           repository.ProjectRepository
 	roleRepo       repository.RoleRepository
+	fieldRepo      repository.FieldRepository
 	userClient     client.UserClient
 	workspaceCache cache.WorkspaceCache
 	userInfoCache  cache.UserInfoCache
@@ -48,6 +49,7 @@ type projectService struct {
 func NewProjectService(
 	repo repository.ProjectRepository,
 	roleRepo repository.RoleRepository,
+	fieldRepo repository.FieldRepository,
 	userClient client.UserClient,
 	workspaceCache cache.WorkspaceCache,
 	userInfoCache cache.UserInfoCache,
@@ -57,6 +59,7 @@ func NewProjectService(
 	return &projectService{
 		repo:           repo,
 		roleRepo:       roleRepo,
+		fieldRepo:      fieldRepo,
 		userClient:     userClient,
 		workspaceCache: workspaceCache,
 		userInfoCache:  userInfoCache,
@@ -115,8 +118,11 @@ func (s *projectService) CreateProject(userID string, token string, req *dto.Cre
 			return err
 		}
 
-		// Note: Default custom fields (stages, roles, importance) should be created
-		// via the new ProjectField system by the frontend or during project initialization
+		// Create default custom fields (stage, role, importance)
+		if err := s.initializeDefaultFields(project.ID); err != nil {
+			s.logger.Error("Failed to initialize default fields", zap.Error(err))
+			return err
+		}
 
 		return nil
 	})
@@ -929,4 +935,120 @@ func (s *projectService) toJoinRequestResponse(req *domain.ProjectJoinRequest) (
 	}
 
 	return response, nil
+}
+
+// initializeDefaultFields creates default custom fields for a new project
+func (s *projectService) initializeDefaultFields(projectID uuid.UUID) error {
+	// 1. Create Stage field
+	stageField := &domain.ProjectField{
+		ProjectID:       projectID,
+		Name:            "Stage",
+		FieldType:       domain.FieldTypeSingleSelect,
+		Description:     "작업 진행 단계",
+		DisplayOrder:    0,
+		IsRequired:      true,
+		IsSystemDefault: true,
+		Config:          "{}",
+	}
+	if err := s.fieldRepo.CreateField(stageField); err != nil {
+		return err
+	}
+
+	// Create Stage options
+	stageOptions := []struct {
+		label string
+		color string
+		order int
+	}{
+		{"대기", "#F59E0B", 0},
+		{"진행중", "#3B82F6", 1},
+		{"완료", "#10B981", 2},
+	}
+	for _, opt := range stageOptions {
+		option := &domain.FieldOption{
+			FieldID:      stageField.ID,
+			Label:        opt.label,
+			Color:        opt.color,
+			DisplayOrder: opt.order,
+		}
+		if err := s.fieldRepo.CreateOption(option); err != nil {
+			return err
+		}
+	}
+
+	// 2. Create Role field
+	roleField := &domain.ProjectField{
+		ProjectID:       projectID,
+		Name:            "Role",
+		FieldType:       domain.FieldTypeSingleSelect,
+		Description:     "담당 역할",
+		DisplayOrder:    1,
+		IsRequired:      false,
+		IsSystemDefault: true,
+		Config:          "{}",
+	}
+	if err := s.fieldRepo.CreateField(roleField); err != nil {
+		return err
+	}
+
+	// Create Role options
+	roleOptions := []struct {
+		label string
+		color string
+		order int
+	}{
+		{"프론트엔드", "#EC4899", 0},
+		{"백엔드", "#8B5CF6", 1},
+		{"디자인", "#F97316", 2},
+	}
+	for _, opt := range roleOptions {
+		option := &domain.FieldOption{
+			FieldID:      roleField.ID,
+			Label:        opt.label,
+			Color:        opt.color,
+			DisplayOrder: opt.order,
+		}
+		if err := s.fieldRepo.CreateOption(option); err != nil {
+			return err
+		}
+	}
+
+	// 3. Create Importance field
+	importanceField := &domain.ProjectField{
+		ProjectID:       projectID,
+		Name:            "Importance",
+		FieldType:       domain.FieldTypeSingleSelect,
+		Description:     "작업 중요도",
+		DisplayOrder:    2,
+		IsRequired:      false,
+		IsSystemDefault: true,
+		Config:          "{}",
+	}
+	if err := s.fieldRepo.CreateField(importanceField); err != nil {
+		return err
+	}
+
+	// Create Importance options
+	importanceOptions := []struct {
+		label string
+		color string
+		order int
+	}{
+		{"낮음", "#94A3B8", 0},
+		{"보통", "#FBBF24", 1},
+		{"높음", "#EF4444", 2},
+	}
+	for _, opt := range importanceOptions {
+		option := &domain.FieldOption{
+			FieldID:      importanceField.ID,
+			Label:        opt.label,
+			Color:        opt.color,
+			DisplayOrder: opt.order,
+		}
+		if err := s.fieldRepo.CreateOption(option); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
