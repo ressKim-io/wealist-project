@@ -109,11 +109,11 @@ WARN[0000] The "USER_DB_NAME" variable is not set. Defaulting to a blank string.
 ### 개발 환경 (dev.sh)
 
 ```bash
-# 서비스 시작 (포그라운드)
+# 서비스 시작 (백그라운드) - 기본
 ./docker/scripts/dev.sh up
 
-# 서비스 시작 (백그라운드)
-./docker/scripts/dev.sh up-d
+# 서비스 시작 (포그라운드)
+./docker/scripts/dev.sh up-fg
 
 # 서비스 중지
 ./docker/scripts/dev.sh down
