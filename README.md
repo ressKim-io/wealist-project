@@ -81,9 +81,15 @@ docker compose --env-file docker/env/.env.dev \
 
 Board Service 통합 테스트:
 ```bash
-cd scripts/board_test_script
-./test_board_service.sh
+./scripts/tests/test-board-integration.sh
 ```
+
+User Service 테스트:
+```bash
+./scripts/tests/test-user-service.sh
+```
+
+자세한 내용은 [테스트 가이드](./scripts/tests/README.md)를 참고하세요.
 
 ### 5. 추가 명령어
 
@@ -133,22 +139,36 @@ wealist-project/
 ├── docker/             # Docker 관련 파일
 │   ├── compose/        # Docker Compose 파일
 │   ├── env/            # 환경변수 파일
-│   ├── scripts/        # 실행 스크립트
+│   ├── scripts/        # 실행 스크립트 (dev.sh, prod.sh)
 │   └── README.md       # Docker 가이드
-├── scripts/            # 테스트 스크립트
-├── CLAUDE.md          # 프로젝트 전체 가이드
-└── README.md          # 이 파일
+├── docs/               # 프로젝트 문서
+│   ├── api/            # API 레퍼런스
+│   ├── guides/         # 개발 가이드
+│   ├── planning/       # 계획 문서
+│   └── migration/      # 마이그레이션 가이드
+├── scripts/            # 유틸리티 스크립트
+│   └── tests/          # 테스트 스크립트
+├── CHANGELOG.md        # 변경 이력
+└── README.md           # 이 파일
 ```
 
 ### 개발 시 주의사항
 
-- **Board Service (Go)** 사용 권장 -
+- **Board Service (Go)** 사용 권장
 - JWT 토큰은 User Service와 Board Service 간 공유 (`SECRET_KEY` 일치 필요)
 - 모든 ID는 UUID 타입 사용
 - Foreign Key 없음 (샤딩 대비, 애플리케이션 레벨에서 관계 관리)
 - Soft Delete 방식 (`is_deleted` 플래그)
 
-- **User Service API**: [.claude/api-user-documentation.md](./.claude/api-user-documentation.md)
+### 추가 문서
+
+- **API 레퍼런스**: [docs/api/](./docs/api/)
+  - [Board Service API](./docs/api/board-service-api.md)
+  - [User Service API](./docs/api/user-service-api.md)
+- **개발 가이드**: [docs/guides/](./docs/guides/)
+- **Docker 가이드**: [docker/README.md](./docker/README.md)
+- **테스트 가이드**: [scripts/tests/README.md](./scripts/tests/README.md)
+- **전체 문서 목록**: [docs/README.md](./docs/README.md)
 
 ## 📦 기술 스택
 
