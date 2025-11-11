@@ -124,7 +124,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      */
     @Modifying
     @Transactional
-    @Query(value = "UPDATE users SET is_active = false, deleted_at = NOW() WHERE user_id = ?1",
+    @Query(value = "UPDATE users SET \"isActive\" = false, \"deletedAt\" = NOW() WHERE \"userId\" = ?1",
             nativeQuery = true)
     int softDeleteByIdNative(UUID userId);
 }

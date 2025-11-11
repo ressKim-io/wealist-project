@@ -10,7 +10,7 @@ spring:
       write-dates-as-timestamps: false
     deserialization:
       fail-on-unknown-properties: false
-
+      adjust-dates-to-context-time-zone: false
   datasource:
     url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
     username: ${DB_USER}
@@ -44,10 +44,10 @@ spring:
       client:
         registration:
           google:
-#            
+            #
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
-#            
+            #
             scope:
               - email
               - profile
@@ -60,7 +60,6 @@ spring:
             token-uri: https://oauth2.googleapis.com/token
             user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
             user-name-attribute: sub
-
 
 springdoc:
   swagger-ui:
@@ -118,4 +117,3 @@ management:
     metrics:
       export:
         enabled: true
-    

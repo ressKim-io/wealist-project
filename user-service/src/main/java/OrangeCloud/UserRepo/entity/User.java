@@ -20,7 +20,7 @@ import java.util.UUID;
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "user_id", updatable = false, nullable = false, columnDefinition = "UUID")
+    @Column(name = "userId", updatable = false, nullable = false, columnDefinition = "UUID")
     private UUID userId;
 
     @Column(nullable = false, unique = true)
@@ -30,22 +30,22 @@ public class User {
     @Builder.Default
     private String provider = "google";
 
-    @Column(name = "google_id", unique = true)
+    @Column(name = "googleId", unique = true)
     private String googleId;
 
     @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "createdAt", updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at")
+    @Column(name = "updatedAt")
     private LocalDateTime updatedAt;
 
-    @Column(name = "is_active", nullable = false)
+    @Column(name = "isActive", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
 
-    @Column(name = "deleted_at")
+    @Column(name = "deletedAt")
     private LocalDateTime deletedAt;
 
     public void softDelete() {

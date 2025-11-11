@@ -3,61 +3,53 @@ package OrangeCloud.UserRepo.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "groups")
+@Table(name = "workspaces")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @ToString
-@EqualsAndHashCode(of = "groupId")
+@EqualsAndHashCode(of = "workspaceId")
 public class Workspace {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "group_id", updatable = false, nullable = false, columnDefinition = "UUID")
-    private UUID groupId;
+    @Column(name = "workspaceId", updatable = false, nullable = false, columnDefinition = "UUID")
+    private UUID workspaceId;
 
-    @Column(nullable = false)
-    private String name;
+    @Column(name = "ownerId", nullable = false, columnDefinition = "UUID")
+    private UUID ownerId;
 
-    @Column(name = "company_name")
-    private String companyName; // 실제로는 description 역할
+    @Column(name = "workspaceName", nullable = false)
+    private String workspaceName;
+
+    @Column(name = "workspaceDescription", nullable = false)
+    private String workspaceDescription;
+
+    @Column(name = "isPublic", nullable = false)
+    @Builder.Default
+    private Boolean isPublic = false; // 검색 > 초대 가능성
+
+    @Column(name = "needApproved", nullable = false)
+    @Builder.Default
+    private Boolean needApproved = true; // workspace에 들어오는 기본 승인 필요
 
     @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "createdAt", updatable = false)
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
-    // 소프트 삭제를 위한 필드들
-    @Column(name = "is_active", nullable = false)
-    @Builder.Default
-    private Boolean isActive = true;
-
-    @Column(name = "deleted_at")
+    @Column(name = "deletedAt")
     private LocalDateTime deletedAt;
 
-    // 수동으로 groupId 설정할 수 있는 생성자 추가
-    public Workspace(UUID groupId, String name, String companyName) {
-        this.groupId = groupId;
-        this.name = name;
-        this.companyName = companyName;
-        this.isActive = true;
-    }
-
-    public Workspace(String name, String companyName) {
-        this.name = name;
-        this.companyName = companyName;
-        this.isActive = true;
-    }
+    // 소프트 삭제를 위한 필드
+    @Column(name = "isActive", nullable = false)
+    @Builder.Default
+    private Boolean isActive = true;
 
     public void softDelete() {
         this.isActive = false;

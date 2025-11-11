@@ -9,5 +9,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UpdateWorkspaceRequest {
     private String name;
-    private String description;
+    private String workspaceDescription;
 }

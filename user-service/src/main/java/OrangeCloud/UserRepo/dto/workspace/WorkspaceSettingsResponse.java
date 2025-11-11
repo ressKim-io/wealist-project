@@ -27,5 +27,5 @@ public class WorkspaceSettingsResponse {
     private Boolean requiresApproval; // BE의 needApproved에 매핑
 
     @Schema(description = "OWNER만 초대 가능 여부 (현재 BE 엔티티에 필드 없음 - 추후 확장 대비)", example = "false")
-    private Boolean onlyOwnerCanInvite;
+    private Boolean onlyOwnerCanInvite; 
 }

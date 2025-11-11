@@ -23,6 +23,10 @@ public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
 
+    // ============================================================================
+    // 기본 CRUD 및 조회 API
+    // ============================================================================
+
     /**
      * 사용자가 속한 모든 워크스페이스 조회
      * GET /api/workspaces
@@ -46,24 +50,9 @@ public class WorkspaceController {
             Authentication authentication,
             @Valid @RequestBody CreateWorkspaceRequest request) {
         UUID userId = UUID.fromString(authentication.getName());
-        log.info("Creating workspace: name={}, creator={}", request.getName(), userId);
+        log.info("Creating workspace: name={}, creator={}", request.getWorkspaceName(), userId);
         WorkspaceResponse workspace = workspaceService.createWorkspace(request, userId);
         return ResponseEntity.ok(workspace);
-    }
-
-    /**
-     * 기본 워크스페이스 설정
-     * POST /api/workspaces/default
-     */
-    @PostMapping("/default")
-    @Operation(summary = "기본 워크스페이스 설정", description = "사용자의 기본 워크스페이스를 설정합니다.")
-    public ResponseEntity<Void> setDefaultWorkspace(
-            Authentication authentication,
-            @Valid @RequestBody SetDefaultWorkspaceRequest request) {
-        UUID userId = UUID.fromString(authentication.getName());
-        log.info("Setting default workspace: workspaceId={}, userId={}", request.getWorkspaceId(), userId);
-        workspaceService.setDefaultWorkspace(request.getWorkspaceId(), userId);
-        return ResponseEntity.ok().build();
     }
 
     /**
@@ -97,6 +86,46 @@ public class WorkspaceController {
         return ResponseEntity.ok(workspace);
     }
 
+    // ============================================================================
+    // Workspace 설정 API (프론트엔드 모달 대응)
+    // ============================================================================
+
+    /**
+     * 워크스페이스 설정 조회
+     * GET /api/workspaces/{workspaceId}/settings
+     */
+    @GetMapping("/{workspaceId}/settings")
+    @Operation(summary = "워크스페이스 설정 조회", description = "특정 워크스페이스의 공개/승인 설정 등을 조회합니다. (멤버만 가능)")
+    public ResponseEntity<WorkspaceSettingsResponse> getWorkspaceSettings(
+            @PathVariable UUID workspaceId,
+            Authentication authentication) {
+        UUID userId = UUID.fromString(authentication.getName());
+        log.debug("Fetching workspace settings: workspaceId={}", workspaceId);
+        WorkspaceSettingsResponse settings = workspaceService.getWorkspaceSettings(workspaceId, userId); // Service 호출
+        return ResponseEntity.ok(settings);
+    }
+
+    /**
+     * 워크스페이스 설정 수정
+     * PUT /api/workspaces/{workspaceId}/settings
+     */
+    @PutMapping("/{workspaceId}/settings")
+    @Operation(summary = "워크스페이스 설정 수정", description = "워크스페이스의 설정 정보를 수정합니다. (OWNER/ADMIN만 가능)")
+    public ResponseEntity<WorkspaceSettingsResponse> updateWorkspaceSettings(
+            @PathVariable UUID workspaceId,
+            Authentication authentication,
+            @Valid @RequestBody UpdateWorkspaceSettingsRequest request) {
+        UUID userId = UUID.fromString(authentication.getName());
+        log.info("Updating workspace settings: workspaceId={}", workspaceId);
+        WorkspaceSettingsResponse settings = workspaceService.updateWorkspaceSettings(workspaceId, request, userId); // Service
+                                                                                                                     // 호출
+        return ResponseEntity.ok(settings);
+    }
+
+    // ============================================================================
+    // 기타 API
+    // ============================================================================
+
     /**
      * 워크스페이스 삭제
      * DELETE /api/workspaces/{workspaceId}
@@ -121,10 +150,24 @@ public class WorkspaceController {
     public ResponseEntity<List<WorkspaceResponse>> searchWorkspaces(
             @RequestParam String query,
             Authentication authentication) {
-        UUID userId = UUID.fromString(authentication.getName());
         log.debug("Searching workspaces: query={}", query);
-        // TODO: WorkspaceService에 searchWorkspaces 메서드 추가 필요
+        // TODO: searchWorkspaces 서비스 구현
         return ResponseEntity.ok(List.of());
+    }
+
+    /**
+     * 기본 워크스페이스 설정
+     * POST /api/workspaces/default
+     */
+    @PostMapping("/default")
+    @Operation(summary = "기본 워크스페이스 설정", description = "사용자의 기본 워크스페이스를 설정합니다.")
+    public ResponseEntity<Void> setDefaultWorkspace(
+            Authentication authentication,
+            @Valid @RequestBody SetDefaultWorkspaceRequest request) {
+        UUID userId = UUID.fromString(authentication.getName());
+        log.info("Setting default workspace: workspaceId={}, userId={}", request.getWorkspaceId(), userId);
+        workspaceService.setDefaultWorkspace(request.getWorkspaceId(), userId);
+        return ResponseEntity.ok().build();
     }
 
     // ============================================================================
@@ -147,6 +190,26 @@ public class WorkspaceController {
     }
 
     /**
+     * 승인 대기 회원 목록 조회 (프론트엔드 '/pendingMembers' 경로 지원)
+     * GET /api/workspaces/{workspaceId}/pendingMembers
+     */
+    @GetMapping("/{workspaceId}/pendingMembers")
+    @Operation(summary = "승인 대기 회원 목록 조회", description = "워크스페이스의 PENDING 상태 가입 신청 목록을 조회합니다. (OWNER/ADMIN만 가능)")
+    public ResponseEntity<List<JoinRequestResponse>> getPendingMembers(
+            @PathVariable UUID workspaceId,
+            Authentication authentication) {
+        UUID userId = UUID.fromString(authentication.getName());
+        log.debug("Fetching pending members: workspaceId={}", workspaceId);
+
+        // PENDING 상태만 조회하도록 service 메서드를 호출
+        List<JoinRequestResponse> pendingRequests = workspaceService.getJoinRequests(workspaceId, userId, "PENDING");
+
+        // Note: 프론트엔드 DTO(PendingMember)와 백엔드 DTO(JoinRequestResponse)의 필드 매핑은 프론트엔드에서
+        // 처리됨을 가정
+        return ResponseEntity.ok(pendingRequests);
+    }
+
+    /**
      * 멤버 역할 변경
      * PUT /api/workspaces/{workspaceId}/members/{memberId}/role
      */
@@ -158,7 +221,8 @@ public class WorkspaceController {
             Authentication authentication,
             @Valid @RequestBody UpdateMemberRoleRequest request) {
         UUID userId = UUID.fromString(authentication.getName());
-        log.info("Updating member role: workspaceId={}, memberId={}, newRole={}", workspaceId, memberId, request.getRoleName());
+        log.info("Updating member role: workspaceId={}, memberId={}, newRole={}", workspaceId, memberId,
+                request.getRoleName());
         WorkspaceMemberResponse member = workspaceService.updateMemberRole(workspaceId, memberId, request, userId);
         return ResponseEntity.ok(member);
     }
@@ -176,6 +240,38 @@ public class WorkspaceController {
         UUID userId = UUID.fromString(authentication.getName());
         log.info("Removing member: workspaceId={}, memberId={}", workspaceId, memberId);
         workspaceService.removeMember(workspaceId, memberId, userId);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * 회원 승인
+     * POST /api/workspaces/{workspaceId}/members/{userId}/approve
+     */
+    @PostMapping("/{workspaceId}/members/{userId}/approve")
+    @Operation(summary = "가입 신청 승인", description = "특정 사용자의 가입 신청을 승인하고 멤버로 추가합니다. (OWNER/ADMIN만 가능)")
+    public ResponseEntity<Void> approveMember(
+            @PathVariable UUID workspaceId,
+            @PathVariable UUID userId, // 여기서 userId는 신청한 사용자 ID
+            Authentication authentication) {
+        UUID adminId = UUID.fromString(authentication.getName());
+        log.info("Approving member: workspaceId={}, userId={}, adminId={}", workspaceId, userId, adminId);
+        workspaceService.approveJoinRequest(workspaceId, userId, adminId); // Service 호출
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * 회원 거절
+     * POST /api/workspaces/{workspaceId}/members/{userId}/reject
+     */
+    @PostMapping("/{workspaceId}/members/{userId}/reject")
+    @Operation(summary = "가입 신청 거절", description = "특정 사용자의 가입 신청을 거절합니다. (OWNER/ADMIN만 가능)")
+    public ResponseEntity<Void> rejectMember(
+            @PathVariable UUID workspaceId,
+            @PathVariable UUID userId, // 여기서 userId는 신청한 사용자 ID
+            Authentication authentication) {
+        UUID adminId = UUID.fromString(authentication.getName());
+        log.info("Rejecting member: workspaceId={}, userId={}, adminId={}", workspaceId, userId, adminId);
+        workspaceService.rejectJoinRequest(workspaceId, userId, adminId); // Service 호출
         return ResponseEntity.ok().build();
     }
 
@@ -199,8 +295,8 @@ public class WorkspaceController {
     }
 
     /**
-     * 가입 신청 승인/거절
-     * PUT /api/workspaces/{workspaceId}/join-requests/{requestId}
+     * 가입 신청 승인/거절 (기존 PUT 매핑)
+     * PUT /api/workspaces/{workspaceId}/joinRequests/{requestId}
      */
     @PutMapping("/{workspaceId}/joinRequests/{requestId}")
     @Operation(summary = "가입 신청 처리", description = "가입 신청을 승인하거나 거절합니다. (OWNER/ADMIN만 가능)")
@@ -210,16 +306,17 @@ public class WorkspaceController {
             Authentication authentication,
             @Valid @RequestBody UpdateJoinRequestRequest request) {
         UUID userId = UUID.fromString(authentication.getName());
-        log.info("Updating join request: workspaceId={}, requestId={}, status={}", workspaceId, requestId, request.getStatus());
+        log.info("Updating join request: workspaceId={}, requestId={}, status={}", workspaceId, requestId,
+                request.getStatus());
         JoinRequestResponse joinRequest = workspaceService.updateJoinRequest(workspaceId, requestId, request, userId);
         return ResponseEntity.ok(joinRequest);
     }
 
     /**
      * 가입 신청 목록 조회
-     * GET /api/workspaces/{workspaceId}/join-requests
+     * GET /api/workspaces/{workspaceId}/joinRequests
      */
-    @GetMapping("/{workspaceId}/join-requests")
+    @GetMapping("/{workspaceId}/joinRequests")
     @Operation(summary = "가입 신청 목록 조회", description = "워크스페이스의 모든 가입 신청을 조회합니다. (OWNER/ADMIN만 가능)")
     public ResponseEntity<List<JoinRequestResponse>> getJoinRequests(
             @PathVariable UUID workspaceId,

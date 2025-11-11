@@ -5,8 +5,8 @@ plugins {
 	id 'jacoco'
 }
 java {
-    sourceCompatibility = '17'  // 또는 '21'
-    targetCompatibility = '17'  // 또는 '21'
+    sourceCompatibility = '21'  // 또는 '21'
+    targetCompatibility = '21'  // 또는 '21'
 }
 
 jacoco {
@@ -48,7 +48,7 @@ description = 'Spring boot Porject '
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
+		languageVersion = JavaLanguageVersion.of(21)
 	}
 }
 
@@ -57,7 +57,7 @@ repositories {
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.apache.commons:commons-lang3:3.19.0'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
