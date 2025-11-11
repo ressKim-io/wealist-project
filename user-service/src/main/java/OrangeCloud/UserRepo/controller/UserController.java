@@ -92,9 +92,9 @@ public class UserController {
      */
     @PostMapping("/batch")
     @Operation(summary = "사용자 일괄 조회", description = "여러 사용자의 정보를 한 번에 조회합니다.")
-    public ResponseEntity<List<User>> getUsersBatch(@RequestBody UserIdRequest request) {
+    public ResponseEntity<MessageApiResponse> getUsersBatch(@RequestBody UserIdRequest request) {
         log.debug("Batch fetching users: count={}", request.getUserIds().size());
         List<User> users = userService.getUsersByIds(request.getUserIds());
-        return ResponseEntity.ok(users);
+        return ResponseEntity.ok(MessageApiResponse.success("사용자 조회 성공", users));
     }
 }

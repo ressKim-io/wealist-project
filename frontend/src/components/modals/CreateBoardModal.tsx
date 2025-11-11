@@ -120,7 +120,9 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
       }
     };
 
-    fetchCustomFields();
+    if (projectId && accessToken) {
+      fetchCustomFields();
+    }
   }, [projectId, accessToken]);
 
   // 1.2 워크스페이스 멤버 조회
