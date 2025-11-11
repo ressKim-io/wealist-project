@@ -4,6 +4,7 @@ import (
 	"board-service/internal/apperrors"
 	"board-service/internal/cache"
 	"board-service/internal/client"
+	"board-service/internal/common/auth"
 	"board-service/internal/common/pagination"
 	"board-service/internal/common/parser"
 	"board-service/internal/common/validator"
@@ -35,6 +36,7 @@ type boardService struct {
 	projectRepo   repository.ProjectRepository
 	roleRepo      repository.RoleRepository
 	fieldRepo     repository.FieldRepository // For custom fields system
+	authorizer    auth.ProjectAuthorizer     // Centralized authorization
 	userClient    client.UserClient
 	userInfoCache cache.UserInfoCache
 	logger        *zap.Logger
@@ -51,11 +53,15 @@ func NewBoardService(
 	logger *zap.Logger,
 	db *gorm.DB,
 ) BoardService {
+	// Create authorizer
+	authorizer := auth.NewProjectAuthorizer(projectRepo, roleRepo)
+
 	return &boardService{
 		repo:          repo,
 		projectRepo:   projectRepo,
 		roleRepo:      roleRepo,
 		fieldRepo:     fieldRepo,
+		authorizer:    authorizer,
 		userClient:    userClient,
 		userInfoCache: userInfoCache,
 		logger:        logger,
@@ -159,13 +165,10 @@ func (s *boardService) GetBoard(boardID, userID string) (*dto.BoardResponse, err
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 조회 실패", 500)
 	}
 
-	// 2. Check if user is project member
-	_, err = s.projectRepo.FindMemberByUserAndProject(userUUID, board.ProjectID)
+	// 2. Check if user is project member (using authorizer)
+	_, err = s.authorizer.RequireMember(userUUID, board.ProjectID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "프로젝트 멤버가 아닙니다", 403)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
+		return nil, err
 	}
 
 	// 3. Build response
@@ -285,23 +288,12 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 조회 실패", 500)
 	}
 
-	// 2. Check permission (author or ADMIN+)
-	member, err := s.projectRepo.FindMemberByUserAndProject(userUUID, board.ProjectID)
+	// 2. Check permission (author or ADMIN+) using authorizer
+	canEdit, err := s.authorizer.CanEdit(userUUID, board.ProjectID, board.CreatedBy)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "프로젝트 멤버가 아닙니다", 403)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
+		return nil, err
 	}
-
-	// Get member role
-	role, err := s.roleRepo.FindByID(member.RoleID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "권한 조회 실패", 500)
-	}
-
-	// Check if user is author or has ADMIN+ permission
-	if board.CreatedBy != userUUID && role.Name == "MEMBER" {
+	if !canEdit {
 		return nil, apperrors.New(apperrors.ErrCodeForbidden, "수정 권한이 없습니다", 403)
 	}
 
@@ -371,23 +363,12 @@ func (s *boardService) DeleteBoard(boardID, userID string) error {
 		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 조회 실패", 500)
 	}
 
-	// 2. Check permission (author or ADMIN+)
-	member, err := s.projectRepo.FindMemberByUserAndProject(userUUID, board.ProjectID)
+	// 2. Check permission (author or ADMIN+) using authorizer
+	canDelete, err := s.authorizer.CanDelete(userUUID, board.ProjectID, board.CreatedBy)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return apperrors.New(apperrors.ErrCodeForbidden, "프로젝트 멤버가 아닙니다", 403)
-		}
-		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
+		return err
 	}
-
-	// Get member role
-	role, err := s.roleRepo.FindByID(member.RoleID)
-	if err != nil {
-		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "권한 조회 실패", 500)
-	}
-
-	// Check if user is author or has ADMIN+ permission
-	if board.CreatedBy != userUUID && role.Name == "MEMBER" {
+	if !canDelete {
 		return apperrors.New(apperrors.ErrCodeForbidden, "삭제 권한이 없습니다", 403)
 	}
 
