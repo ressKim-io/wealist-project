@@ -297,12 +297,16 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 		return nil, apperrors.New(apperrors.ErrCodeForbidden, "수정 권한이 없습니다", 403)
 	}
 
-	// 3. Update fields
+	// 3. Update fields using Domain methods (Rich Domain Model)
 	if req.Title != "" {
-		board.Title = req.Title
+		// Domain 메서드 사용: 검증 로직이 Domain에 포함됨
+		if err := board.UpdateTitle(req.Title); err != nil {
+			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "제목 업데이트 실패", 400)
+		}
 	}
 	if req.Content != "" {
-		board.Description = req.Content
+		// Domain 메서드 사용: 비즈니스 로직이 Domain에 캡슐화됨
+		board.UpdateDescription(req.Content)
 	}
 
 	// Note: Stage, Importance, and Role updates should now be done via FieldValueService
@@ -319,8 +323,12 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 			if err != nil {
 				return nil, apperrors.New(apperrors.ErrCodeNotFound, "담당자가 프로젝트 멤버가 아닙니다", 404)
 			}
+			// Domain 메서드 사용: 할당 로직이 Domain에 캡슐화됨
+			board.Assign(*assigneeUUID)
+		} else {
+			// Domain 메서드 사용: 할당 해제 로직이 Domain에 캡슐화됨
+			board.Unassign()
 		}
-		board.AssigneeID = assigneeUUID
 	}
 
 	if req.DueDate != nil {
@@ -328,7 +336,8 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 		if err != nil {
 			return nil, err
 		}
-		board.DueDate = dueDate
+		// Domain 메서드 사용: 마감일 설정 로직이 Domain에 캡슐화됨
+		board.SetDueDate(*dueDate)
 	}
 
 	// 4. Save board
@@ -372,8 +381,10 @@ func (s *boardService) DeleteBoard(boardID, userID string) error {
 		return apperrors.New(apperrors.ErrCodeForbidden, "삭제 권한이 없습니다", 403)
 	}
 
-	// 3. Soft delete
-	if err := s.repo.Delete(board.ID); err != nil {
+	// 3. Soft delete using Domain method
+	// Domain 메서드 사용: 삭제 로직이 Domain에 캡슐화됨
+	board.MarkAsDeleted()
+	if err := s.repo.Update(board); err != nil {
 		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 삭제 실패", 500)
 	}
 
