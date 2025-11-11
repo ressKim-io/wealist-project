@@ -9,7 +9,7 @@ import (
 // SuccessResponse represents a successful API response
 type SuccessResponse struct {
 	Data      interface{} `json:"data"`
-	RequestID string      `json:"request_id,omitempty"`
+	RequestID string      `json:"requestId,omitempty"`
 }
 
 // ErrorResponse represents an error API response
@@ -18,22 +18,22 @@ type ErrorResponse struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
 	} `json:"error"`
-	RequestID string `json:"request_id,omitempty"`
+	RequestID string `json:"requestId,omitempty"`
 }
 
 // PaginationMeta contains pagination metadata
 type PaginationMeta struct {
 	Total      int64 `json:"total"`
 	Page       int   `json:"page"`
-	PerPage    int   `json:"per_page"`
-	TotalPages int   `json:"total_pages"`
+	PerPage    int   `json:"perPage"`
+	TotalPages int   `json:"totalPages"`
 }
 
 // PaginatedResponse represents a paginated API response
 type PaginatedResponse struct {
 	Data       interface{}    `json:"data"`
 	Pagination PaginationMeta `json:"pagination"`
-	RequestID  string         `json:"request_id,omitempty"`
+	RequestID  string         `json:"requestId,omitempty"`
 }
 
 // Success sends a successful JSON response

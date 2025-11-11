@@ -6,11 +6,11 @@ import "time"
 
 // CreateFieldRequest represents a request to create a custom field
 type CreateFieldRequest struct {
-	ProjectID   string                 `json:"project_id" binding:"required,uuid"`
+	ProjectID   string                 `json:"projectId" binding:"required,uuid"`
 	Name        string                 `json:"name" binding:"required,min=1,max=255"`
-	FieldType   string                 `json:"field_type" binding:"required,oneof=text number single_select multi_select date datetime single_user multi_user checkbox url"`
+	FieldType   string                 `json:"fieldType" binding:"required,oneof=text number single_select multi_select date datetime single_user multi_user checkbox url"`
 	Description string                 `json:"description" binding:"omitempty,max=1000"`
-	IsRequired  bool                   `json:"is_required"`
+	IsRequired  bool                   `json:"isRequired"`
 	Config      map[string]interface{} `json:"config"` // Type-specific configuration
 }
 
@@ -18,9 +18,9 @@ type CreateFieldRequest struct {
 type UpdateFieldRequest struct {
 	Name        string                 `json:"name" binding:"omitempty,min=1,max=255"`
 	Description string                 `json:"description" binding:"omitempty,max=1000"`
-	IsRequired  *bool                  `json:"is_required"`
+	IsRequired  *bool                  `json:"isRequired"`
 	Config      map[string]interface{} `json:"config"`
-	DisplayOrder *int                  `json:"display_order"`
+	DisplayOrder *int                  `json:"displayOrder"`
 }
 
 // UpdateFieldOrderRequest represents a request to update field display order
@@ -29,14 +29,14 @@ type UpdateFieldOrderRequest struct {
 }
 
 type FieldOrder struct {
-	FieldID      string `json:"field_id" binding:"required,uuid"`
+	FieldID      string `json:"fieldId" binding:"required,uuid"`
 	DisplayOrder int    `json:"displayOrder" binding:"min=0"`
 }
 
 // FieldResponse represents a custom field
 type FieldResponse struct {
-	FieldID         string                 `json:"field_id"`
-	ProjectID       string                 `json:"project_id"`
+	FieldID         string                 `json:"fieldId"`
+	ProjectID       string                 `json:"projectId"`
 	Name            string                 `json:"name"`
 	FieldType       string                 `json:"fieldType"`
 	Description     string                 `json:"description"`
@@ -53,7 +53,7 @@ type FieldResponse struct {
 
 // CreateOptionRequest represents a request to create a field option
 type CreateOptionRequest struct {
-	FieldID     string `json:"field_id" binding:"required,uuid"`
+	FieldID     string `json:"fieldId" binding:"required,uuid"`
 	Label       string `json:"label" binding:"required,min=1,max=255"`
 	Color       string `json:"color" binding:"omitempty,len=7"` // #RRGGBB
 	Description string `json:"description" binding:"omitempty,max=500"`
@@ -72,14 +72,14 @@ type UpdateOptionOrderRequest struct {
 }
 
 type OptionOrder struct {
-	OptionID     string `json:"option_id" binding:"required,uuid"`
+	OptionID     string `json:"optionId" binding:"required,uuid"`
 	DisplayOrder int    `json:"displayOrder" binding:"min=0"`
 }
 
 // OptionResponse represents a field option
 type OptionResponse struct {
-	OptionID     string    `json:"option_id"`
-	FieldID      string    `json:"field_id"`
+	OptionID     string    `json:"optionId"`
+	FieldID      string    `json:"fieldId"`
 	Label        string    `json:"label"`
 	Color        string    `json:"color"`
 	Description  string    `json:"description"`
@@ -92,29 +92,29 @@ type OptionResponse struct {
 
 // SetFieldValueRequest represents a request to set a field value for a board
 type SetFieldValueRequest struct {
-	BoardID   string      `json:"board_id" binding:"required,uuid"`
-	FieldID   string      `json:"field_id" binding:"required,uuid"`
+	BoardID   string      `json:"boardId" binding:"required,uuid"`
+	FieldID   string      `json:"fieldId" binding:"required,uuid"`
 	Value     interface{} `json:"value"`  // Type depends on field type
 	Values    interface{} `json:"values"` // For multi_select, multi_user (array of IDs or ordered map)
 }
 
 // SetMultiSelectValueRequest represents ordered multi-select values
 type SetMultiSelectValueRequest struct {
-	BoardID  string                  `json:"board_id" binding:"required,uuid"`
-	FieldID  string                  `json:"field_id" binding:"required,uuid"`
+	BoardID  string                  `json:"boardId" binding:"required,uuid"`
+	FieldID  string                  `json:"fieldId" binding:"required,uuid"`
 	Values   []OrderedValue          `json:"values" binding:"required,dive"`
 }
 
 type OrderedValue struct {
-	ValueID      string `json:"value_id" binding:"required,uuid"` // option_id or user_id
+	ValueID      string `json:"valueId" binding:"required,uuid"` // option_id or user_id
 	DisplayOrder int    `json:"displayOrder" binding:"min=0"`
 }
 
 // FieldValueResponse represents a board field value
 type FieldValueResponse struct {
-	ValueID       string      `json:"value_id"`
-	BoardID       string      `json:"board_id"`
-	FieldID       string      `json:"field_id"`
+	ValueID       string      `json:"valueId"`
+	BoardID       string      `json:"boardId"`
+	FieldID       string      `json:"fieldId"`
 	Value         interface{} `json:"value"`  // Actual value (text, number, date, boolean, option object, user object)
 	DisplayOrder  int         `json:"displayOrder,omitempty"`
 	CreatedAt     time.Time   `json:"createdAt"`
@@ -123,7 +123,7 @@ type FieldValueResponse struct {
 
 // BoardFieldValuesResponse represents all field values for a board
 type BoardFieldValuesResponse struct {
-	BoardID string                 `json:"board_id"`
+	BoardID string                 `json:"boardId"`
 	Fields  map[string]interface{} `json:"fields"` // map[field_id]value
 }
 
@@ -131,34 +131,34 @@ type BoardFieldValuesResponse struct {
 
 // CreateViewRequest represents a request to create a saved view
 type CreateViewRequest struct {
-	ProjectID      string                 `json:"project_id" binding:"required,uuid"`
+	ProjectID      string                 `json:"projectId" binding:"required,uuid"`
 	Name           string                 `json:"name" binding:"required,min=1,max=255"`
 	Description    string                 `json:"description" binding:"omitempty,max=1000"`
-	IsDefault      bool                   `json:"is_default"`
-	IsShared       bool                   `json:"is_shared"`
+	IsDefault      bool                   `json:"isDefault"`
+	IsShared       bool                   `json:"isShared"`
 	Filters        map[string]interface{} `json:"filters"`
-	SortBy         string                 `json:"sort_by" binding:"omitempty"`
-	SortDirection  string                 `json:"sort_direction" binding:"omitempty,oneof=asc desc"`
-	GroupByFieldID string                 `json:"group_by_field_id" binding:"omitempty,uuid"`
+	SortBy         string                 `json:"sortBy" binding:"omitempty"`
+	SortDirection  string                 `json:"sortDirection" binding:"omitempty,oneof=asc desc"`
+	GroupByFieldID string                 `json:"groupByFieldId" binding:"omitempty,uuid"`
 }
 
 // UpdateViewRequest represents a request to update a saved view
 type UpdateViewRequest struct {
 	Name           string                 `json:"name" binding:"omitempty,min=1,max=255"`
 	Description    string                 `json:"description" binding:"omitempty,max=1000"`
-	IsDefault      *bool                  `json:"is_default"`
-	IsShared       *bool                  `json:"is_shared"`
+	IsDefault      *bool                  `json:"isDefault"`
+	IsShared       *bool                  `json:"isShared"`
 	Filters        map[string]interface{} `json:"filters"`
-	SortBy         *string                `json:"sort_by"`
-	SortDirection  string                 `json:"sort_direction" binding:"omitempty,oneof=asc desc"`
-	GroupByFieldID *string                `json:"group_by_field_id" binding:"omitempty,uuid"`
+	SortBy         *string                `json:"sortBy"`
+	SortDirection  string                 `json:"sortDirection" binding:"omitempty,oneof=asc desc"`
+	GroupByFieldID *string                `json:"groupByFieldId" binding:"omitempty,uuid"`
 }
 
 // ViewResponse represents a saved view
 type ViewResponse struct {
-	ViewID         string                 `json:"view_id"`
-	ProjectID      string                 `json:"project_id"`
-	CreatedBy      string                 `json:"created_by"`
+	ViewID         string                 `json:"viewId"`
+	ProjectID      string                 `json:"projectId"`
+	CreatedBy      string                 `json:"createdBy"`
 	Name           string                 `json:"name"`
 	Description    string                 `json:"description"`
 	IsDefault      bool                   `json:"isDefault"`
@@ -196,11 +196,11 @@ type BoardGroup struct {
 // UpdateBoardOrderRequest represents a request to update board order in a view
 // Note: Prefer using MoveBoardRequest API for single board moves (O(1) fractional indexing)
 type UpdateBoardOrderRequest struct {
-	ViewID      string       `json:"view_id" binding:"required,uuid"`
+	ViewID      string       `json:"viewId" binding:"required,uuid"`
 	BoardOrders []BoardOrder `json:"boardOrders" binding:"required,dive"`
 }
 
 type BoardOrder struct {
-	BoardID  string `json:"board_id" binding:"required,uuid"`
+	BoardID  string `json:"boardId" binding:"required,uuid"`
 	Position string `json:"position" binding:"required"` // Fractional index position
 }

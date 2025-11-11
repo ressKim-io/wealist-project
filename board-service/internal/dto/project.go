@@ -5,7 +5,7 @@ import "time"
 // Request DTOs
 
 type CreateProjectRequest struct {
-	WorkspaceID string `json:"workspace_id" binding:"required,uuid"`
+	WorkspaceID string `json:"workspaceId" binding:"required,uuid"`
 	Name        string `json:"name" binding:"required,min=2,max=100"`
 	Description string `json:"description" binding:"max=500"`
 }
@@ -23,7 +23,7 @@ type SearchProjectsRequest struct {
 }
 
 type CreateProjectJoinRequestRequest struct {
-	ProjectID string `json:"project_id" binding:"required,uuid"`
+	ProjectID string `json:"projectId" binding:"required,uuid"`
 }
 
 type UpdateProjectJoinRequestRequest struct {
@@ -37,11 +37,11 @@ type UpdateProjectMemberRoleRequest struct {
 // Response DTOs
 
 type ProjectResponse struct {
-	ID          string    `json:"project_id"`
-	WorkspaceID string    `json:"workspace_id"`
+	ID          string    `json:"projectId"`
+	WorkspaceID string    `json:"workspaceId"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	OwnerID     string    `json:"owner_id"`
+	OwnerID     string    `json:"ownerId"`
 	OwnerName   string    `json:"ownerName"`
 	OwnerEmail  string    `json:"ownerEmail"`
 	CreatedAt   time.Time `json:"createdAt"`
@@ -49,9 +49,9 @@ type ProjectResponse struct {
 }
 
 type ProjectMemberResponse struct {
-	ID        string    `json:"member_id"`
-	ProjectID string    `json:"project_id"`
-	UserID    string    `json:"user_id"`
+	ID        string    `json:"memberId"`
+	ProjectID string    `json:"projectId"`
+	UserID    string    `json:"userId"`
 	UserName  string    `json:"userName"`
 	UserEmail string    `json:"userEmail"`
 	RoleName  string    `json:"roleName"`
@@ -59,9 +59,9 @@ type ProjectMemberResponse struct {
 }
 
 type ProjectJoinRequestResponse struct {
-	ID          string    `json:"request_id"`
-	ProjectID   string    `json:"project_id"`
-	UserID      string    `json:"user_id"`
+	ID          string    `json:"requestId"`
+	ProjectID   string    `json:"projectId"`
+	UserID      string    `json:"userId"`
 	UserName    string    `json:"userName"`
 	UserEmail   string    `json:"userEmail"`
 	Status      string    `json:"status"`

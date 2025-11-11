@@ -5,16 +5,16 @@ import "time"
 // ==================== Request DTOs ====================
 
 type CreateBoardRequest struct {
-	ProjectID    string   `json:"project_id" binding:"required,uuid"`
+	ProjectID    string   `json:"projectId" binding:"required,uuid"`
 	Title        string   `json:"title" binding:"required,min=1,max=200"`
 	Content      string   `json:"content" binding:"max=5000"`
 
 	// Legacy fields (deprecated - use custom fields instead)
-	StageID      *string  `json:"stage_id" binding:"omitempty,uuid"`
-	ImportanceID *string  `json:"importance_id" binding:"omitempty,uuid"`
-	RoleIDs      []string `json:"role_ids" binding:"omitempty,dive,uuid"`
+	StageID      *string  `json:"stageId" binding:"omitempty,uuid"`
+	ImportanceID *string  `json:"importanceId" binding:"omitempty,uuid"`
+	RoleIDs      []string `json:"roleIds" binding:"omitempty,dive,uuid"`
 
-	AssigneeID   *string  `json:"assignee_id" binding:"omitempty,uuid"`
+	AssigneeID   *string  `json:"assigneeId" binding:"omitempty,uuid"`
 	DueDate      *string  `json:"dueDate" binding:"omitempty"` // ISO 8601 format
 }
 
@@ -23,11 +23,11 @@ type UpdateBoardRequest struct {
 	Content      string   `json:"content" binding:"omitempty,max=5000"`
 
 	// Legacy fields (deprecated - use custom fields instead)
-	StageID      *string  `json:"stage_id" binding:"omitempty,uuid"`
-	ImportanceID *string  `json:"importance_id" binding:"omitempty,uuid"`
-	RoleIDs      []string `json:"role_ids" binding:"omitempty,dive,uuid"`
+	StageID      *string  `json:"stageId" binding:"omitempty,uuid"`
+	ImportanceID *string  `json:"importanceId" binding:"omitempty,uuid"`
+	RoleIDs      []string `json:"roleIds" binding:"omitempty,dive,uuid"`
 
-	AssigneeID   *string  `json:"assignee_id" binding:"omitempty,uuid"`
+	AssigneeID   *string  `json:"assigneeId" binding:"omitempty,uuid"`
 	DueDate      *string  `json:"dueDate" binding:"omitempty"`
 }
 
@@ -45,8 +45,8 @@ type GetBoardsRequest struct {
 // ==================== Response DTOs ====================
 
 type BoardResponse struct {
-	ID            string                     `json:"board_id"`
-	ProjectID     string                     `json:"project_id"`
+	ID            string                     `json:"boardId"`
+	ProjectID     string                     `json:"projectId"`
 	Title         string                     `json:"title"`
 	Content       string                     `json:"content"`
 	Assignee      *UserInfo                  `json:"assignee"`
@@ -54,12 +54,12 @@ type BoardResponse struct {
 	DueDate       *time.Time                 `json:"dueDate"`
 	CreatedAt     time.Time                  `json:"createdAt"`
 	UpdatedAt     time.Time                  `json:"updatedAt"`
-	CustomFields  map[string]interface{}     `json:"custom_fields,omitempty"`  // Parsed custom_fields_cache
+	CustomFields  map[string]interface{}     `json:"customFields,omitempty"`  // Parsed custom_fields_cache
 	Position      string                     `json:"position,omitempty"`       // Board position in view
 }
 
 type UserInfo struct {
-	UserID   string `json:"user_id"`
+	UserID   string `json:"userId"`
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	IsActive bool   `json:"isActive"`
@@ -76,17 +76,17 @@ type PaginatedBoardsResponse struct {
 // This API combines field value change + position update in a single transaction
 // Uses fractional indexing for O(1) operations without affecting other boards
 type MoveBoardRequest struct {
-	ViewID         string  `json:"view_id" binding:"required,uuid"`
-	GroupByFieldID string  `json:"group_by_field_id" binding:"required,uuid"` // Which field is used for grouping
-	NewFieldValue  string  `json:"new_field_value" binding:"required,uuid"`   // New option_id (destination column)
-	BeforePosition *string `json:"before_position"`                           // Position of board before insertion point (optional)
-	AfterPosition  *string `json:"after_position"`                            // Position of board after insertion point (optional)
+	ViewID         string  `json:"viewId" binding:"required,uuid"`
+	GroupByFieldID string  `json:"groupByFieldId" binding:"required,uuid"` // Which field is used for grouping
+	NewFieldValue  string  `json:"newFieldValue" binding:"required,uuid"`   // New option_id (destination column)
+	BeforePosition *string `json:"beforePosition"`                           // Position of board before insertion point (optional)
+	AfterPosition  *string `json:"afterPosition"`                            // Position of board after insertion point (optional)
 }
 
 // MoveBoardResponse represents the result of a board move operation
 type MoveBoardResponse struct {
-	BoardID       string `json:"board_id"`
-	NewFieldValue string `json:"new_field_value"`
-	NewPosition   string `json:"new_position"` // New fractional index position
+	BoardID       string `json:"boardId"`
+	NewFieldValue string `json:"newFieldValue"`
+	NewPosition   string `json:"newPosition"` // New fractional index position
 	Message       string `json:"message"`
 }
