@@ -82,7 +82,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         const { createProject } = await import('../../api/board/boardService');
         await createProject(
           {
-            workspace_id,
+            workspaceId: workspace_id,
             name: name.trim(),
             description: description.trim() || undefined,
           },

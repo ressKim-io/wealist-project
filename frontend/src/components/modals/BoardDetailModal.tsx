@@ -91,7 +91,7 @@ export const BoardDetailModal: React.FC<BoardDetailModalProps> = ({
         const boardData = await getBoard(boardId, accessToken);
 
         // 보드 데이터로 상태 초기화
-        setProjectId(boardData.project_id);
+        setProjectId(boardData.projectId);
         setTitle(boardData.title);
         setContent(boardData.content || '');
         setSelectedStageId(boardData.stage?.id || '');

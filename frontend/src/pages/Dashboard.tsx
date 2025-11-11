@@ -303,16 +303,16 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       console.log(`[Dashboard] 보드 로드 시작 (Project: ${selectedProject.name})`);
 
       // 1. 프로젝트의 모든 Stages 조회
-      let stages = await getProjectStages(selectedProject.project_id, accessToken);
+      let stages = await getProjectStages(selectedProject.projectId, accessToken);
       console.log('✅ Stages loaded:', stages);
 
       // 1.1 Stage가 없으면 기본 필드 자동 초기화
       if (stages.length === 0) {
         console.log('[Dashboard] ⚠️ Stage가 없습니다. 기본 필드 초기화 시작...');
         try {
-          await initializeDefaultFields(selectedProject.project_id, accessToken);
+          await initializeDefaultFields(selectedProject.projectId, accessToken);
           // 재조회
-          stages = await getProjectStages(selectedProject.project_id, accessToken);
+          stages = await getProjectStages(selectedProject.projectId, accessToken);
           console.log('✅ 기본 필드 초기화 완료. Stages:', stages);
         } catch (initError) {
           console.error('❌ 기본 필드 초기화 실패:', initError);
@@ -321,7 +321,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       }
 
       // 2. 보드 조회
-      const boardsResponse = await getBoards(selectedProject.project_id, accessToken);
+      const boardsResponse = await getBoards(selectedProject.projectId, accessToken);
       console.log('✅ Boards loaded:', boardsResponse);
 
       // 3. Stage별로 빈 컬럼 먼저 생성
@@ -671,13 +671,13 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
                   ) : (
                     projects.map((project) => (
                       <button
-                        key={project.project_id}
+                        key={project.projectId}
                         onClick={() => {
                           setSelectedProject(project);
                           setShowProjectSelector(false);
                         }}
                         className={`w-full px-3 py-2 text-left text-sm rounded transition truncate ${
-                          selectedProject?.project_id === project.project_id
+                          selectedProject?.projectId === project.projectId
                             ? 'bg-blue-100 text-blue-700 font-semibold'
                             : 'hover:bg-gray-100 text-gray-800'
                         }`}
@@ -1209,7 +1209,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
 
       {showCreateBoard && selectedProject && (
         <CreateBoardModal
-          projectId={selectedProject.project_id}
+          projectId={selectedProject.projectId}
           stageId={createBoardStageId}
           editData={editBoardData}
           workspaceId={currentWorkspaceId}
@@ -1239,7 +1239,7 @@ const MainDashboard: React.FC<MainDashboardProps> = ({ onLogout }) => {
       {/* Custom Field Manage Modal */}
       {showManageModal && selectedProject && (
         <CustomFieldManageModal
-          projectId={selectedProject.project_id}
+          projectId={selectedProject.projectId}
           onClose={() => setShowManageModal(false)}
           onFieldsUpdated={fetchBoards}
         />
