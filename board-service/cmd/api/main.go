@@ -2,13 +2,9 @@ package main
 
 import (
 	"board-service/internal/cache"
-	"board-service/internal/client"
 	"board-service/internal/config"
 	"board-service/internal/database"
-	"board-service/internal/handler"
 	"board-service/internal/middleware"
-	"board-service/internal/repository"
-	"board-service/internal/service"
 	"board-service/pkg/logger"
 	"os"
 
@@ -71,147 +67,39 @@ func main() {
 		log.Fatal("Failed to connect to Redis", zap.Error(err))
 	}
 
-	// 5. Initialize User Service client
-	userClient := client.NewUserClient(cfg.UserService.URL)
-	log.Info("User Service client initialized", zap.String("url", cfg.UserService.URL))
-
-	// 5.5. Initialize caches
-	workspaceCache := cache.NewWorkspaceCache(rdb)
-	userInfoCache := cache.NewUserInfoCache(rdb)
-	fieldCache := cache.NewFieldCache(rdb) // Custom fields cache
-
-	// 5.6. Initialize repositories
-	roleRepo := repository.NewRoleRepository(db)
-	projectRepo := repository.NewProjectRepository(db)
-	boardRepo := repository.NewBoardRepository(db)
-	commentRepo := repository.NewCommentRepository(db)
-	fieldRepo := repository.NewFieldRepository(db)
-
-	// 5.7. Initialize services
-	boardService := service.NewBoardService(boardRepo, projectRepo, roleRepo, fieldRepo, userClient, userInfoCache, log, db)
-	projectService := service.NewProjectService(projectRepo, roleRepo, fieldRepo, userClient, workspaceCache, userInfoCache, log, db)
-	commentService := service.NewCommentService(commentRepo, boardRepo, projectRepo, userClient, userInfoCache, log, db)
-	// Custom fields services (new ProjectField system)
-	fieldService := service.NewFieldService(fieldRepo, projectRepo, fieldCache, log, db)
-	fieldValueService := service.NewFieldValueService(fieldRepo, boardRepo, projectRepo, fieldCache, log, db)
-	viewService := service.NewViewService(fieldRepo, boardRepo, projectRepo, fieldCache, log, db)
+	// 5. Initialize application with dependency injection
+	app, err := InitializeApplication(cfg, log, db, rdb)
+	if err != nil {
+		log.Fatal("Failed to initialize application", zap.Error(err))
+	}
 
 	// 6. Configure Gin mode
 	if cfg.Server.Env == "prod" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// 7. Create router
+	// 7. Create router and register middleware
 	r := gin.New()
-
-	
-
-	// 8. Register middleware (order is important)
 	r.Use(middleware.RequestIDMiddleware())
 	r.Use(middleware.LoggerMiddleware(log))
 	r.Use(middleware.RecoveryMiddleware(log))
 	r.Use(middleware.CORSMiddleware(cfg.CORS.Origins))
 
-	// 9. Register Swagger (development only)
+	// 8. Register Swagger (development only)
 	if cfg.Server.Env == "dev" {
 		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 		log.Info("Swagger UI enabled", zap.String("url", "http://localhost:"+cfg.Server.Port+"/swagger/index.html"))
 	}
 
-	// 10. Register Prometheus metrics endpoint
+	// 9. Register Prometheus metrics endpoint
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
-	// 11. Register health check (no authentication required)
-	healthHandler := handler.NewHealthHandler(db, rdb)
-	handler.RegisterRoutes(r, healthHandler)
+	// 10. Register all routes through the application
+	app.RegisterRoutes(r, cfg)
 
-	// 12. API routes group (authentication required)
+	// 11. Apply authentication middleware to API routes
 	api := r.Group("/api")
 	api.Use(middleware.AuthMiddleware(cfg.JWT.Secret))
-	{
-		// Initialize handlers
-		projectHandler := handler.NewProjectHandler(projectService)
-		boardHandler := handler.NewBoardHandler(boardService)
-		commentHandler := handler.NewCommentHandler(commentService)
-		fieldHandler := handler.NewFieldHandler(fieldService, fieldValueService) // Custom fields (new ProjectField system)
-		viewHandler := handler.NewViewHandler(viewService) // Saved views (filters/sorting/grouping)
-
-		// Project routes
-		projects := api.Group("/projects")
-		{
-			// Project CRUD
-			projects.POST("", projectHandler.CreateProject)
-			projects.GET("", projectHandler.GetProjects)           // Get all projects in workspace
-			projects.GET("/search", projectHandler.SearchProjects) // Must be before /:projectId
-			projects.GET("/:projectId", projectHandler.GetProject)
-			projects.PUT("/:projectId", projectHandler.UpdateProject)
-			projects.DELETE("/:projectId", projectHandler.DeleteProject)
-
-			// Join Requests
-			projects.POST("/join-requests", projectHandler.CreateJoinRequest)
-			projects.GET("/:projectId/join-requests", projectHandler.GetJoinRequests)
-			projects.PUT("/join-requests/:joinRequestId", projectHandler.UpdateJoinRequest)
-
-			// Members
-			projects.GET("/:projectId/members", projectHandler.GetProjectMembers)
-			projects.PUT("/:projectId/members/:memberId/role", projectHandler.UpdateMemberRole)
-			projects.DELETE("/:projectId/members/:memberId", projectHandler.RemoveMember)
-		}
-
-		// Custom Fields routes removed - use new ProjectField system instead
-		// See /fields, /field-values, and /views endpoints
-
-		// Board routes
-		boards := api.Group("/boards")
-		{
-			boards.POST("", boardHandler.CreateBoard)
-			boards.GET("/:boardId", boardHandler.GetBoard)
-			boards.GET("", boardHandler.GetBoards)
-			boards.PUT("/:boardId", boardHandler.UpdateBoard)
-			boards.DELETE("/:boardId", boardHandler.DeleteBoard)
-			boards.PUT("/:boardId/move", boardHandler.MoveBoard) // Integrated API: field value change + order update
-		}
-
-		// Comment routes
-		comments := api.Group("/comments")
-		{
-			comments.POST("", commentHandler.CreateComment)
-			comments.GET("", commentHandler.GetCommentsByBoardID) // Changed from nested route
-			comments.PUT("/:commentId", commentHandler.UpdateComment)
-			comments.DELETE("/:commentId", commentHandler.DeleteComment)
-		}
-
-		// Custom Fields routes (Jira-style) - NEW SYSTEM
-		// Field CRUD
-		api.POST("/fields", fieldHandler.CreateField)
-		api.GET("/fields/:fieldId", fieldHandler.GetField)
-		api.PATCH("/fields/:fieldId", fieldHandler.UpdateField)
-		api.DELETE("/fields/:fieldId", fieldHandler.DeleteField)
-		projects.GET("/:projectId/fields", fieldHandler.GetFieldsByProject) // Under projects
-		projects.PUT("/:projectId/fields/order", fieldHandler.UpdateFieldOrder)
-
-		// Field Options
-		api.POST("/field-options", fieldHandler.CreateOption)
-		api.GET("/fields/:fieldId/options", fieldHandler.GetOptionsByField)
-		api.PATCH("/field-options/:optionId", fieldHandler.UpdateOption)
-		api.DELETE("/field-options/:optionId", fieldHandler.DeleteOption)
-		api.PUT("/fields/:fieldId/options/order", fieldHandler.UpdateOptionOrder)
-
-		// Board Field Values
-		api.POST("/board-field-values", fieldHandler.SetFieldValue)
-		api.POST("/board-field-values/multi-select", fieldHandler.SetMultiSelectValue)
-		api.GET("/boards/:boardId/field-values", fieldHandler.GetBoardFieldValues)
-		api.DELETE("/boards/:boardId/field-values/:fieldId", fieldHandler.DeleteFieldValue)
-
-		// Saved Views (filters/sorting/grouping)
-		api.POST("/views", viewHandler.CreateView)
-		api.GET("/views/:viewId", viewHandler.GetView)
-		api.PATCH("/views/:viewId", viewHandler.UpdateView)
-		api.DELETE("/views/:viewId", viewHandler.DeleteView)
-		api.GET("/views/:viewId/boards", viewHandler.ApplyView) // Apply view and get boards
-		projects.GET("/:projectId/views", viewHandler.GetViewsByProject) // Under projects
-		api.PUT("/view-board-orders", viewHandler.UpdateBoardOrder) // Manual board ordering in views
-	}
 
 	// 12. Start server
 	addr := ":" + cfg.Server.Port
