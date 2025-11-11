@@ -43,8 +43,8 @@ public class ProfileController {
     public ResponseEntity<UserProfileResponse> getMyProfile(Principal principal) {
         UUID userId = extractUserId(principal);
         // UserProfile 엔티티를 받아 DTO로 변환
-        UserProfile profile = userProfileService.getProfile(userId);
-        return ResponseEntity.ok(UserProfileResponse.from(profile)); 
+        UserProfileResponse profile = userProfileService.getProfile(userId);
+        return ResponseEntity.ok(profile);
     }
 
     /**
@@ -86,7 +86,7 @@ public class ProfileController {
         // ✅ 통합 서비스 메서드 호출
         UserProfile updatedProfile = userProfileService.updateProfile(
                 userId,
-                request.name(),
+                request.nickName(),
                 request.email(),
                 request.profileImageUrl()
         );
