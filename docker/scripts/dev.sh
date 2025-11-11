@@ -58,6 +58,8 @@ case $COMMAND in
         echo -e "   - Board API:   http://localhost:8000"
         echo -e "   - PostgreSQL:  localhost:5432"
         echo -e "   - Redis:       localhost:6379"
+        echo -e "   - User API swagger:    http://localhost:8080/swagger-ui/index.html"
+        echo -e "   - Board API swagger:   http://localhost:8000/swagger/index.html"
         echo -e ""
         echo -e "${BLUE}💡 로그 확인: ./docker/scripts/dev.sh logs${NC}"
         ;;
