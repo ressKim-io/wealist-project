@@ -47,7 +47,7 @@ func NewOwnerRole() *domain.Role {
 			UpdatedAt: time.Now(),
 		},
 		Name:        "OWNER",
-		DisplayName: "Owner",
+		Description: "Owner",
 		Level:       100,
 	}
 }
@@ -60,7 +60,7 @@ func NewAdminRole() *domain.Role {
 			UpdatedAt: time.Now(),
 		},
 		Name:        "ADMIN",
-		DisplayName: "Admin",
+		Description: "Admin",
 		Level:       50,
 	}
 }
@@ -73,7 +73,7 @@ func NewMemberRole() *domain.Role {
 			UpdatedAt: time.Now(),
 		},
 		Name:        "MEMBER",
-		DisplayName: "Member",
+		Description: "Member",
 		Level:       10,
 	}
 }
@@ -224,12 +224,11 @@ func NewTestView(projectID, userID uuid.UUID, isDefault bool) *domain.SavedView 
 			UpdatedAt: time.Now(),
 		},
 		ProjectID:   projectID,
-		UserID:      userID,
+		CreatedBy:   userID,
 		Name:        "Test View",
 		Description: "Test view description",
-		ViewType:    domain.ViewTypeKanban,
 		IsDefault:   isDefault,
-		Config:      "{}",
+		Filters:     "{}",
 	}
 }
 

@@ -3,11 +3,7 @@ package service
 import (
 	"board-service/internal/apperrors"
 	"board-service/internal/common/parser"
-	"board-service/internal/domain"
 	"board-service/internal/dto"
-	"board-service/internal/uow"
-
-	"github.com/google/uuid"
 )
 
 // ==================== Unit of Work 적용 예제 ====================

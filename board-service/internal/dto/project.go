@@ -44,6 +44,7 @@ type ProjectResponse struct {
 	OwnerID     string    `json:"ownerId"`
 	OwnerName   string    `json:"ownerName"`
 	OwnerEmail  string    `json:"ownerEmail"`
+	IsPublic    bool      `json:"isPublic"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 }

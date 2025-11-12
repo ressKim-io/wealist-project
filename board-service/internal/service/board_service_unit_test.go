@@ -6,7 +6,6 @@ import (
 	"board-service/internal/client"
 	"board-service/internal/domain"
 	"board-service/internal/dto"
-	"board-service/internal/repository"
 	"board-service/internal/service"
 	"board-service/internal/testutil"
 	"context"
@@ -49,7 +48,33 @@ func (m *MockUserClient) ValidateWorkspaceMembership(ctx context.Context, worksp
 	return args.Bool(0), args.Error(1)
 }
 
-type MockUserInfoCache struct {
+func (m *MockUserClient) GetSimpleUser(userID string) (*client.SimpleUser, error) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*client.SimpleUser), args.Error(1)
+}
+
+func (m *MockUserClient) GetSimpleUsers(userIDs []string) ([]client.SimpleUser, error) {
+	args := m.Called(userIDs)
+	return args.Get(0).([]client.SimpleUser), args.Error(1)
+}
+
+func (m *MockUserClient) SearchUsers(ctx context.Context, query string) ([]client.UserInfo, error) {
+	args := m.Called(ctx, query)
+	return args.Get(0).([]client.UserInfo), args.Error(1)
+}
+
+func (m *MockUserClient) GetWorkspace(ctx context.Context, workspaceID string, token string) (*client.WorkspaceInfo, error) {
+	args := m.Called(ctx, workspaceID, token)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*client.WorkspaceInfo), args.Error(1)
+}
+
+type MockUserInfoCache struct{
 	mock.Mock
 }
 
@@ -76,6 +101,29 @@ func (m *MockUserInfoCache) SetSimpleUsersBatch(ctx context.Context, users []cac
 	return args.Error(0)
 }
 
+func (m *MockUserInfoCache) GetSimpleUser(ctx context.Context, userID string) (bool, *cache.SimpleUser, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(1) == nil {
+		return args.Bool(0), nil, args.Error(2)
+	}
+	return args.Bool(0), args.Get(1).(*cache.SimpleUser), args.Error(2)
+}
+
+func (m *MockUserInfoCache) SetSimpleUser(ctx context.Context, simpleUser *cache.SimpleUser) error {
+	args := m.Called(ctx, simpleUser)
+	return args.Error(0)
+}
+
+func (m *MockUserInfoCache) DeleteUserInfo(ctx context.Context, userID string) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
+func (m *MockUserInfoCache) InvalidateUser(ctx context.Context, userID string) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
 type MockDB struct {
 	mock.Mock
 }
@@ -92,6 +140,7 @@ type BoardServiceTestSuite struct {
 	projectRepo   *testutil.MockProjectRepository
 	roleRepo      *testutil.MockRoleRepository
 	fieldRepo     *testutil.MockFieldRepository
+	commentRepo   *testutil.MockCommentRepository
 	userClient    *MockUserClient
 	userInfoCache *MockUserInfoCache
 	logger        *zap.Logger
@@ -104,6 +153,7 @@ func setupBoardServiceTest(t *testing.T) *BoardServiceTestSuite {
 		projectRepo:   new(testutil.MockProjectRepository),
 		roleRepo:      new(testutil.MockRoleRepository),
 		fieldRepo:     new(testutil.MockFieldRepository),
+		commentRepo:   new(testutil.MockCommentRepository),
 		userClient:    new(MockUserClient),
 		userInfoCache: new(MockUserInfoCache),
 		logger:        zap.NewNop(),
@@ -115,6 +165,7 @@ func setupBoardServiceTest(t *testing.T) *BoardServiceTestSuite {
 		suite.projectRepo,
 		suite.roleRepo,
 		suite.fieldRepo,
+		suite.commentRepo,
 		suite.userClient,
 		suite.userInfoCache,
 		suite.logger,

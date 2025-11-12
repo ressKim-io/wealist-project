@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/google/uuid"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -183,5 +184,3 @@ func (t *TestDB) BeginTransaction() *gorm.DB {
 func RollbackTransaction(tx *gorm.DB) {
 	tx.Rollback()
 }
-
-import "github.com/google/uuid"

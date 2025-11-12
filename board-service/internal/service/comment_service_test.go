@@ -18,113 +18,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// ==================== Mock UserClient ====================
-
-type MockUserClient struct {
-	mock.Mock
-}
-
-func (m *MockUserClient) GetUser(ctx context.Context, userID string) (*client.UserInfo, error) {
-	args := m.Called(ctx, userID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*client.UserInfo), args.Error(1)
-}
-
-func (m *MockUserClient) GetUsersBatch(ctx context.Context, userIDs []string) ([]client.UserInfo, error) {
-	args := m.Called(ctx, userIDs)
-	return args.Get(0).([]client.UserInfo), args.Error(1)
-}
-
-func (m *MockUserClient) SearchUsers(ctx context.Context, query string) ([]client.UserInfo, error) {
-	args := m.Called(ctx, query)
-	return args.Get(0).([]client.UserInfo), args.Error(1)
-}
-
-func (m *MockUserClient) GetSimpleUser(userID string) (*client.SimpleUser, error) {
-	args := m.Called(userID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*client.SimpleUser), args.Error(1)
-}
-
-func (m *MockUserClient) GetSimpleUsers(userIDs []string) ([]client.SimpleUser, error) {
-	args := m.Called(userIDs)
-	return args.Get(0).([]client.SimpleUser), args.Error(1)
-}
-
-func (m *MockUserClient) CheckWorkspaceExists(ctx context.Context, workspaceID string, token string) (bool, error) {
-	args := m.Called(ctx, workspaceID, token)
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *MockUserClient) ValidateWorkspaceMembership(ctx context.Context, workspaceID string, userID string, token string) (bool, error) {
-	args := m.Called(ctx, workspaceID, userID, token)
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *MockUserClient) GetWorkspace(ctx context.Context, workspaceID string, token string) (*client.WorkspaceInfo, error) {
-	args := m.Called(ctx, workspaceID, token)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*client.WorkspaceInfo), args.Error(1)
-}
-
-// ==================== Mock UserInfoCache ====================
-
-type MockUserInfoCache struct {
-	mock.Mock
-}
-
-func (m *MockUserInfoCache) GetUserInfo(ctx context.Context, userID string) (bool, *cache.UserInfo, error) {
-	args := m.Called(ctx, userID)
-	if args.Get(1) == nil {
-		return args.Bool(0), nil, args.Error(2)
-	}
-	return args.Bool(0), args.Get(1).(*cache.UserInfo), args.Error(2)
-}
-
-func (m *MockUserInfoCache) SetUserInfo(ctx context.Context, userInfo *cache.UserInfo) error {
-	args := m.Called(ctx, userInfo)
-	return args.Error(0)
-}
-
-func (m *MockUserInfoCache) GetSimpleUser(ctx context.Context, userID string) (bool, *cache.SimpleUser, error) {
-	args := m.Called(ctx, userID)
-	if args.Get(1) == nil {
-		return args.Bool(0), nil, args.Error(2)
-	}
-	return args.Bool(0), args.Get(1).(*cache.SimpleUser), args.Error(2)
-}
-
-func (m *MockUserInfoCache) SetSimpleUser(ctx context.Context, simpleUser *cache.SimpleUser) error {
-	args := m.Called(ctx, simpleUser)
-	return args.Error(0)
-}
-
-func (m *MockUserInfoCache) GetSimpleUsersBatch(ctx context.Context, userIDs []string) (map[string]*cache.SimpleUser, error) {
-	args := m.Called(ctx, userIDs)
-	return args.Get(0).(map[string]*cache.SimpleUser), args.Error(1)
-}
-
-func (m *MockUserInfoCache) SetSimpleUsersBatch(ctx context.Context, simpleUsers []cache.SimpleUser) error {
-	args := m.Called(ctx, simpleUsers)
-	return args.Error(0)
-}
-
-func (m *MockUserInfoCache) DeleteUserInfo(ctx context.Context, userID string) error {
-	args := m.Called(ctx, userID)
-	return args.Error(0)
-}
-
-func (m *MockUserInfoCache) DeleteSimpleUser(ctx context.Context, userID string) error {
-	args := m.Called(ctx, userID)
-	return args.Error(0)
-}
-
 // ==================== Test Suite Setup ====================
 
 type CommentServiceTestSuite struct {
@@ -184,20 +77,19 @@ func TestCommentService_CreateComment_Success(t *testing.T) {
 	}
 
 	board := &domain.Board{
-		ID:        boardID,
+		BaseModel: domain.BaseModel{
+			ID: boardID,
+		},
 		ProjectID: projectID,
 		Title:     "Test Board",
 	}
 
 	member := &domain.ProjectMember{
+		BaseModel: domain.BaseModel{
+			ID: uuid.New(),
+		},
 		UserID:    userID,
 		ProjectID: projectID,
-	}
-
-	simpleUser := &cache.SimpleUser{
-		ID:        userID.String(),
-		Name:      "Test User",
-		AvatarURL: "http://example.com/avatar.jpg",
 	}
 
 	// Mock setup
@@ -268,7 +160,9 @@ func TestCommentService_CreateComment_UserNotProjectMember(t *testing.T) {
 	}
 
 	board := &domain.Board{
-		ID:        boardID,
+		BaseModel: domain.BaseModel{
+			ID: boardID,
+		},
 		ProjectID: projectID,
 		Title:     "Test Board",
 	}
@@ -303,12 +197,17 @@ func TestCommentService_CreateComment_RepositoryError(t *testing.T) {
 	}
 
 	board := &domain.Board{
-		ID:        boardID,
+		BaseModel: domain.BaseModel{
+			ID: boardID,
+		},
 		ProjectID: projectID,
 		Title:     "Test Board",
 	}
 
 	member := &domain.ProjectMember{
+		BaseModel: domain.BaseModel{
+			ID: uuid.New(),
+		},
 		UserID:    userID,
 		ProjectID: projectID,
 	}
@@ -343,32 +242,41 @@ func TestCommentService_GetCommentsByBoardID_Success(t *testing.T) {
 	commentUserID := uuid.New()
 
 	board := &domain.Board{
-		ID:        boardID,
+		BaseModel: domain.BaseModel{
+			ID: boardID,
+		},
 		ProjectID: projectID,
 		Title:     "Test Board",
 	}
 
 	member := &domain.ProjectMember{
+		BaseModel: domain.BaseModel{
+			ID: uuid.New(),
+		},
 		UserID:    userID,
 		ProjectID: projectID,
 	}
 
 	comments := []domain.Comment{
 		{
-			ID:        uuid.New(),
-			BoardID:   boardID,
-			UserID:    commentUserID,
-			Content:   "First comment",
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
+			BaseModel: domain.BaseModel{
+				ID:        uuid.New(),
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+			BoardID: boardID,
+			UserID:  commentUserID,
+			Content: "First comment",
 		},
 		{
-			ID:        uuid.New(),
-			BoardID:   boardID,
-			UserID:    commentUserID,
-			Content:   "Second comment",
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
+			BaseModel: domain.BaseModel{
+				ID:        uuid.New(),
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+			BoardID: boardID,
+			UserID:  commentUserID,
+			Content: "Second comment",
 		},
 	}
 
@@ -410,12 +318,17 @@ func TestCommentService_GetCommentsByBoardID_EmptyList(t *testing.T) {
 	projectID := uuid.New()
 
 	board := &domain.Board{
-		ID:        boardID,
+		BaseModel: domain.BaseModel{
+			ID: boardID,
+		},
 		ProjectID: projectID,
 		Title:     "Test Board",
 	}
 
 	member := &domain.ProjectMember{
+		BaseModel: domain.BaseModel{
+			ID: uuid.New(),
+		},
 		UserID:    userID,
 		ProjectID: projectID,
 	}
@@ -468,7 +381,9 @@ func TestCommentService_GetCommentsByBoardID_UserNotProjectMember(t *testing.T) 
 	projectID := uuid.New()
 
 	board := &domain.Board{
-		ID:        boardID,
+		BaseModel: domain.BaseModel{
+			ID: boardID,
+		},
 		ProjectID: projectID,
 		Title:     "Test Board",
 	}
@@ -505,12 +420,14 @@ func TestCommentService_UpdateComment_Success(t *testing.T) {
 	}
 
 	comment := &domain.Comment{
-		ID:        commentID,
-		BoardID:   boardID,
-		UserID:    userID,
-		Content:   "Old content",
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		BaseModel: domain.BaseModel{
+			ID:        commentID,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		BoardID: boardID,
+		UserID:  userID,
+		Content: "Old content",
 	}
 
 	simpleUser := &cache.SimpleUser{
@@ -576,12 +493,14 @@ func TestCommentService_UpdateComment_NotCommentAuthor(t *testing.T) {
 	}
 
 	comment := &domain.Comment{
-		ID:        commentID,
-		BoardID:   boardID,
-		UserID:    otherUserID, // Different user
-		Content:   "Old content",
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		BaseModel: domain.BaseModel{
+			ID:        commentID,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		BoardID: boardID,
+		UserID:  otherUserID, // Different user
+		Content: "Old content",
 	}
 
 	suite.commentRepo.On("FindByID", commentID).Return(comment, nil)
@@ -611,12 +530,14 @@ func TestCommentService_UpdateComment_EmptyContent(t *testing.T) {
 	}
 
 	comment := &domain.Comment{
-		ID:        commentID,
-		BoardID:   boardID,
-		UserID:    userID,
-		Content:   "Old content",
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		BaseModel: domain.BaseModel{
+			ID:        commentID,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		BoardID: boardID,
+		UserID:  userID,
+		Content: "Old content",
 	}
 
 	suite.commentRepo.On("FindByID", commentID).Return(comment, nil)
@@ -643,12 +564,14 @@ func TestCommentService_DeleteComment_Success(t *testing.T) {
 	boardID := uuid.New()
 
 	comment := &domain.Comment{
-		ID:        commentID,
-		BoardID:   boardID,
-		UserID:    userID,
-		Content:   "Test content",
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		BaseModel: domain.BaseModel{
+			ID:        commentID,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		BoardID: boardID,
+		UserID:  userID,
+		Content: "Test content",
 	}
 
 	// Mock setup
@@ -695,12 +618,14 @@ func TestCommentService_DeleteComment_NotCommentAuthor(t *testing.T) {
 	boardID := uuid.New()
 
 	comment := &domain.Comment{
-		ID:        commentID,
-		BoardID:   boardID,
-		UserID:    otherUserID, // Different user
-		Content:   "Test content",
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		BaseModel: domain.BaseModel{
+			ID:        commentID,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		BoardID: boardID,
+		UserID:  otherUserID, // Different user
+		Content: "Test content",
 	}
 
 	suite.commentRepo.On("FindByID", commentID).Return(comment, nil)

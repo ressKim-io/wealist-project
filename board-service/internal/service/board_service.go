@@ -15,11 +15,9 @@ import (
 	"board-service/internal/uow"
 	"board-service/internal/util"
 	"context"
-	"encoding/json"
 	"errors"
 	"time"
 
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -428,7 +426,7 @@ func (s *boardService) DeleteBoard(boardID, userID string) error {
 		}
 
 		// 3-2. 관련 댓글 모두 조회 및 삭제
-		comments, err := repos.Comment.FindByBoard(boardUUID)
+		comments, err := repos.Comment.FindByBoardID(boardUUID)
 		if err != nil {
 			// 댓글이 없을 수도 있으므로 NotFound는 무시
 			if !errors.Is(err, gorm.ErrRecordNotFound) {

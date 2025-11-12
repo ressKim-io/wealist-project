@@ -15,6 +15,7 @@ const (
 	ErrCodeWorkspaceValidationFailed = "WORKSPACE_VALIDATION_FAILED"
 	ErrCodeWorkspaceAccessDenied     = "WORKSPACE_ACCESS_DENIED"
 	ErrCodeWorkspaceNotFound         = "WORKSPACE_NOT_FOUND"
+	ErrCodeNotImplemented            = "NOT_IMPLEMENTED"
 )
 
 // Predefined errors

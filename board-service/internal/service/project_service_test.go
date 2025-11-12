@@ -1,20 +1,17 @@
 package service
 
 import (
-	"board-service/internal/apperrors"
-	"board-service/internal/cache"
 	"board-service/internal/client"
 	"board-service/internal/domain"
 	"board-service/internal/dto"
 	"board-service/internal/testutil"
-	"context"
-	"errors"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"gorm.io/gorm"
 )
@@ -30,73 +27,6 @@ type ProjectServiceTestSuite struct {
 	userInfoCache  *MockUserInfoCache
 	logger         *zap.Logger
 	service        ProjectService
-}
-
-// Mock UserClient
-type MockUserClient struct {
-	mock.Mock
-}
-
-func (m *MockUserClient) GetUser(ctx context.Context, userID string, token string) (*client.UserInfo, error) {
-	args := m.Called(ctx, userID, token)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*client.UserInfo), args.Error(1)
-}
-
-func (m *MockUserClient) GetUsersBatch(ctx context.Context, userIDs []string) (map[string]client.UserInfo, error) {
-	args := m.Called(ctx, userIDs)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(map[string]client.UserInfo), args.Error(1)
-}
-
-// Mock WorkspaceCache
-type MockWorkspaceCache struct {
-	mock.Mock
-}
-
-func (m *MockWorkspaceCache) ValidateWorkspace(ctx context.Context, workspaceID string, userID string, token string) (bool, error) {
-	args := m.Called(ctx, workspaceID, userID, token)
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *MockWorkspaceCache) InvalidateWorkspace(ctx context.Context, workspaceID string) error {
-	args := m.Called(ctx, workspaceID)
-	return args.Error(0)
-}
-
-// Mock UserInfoCache
-type MockUserInfoCache struct {
-	mock.Mock
-}
-
-func (m *MockUserInfoCache) GetUserInfoBatch(ctx context.Context, userIDs []string) (map[string]*cache.UserInfo, error) {
-	args := m.Called(ctx, userIDs)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(map[string]*cache.UserInfo), args.Error(1)
-}
-
-func (m *MockUserInfoCache) SetUserInfoBatch(ctx context.Context, users map[string]*cache.UserInfo) error {
-	args := m.Called(ctx, users)
-	return args.Error(0)
-}
-
-func (m *MockUserInfoCache) GetSimpleUsersBatch(ctx context.Context, userIDs []string) (map[string]*cache.SimpleUser, error) {
-	args := m.Called(ctx, userIDs)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(map[string]*cache.SimpleUser), args.Error(1)
-}
-
-func (m *MockUserInfoCache) SetSimpleUsersBatch(ctx context.Context, users map[string]*cache.SimpleUser) error {
-	args := m.Called(ctx, users)
-	return args.Error(0)
 }
 
 func setupProjectServiceTest(t *testing.T) *ProjectServiceTestSuite {
@@ -145,7 +75,6 @@ func TestProjectService_CreateProject_Success(t *testing.T) {
 		WorkspaceID: workspaceID.String(),
 		Name:        "Test Project",
 		Description: "Test Description",
-		IsPublic:    true,
 	}
 
 	ownerRole := &domain.Role{
@@ -155,14 +84,16 @@ func TestProjectService_CreateProject_Success(t *testing.T) {
 	}
 
 	expectedProject := &domain.Project{
-		BaseModel:   domain.BaseModel{ID: uuid.New()},
+		BaseModel: domain.BaseModel{
+			ID:        uuid.New(),
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
 		WorkspaceID: workspaceID,
 		Name:        req.Name,
 		Description: req.Description,
 		OwnerID:     uuid.MustParse(userID),
-		IsPublic:    req.IsPublic,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		IsPublic:    false,
 	}
 
 	expectedUserInfo := &client.UserInfo{
@@ -276,8 +207,6 @@ func TestProjectService_GetProject_Success(t *testing.T) {
 		Description: "Description",
 		OwnerID:     ownerID,
 		IsPublic:    true,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
 	}
 
 	ownerRole := &domain.Role{
@@ -287,9 +216,14 @@ func TestProjectService_GetProject_Success(t *testing.T) {
 	}
 
 	member := &domain.ProjectMember{
+		BaseModel: domain.BaseModel{
+			ID:       uuid.New(),
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
 		ProjectID: projectID,
 		UserID:    userID,
-		Role:      *ownerRole,
+		Role:      ownerRole,
 		JoinedAt:  time.Now(),
 	}
 
@@ -550,9 +484,24 @@ func TestProjectService_GetProjectMembers_Success(t *testing.T) {
 	memberRole := &domain.Role{Name: "MEMBER", Level: 10}
 
 	members := []domain.ProjectMember{
-		{ProjectID: projectID, UserID: userID, Role: *ownerRole},
-		{ProjectID: projectID, UserID: memberID1, Role: *memberRole},
-		{ProjectID: projectID, UserID: memberID2, Role: *memberRole},
+		{
+			BaseModel: domain.BaseModel{ID: uuid.New()},
+			ProjectID: projectID,
+			UserID:    userID,
+			Role:      ownerRole,
+		},
+		{
+			BaseModel: domain.BaseModel{ID: uuid.New()},
+			ProjectID: projectID,
+			UserID:    memberID1,
+			Role:      memberRole,
+		},
+		{
+			BaseModel: domain.BaseModel{ID: uuid.New()},
+			ProjectID: projectID,
+			UserID:    memberID2,
+			Role:      memberRole,
+		},
 	}
 
 	// Mocks
