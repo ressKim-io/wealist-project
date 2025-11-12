@@ -97,11 +97,7 @@ func main() {
 	// 10. Register all routes through the application
 	app.RegisterRoutes(r, cfg)
 
-	// 11. Apply authentication middleware to API routes
-	api := r.Group("/api")
-	api.Use(middleware.AuthMiddleware(cfg.JWT.Secret))
-
-	// 12. Start server
+	// 11. Start server
 	addr := ":" + cfg.Server.Port
 	log.Info("Server starting", zap.String("address", addr))
 

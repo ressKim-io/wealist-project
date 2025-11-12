@@ -92,48 +92,83 @@ test_health_check() {
 get_test_token() {
     print_step "2" "Get Test Token from User Service"
 
-    response=$(curl -s "$USER_SERVICE_URL/api/auth/test")
+    echo "Calling: $USER_SERVICE_URL/api/auth/test"
+    response=$(curl -s -w "HTTPSTATUS:%{http_code}" "$USER_SERVICE_URL/api/auth/test")
 
-    if echo "$response" | grep -q '"accessToken"'; then
-        TOKEN=$(echo "$response" | grep -o '"accessToken":"[^"]*"' | cut -d'"' -f4)
-        USER_ID=$(echo "$response" | grep -o '"userId":"[^"]*"' | cut -d'"' -f4)
-        print_success "토큰 생성 성공 (User ID: ${USER_ID:0:8}...)"
+    http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+    response_body=$(echo $response | sed -e 's/HTTPSTATUS\:.*//g')
+
+    echo "HTTP Code: $http_code"
+    echo "Response: $response_body"
+
+    if echo "$response_body" | grep -q '"accessToken"'; then
+        TOKEN=$(echo "$response_body" | grep -o '"accessToken":"[^"]*"' | cut -d'"' -f4)
+        USER_ID=$(echo "$response_body" | grep -o '"userId":"[^"]*"' | cut -d'"' -f4)
+
+        echo "Extracted TOKEN: ${TOKEN:0:50}..."
+        echo "Extracted USER_ID: $USER_ID"
+
+        if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
+            print_success "토큰 생성 성공 (User ID: ${USER_ID:0:8}...)"
+        else
+            print_error "토큰 추출 실패"
+        fi
     else
-        print_error "테스트 토큰 생성 실패: $response"
+        print_error "테스트 토큰 생성 실패: $response_body"
     fi
 }
 
 create_workspace() {
     print_step "3" "Workspace 생성 (User Service)"
 
-    workspace_data="{\"name\":\"Test Workspace $(date +%s)\",\"description\":\"자동 테스트용 워크스페이스\"}"
+    workspace_data="{\"workspaceName\":\"Test Workspace $(date +%s)\",\"workspaceDescription\":\"자동 테스트용 워크스페이스\"}"
+
     workspace_response=$(curl -s -X POST "$USER_SERVICE_URL/api/workspaces" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "$workspace_data")
 
-    if echo "$workspace_response" | grep -q '"id"'; then
-        WORKSPACE_ID=$(echo "$workspace_response" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+    # HTTP 상태 코드도 함께 확인
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$USER_SERVICE_URL/api/workspaces" \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$workspace_data")
+
+    if [ "$http_code" = "200" ] && echo "$workspace_response" | grep -q '"workspaceId"'; then
+        WORKSPACE_ID=$(echo "$workspace_response" | grep -o '"workspaceId":"[^"]*"' | head -1 | cut -d'"' -f4)
         print_success "Workspace 생성 성공 (ID: ${WORKSPACE_ID:0:8}...)"
     else
-        print_error "Workspace 생성 실패: $workspace_response"
+        print_error "Workspace 생성 실패: HTTP $http_code, Response: $workspace_response"
     fi
 }
+
+
 
 create_project() {
     print_step "4" "Project 생성"
 
+    echo "Using TOKEN: ${TOKEN:0:50}..."
+    echo "Using WORKSPACE_ID: $WORKSPACE_ID"
+
     project_data="{\"workspaceId\":\"$WORKSPACE_ID\",\"name\":\"Test Project $(date +%s)\",\"description\":\"자동 테스트용 프로젝트\"}"
-    project_response=$(curl -s -X POST "$BOARD_SERVICE_URL/api/projects" \
+    echo "Request data: $project_data"
+
+    project_response=$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST "$BOARD_SERVICE_URL/api/projects" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "$project_data")
 
-    if echo "$project_response" | grep -q '"data"'; then
-        PROJECT_ID=$(echo "$project_response" | grep -o '"projectId":"[^"]*"' | head -1 | cut -d'"' -f4)
+    http_code=$(echo $project_response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+    response_body=$(echo $project_response | sed -e 's/HTTPSTATUS\:.*//g')
+
+    echo "HTTP Code: $http_code"
+    echo "Response: $response_body"
+
+    if [ "$http_code" = "200" ] || [ "$http_code" = "201" ]; then
+        PROJECT_ID=$(echo "$response_body" | grep -o '"projectId":"[^"]*"' | head -1 | cut -d'"' -f4)
         print_success "Project 생성 성공 (ID: ${PROJECT_ID:0:8}...)"
     else
-        print_error "Project 생성 실패: $project_response"
+        print_error "Project 생성 실패: HTTP $http_code, $response_body"
     fi
 }
 

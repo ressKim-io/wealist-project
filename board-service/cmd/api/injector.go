@@ -5,6 +5,7 @@ import (
 	"board-service/internal/client"
 	"board-service/internal/config"
 	"board-service/internal/handler"
+	"board-service/internal/middleware"
 	"board-service/internal/repository"
 	"board-service/internal/service"
 
@@ -134,8 +135,7 @@ func (app *Application) RegisterRoutes(r *gin.Engine, cfg *config.Config) {
 
 	// API routes group (authentication required)
 	api := r.Group("/api")
-	// Note: AuthMiddleware는 기존 main.go에서 사용 중이므로 여기서도 동일하게 적용
-	// api.Use(middleware.AuthMiddleware(cfg.JWT.Secret))
+	api.Use(middleware.AuthMiddleware(cfg.JWT.Secret))
 	{
 		// Project routes
 		projects := api.Group("/projects")
