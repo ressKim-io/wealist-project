@@ -10,6 +10,7 @@ import (
 	"board-service/internal/common/validator"
 	"board-service/internal/domain"
 	"board-service/internal/dto"
+	"board-service/internal/metrics"
 	"board-service/internal/repository"
 	"board-service/internal/uow"
 	"board-service/internal/util"
@@ -86,6 +87,9 @@ func NewBoardService(
 // ==================== Create Board ====================
 
 func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (*dto.BoardResponse, error) {
+	// Metrics: Start timer
+	start := time.Now()
+
 	// Parse and validate UUIDs using common parser
 	userUUID, err := parser.ParseUserID(userID)
 	if err != nil {
@@ -148,6 +152,11 @@ func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (
 		s.logger.Error("Failed to create board", zap.Error(err))
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "칸반 생성 실패", 500)
 	}
+
+	// Metrics: Record success
+	projectIDStr := projectUUID.String()
+	metrics.BoardCreatedTotal.WithLabelValues(projectIDStr).Inc()
+	metrics.RecordDuration(start, metrics.BoardOperationDuration, "create", projectIDStr)
 
 	// Note: Custom field values (stage, role, importance) should be set via FieldValueService
 	// after board creation using /field-values API
@@ -282,6 +291,9 @@ func (s *boardService) GetBoards(userID string, req *dto.GetBoardsRequest) (*dto
 // ==================== Update Board ====================
 
 func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardRequest) (*dto.BoardResponse, error) {
+	// Metrics: Start timer
+	start := time.Now()
+
 	// Parse UUIDs using common parser
 	boardUUID, err := parser.ParseBoardID(boardID)
 	if err != nil {
@@ -360,6 +372,11 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 수정 실패", 500)
 	}
 
+	// Metrics: Record success
+	projectIDStr := board.ProjectID.String()
+	metrics.BoardUpdatedTotal.WithLabelValues(projectIDStr).Inc()
+	metrics.RecordDuration(start, metrics.BoardOperationDuration, "update", projectIDStr)
+
 	// 5. Return updated board
 	return s.GetBoard(board.ID.String(), userID)
 }
@@ -368,6 +385,9 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 // UnitOfWork 패턴을 사용하여 보드와 관련 댓글을 트랜잭션으로 삭제합니다
 
 func (s *boardService) DeleteBoard(boardID, userID string) error {
+	// Metrics: Start timer
+	start := time.Now()
+
 	// Parse UUIDs using common parser
 	boardUUID, err := parser.ParseBoardID(boardID)
 	if err != nil {
@@ -397,8 +417,10 @@ func (s *boardService) DeleteBoard(boardID, userID string) error {
 		return apperrors.New(apperrors.ErrCodeForbidden, "삭제 권한이 없습니다", 403)
 	}
 
+	projectIDStr := board.ProjectID.String()
+
 	// 3. UnitOfWork로 보드와 댓글을 트랜잭션으로 삭제
-	return s.uow.Do(func(repos *uow.Repositories) error {
+	err = s.uow.Do(func(repos *uow.Repositories) error {
 		// 3-1. 보드 삭제 (Domain 메서드 사용)
 		board.MarkAsDeleted()
 		if err := repos.Board.Update(board); err != nil {
@@ -429,6 +451,14 @@ func (s *boardService) DeleteBoard(boardID, userID string) error {
 		// 모두 성공하거나 모두 실패 (원자성 보장)
 		return nil
 	})
+
+	// Metrics: Record success if no error
+	if err == nil {
+		metrics.BoardDeletedTotal.WithLabelValues(projectIDStr).Inc()
+		metrics.RecordDuration(start, metrics.BoardOperationDuration, "delete", projectIDStr)
+	}
+
+	return err
 }
 
 // ==================== Helper: Build Board Response ====================
