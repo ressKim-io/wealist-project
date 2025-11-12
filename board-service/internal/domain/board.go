@@ -54,10 +54,10 @@ func (b *Board) Unassign() {
 // UpdateTitle updates the board title with validation
 func (b *Board) UpdateTitle(title string) error {
 	if title == "" {
-		return &ValidationError{Field: "title", Message: "제목은 필수입니다"}
+		return NewValidationError("title", "제목은 필수입니다")
 	}
 	if len(title) > 255 {
-		return &ValidationError{Field: "title", Message: "제목은 255자를 초과할 수 없습니다"}
+		return NewValidationError("title", "제목은 255자를 초과할 수 없습니다")
 	}
 	b.Title = title
 	b.UpdatedAt = time.Now()
@@ -91,14 +91,4 @@ func (b *Board) IsCreatedBy(userID uuid.UUID) bool {
 func (b *Board) MarkAsDeleted() {
 	b.IsDeleted = true
 	b.UpdatedAt = time.Now()
-}
-
-// ValidationError is a domain-level validation error
-type ValidationError struct {
-	Field   string
-	Message string
-}
-
-func (e *ValidationError) Error() string {
-	return e.Message
 }

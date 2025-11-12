@@ -310,7 +310,8 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 	if req.Title != "" {
 		// Domain 메서드 사용: 검증 로직이 Domain에 포함됨
 		if err := board.UpdateTitle(req.Title); err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "제목 업데이트 실패", 400)
+			// Domain 에러를 Infrastructure 에러로 변환
+			return nil, apperrors.FromDomainError(err)
 		}
 	}
 	if req.Content != "" {

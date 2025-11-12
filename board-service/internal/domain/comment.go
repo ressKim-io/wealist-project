@@ -35,10 +35,10 @@ func (c *Comment) BelongsToBoard(boardID uuid.UUID) bool {
 // UpdateContent updates the comment content with validation
 func (c *Comment) UpdateContent(content string) error {
 	if content == "" {
-		return &ValidationError{Field: "content", Message: "댓글 내용은 필수입니다"}
+		return NewValidationError("content", "댓글 내용은 필수입니다")
 	}
 	if len(content) > 10000 {
-		return &ValidationError{Field: "content", Message: "댓글 내용은 10000자를 초과할 수 없습니다"}
+		return NewValidationError("content", "댓글 내용은 10000자를 초과할 수 없습니다")
 	}
 	c.Content = content
 	c.UpdatedAt = time.Now()

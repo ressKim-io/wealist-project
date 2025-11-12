@@ -46,10 +46,10 @@ func (p *Project) MakePrivate() {
 // UpdateName updates the project name with validation
 func (p *Project) UpdateName(name string) error {
 	if name == "" {
-		return &ValidationError{Field: "name", Message: "프로젝트 이름은 필수입니다"}
+		return NewValidationError("name", "프로젝트 이름은 필수입니다")
 	}
 	if len(name) > 255 {
-		return &ValidationError{Field: "name", Message: "프로젝트 이름은 255자를 초과할 수 없습니다"}
+		return NewValidationError("name", "프로젝트 이름은 255자를 초과할 수 없습니다")
 	}
 	p.Name = name
 	p.UpdatedAt = time.Now()
