@@ -11,6 +11,7 @@ import (
 	"board-service/internal/domain"
 	"board-service/internal/dto"
 	"board-service/internal/repository"
+	"board-service/internal/uow"
 	"board-service/internal/util"
 	"context"
 	"encoding/json"
@@ -36,11 +37,13 @@ type boardService struct {
 	projectRepo   repository.ProjectRepository
 	roleRepo      repository.RoleRepository
 	fieldRepo     repository.FieldRepository // For custom fields system
+	commentRepo   repository.CommentRepository // For UnitOfWork operations
 	authorizer    auth.ProjectAuthorizer     // Centralized authorization
 	userClient    client.UserClient
 	userInfoCache cache.UserInfoCache
 	logger        *zap.Logger
 	db            *gorm.DB
+	uow           uow.UnitOfWork // Unit of Work for transaction management
 }
 
 func NewBoardService(
@@ -48,6 +51,7 @@ func NewBoardService(
 	projectRepo repository.ProjectRepository,
 	roleRepo repository.RoleRepository,
 	fieldRepo repository.FieldRepository,
+	commentRepo repository.CommentRepository,
 	userClient client.UserClient,
 	userInfoCache cache.UserInfoCache,
 	logger *zap.Logger,
@@ -56,16 +60,21 @@ func NewBoardService(
 	// Create authorizer
 	authorizer := auth.NewProjectAuthorizer(projectRepo, roleRepo)
 
+	// Create Unit of Work
+	unitOfWork := uow.NewUnitOfWork(db)
+
 	return &boardService{
 		repo:          repo,
 		projectRepo:   projectRepo,
 		roleRepo:      roleRepo,
 		fieldRepo:     fieldRepo,
+		commentRepo:   commentRepo,
 		authorizer:    authorizer,
 		userClient:    userClient,
 		userInfoCache: userInfoCache,
 		logger:        logger,
 		db:            db,
+		uow:           unitOfWork,
 	}
 }
 
@@ -350,6 +359,7 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 }
 
 // ==================== Delete Board (Soft) ====================
+// UnitOfWork 패턴을 사용하여 보드와 관련 댓글을 트랜잭션으로 삭제합니다
 
 func (s *boardService) DeleteBoard(boardID, userID string) error {
 	// Parse UUIDs using common parser
@@ -363,11 +373,11 @@ func (s *boardService) DeleteBoard(boardID, userID string) error {
 		return err
 	}
 
-	// 1. Find board
+	// 1. Find board (권한 체크는 트랜잭션 밖에서)
 	board, err := s.repo.FindByID(boardUUID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return apperrors.New(apperrors.ErrCodeNotFound, "보드을 찾을 수 없습니다", 404)
+			return apperrors.New(apperrors.ErrCodeNotFound, "보드를 찾을 수 없습니다", 404)
 		}
 		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 조회 실패", 500)
 	}
@@ -381,14 +391,38 @@ func (s *boardService) DeleteBoard(boardID, userID string) error {
 		return apperrors.New(apperrors.ErrCodeForbidden, "삭제 권한이 없습니다", 403)
 	}
 
-	// 3. Soft delete using Domain method
-	// Domain 메서드 사용: 삭제 로직이 Domain에 캡슐화됨
-	board.MarkAsDeleted()
-	if err := s.repo.Update(board); err != nil {
-		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 삭제 실패", 500)
-	}
+	// 3. UnitOfWork로 보드와 댓글을 트랜잭션으로 삭제
+	return s.uow.Do(func(repos *uow.Repositories) error {
+		// 3-1. 보드 삭제 (Domain 메서드 사용)
+		board.MarkAsDeleted()
+		if err := repos.Board.Update(board); err != nil {
+			return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 삭제 실패", 500)
+		}
 
-	return nil
+		// 3-2. 관련 댓글 모두 조회 및 삭제
+		comments, err := repos.Comment.FindByBoard(boardUUID)
+		if err != nil {
+			// 댓글이 없을 수도 있으므로 NotFound는 무시
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "댓글 조회 실패", 500)
+			}
+		}
+
+		// 댓글 삭제
+		for _, comment := range comments {
+			if err := repos.Comment.Delete(comment.ID); err != nil {
+				return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "댓글 삭제 실패", 500)
+			}
+		}
+
+		s.logger.Info("보드와 댓글 삭제 완료",
+			zap.String("board_id", boardUUID.String()),
+			zap.Int("comments_deleted", len(comments)),
+		)
+
+		// 모두 성공하거나 모두 실패 (원자성 보장)
+		return nil
+	})
 }
 
 // ==================== Helper: Build Board Response ====================

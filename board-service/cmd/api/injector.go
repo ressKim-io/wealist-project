@@ -55,6 +55,7 @@ func InitializeApplication(
 		projectRepo,
 		roleRepo,
 		fieldRepo,
+		commentRepo, // UnitOfWork를 위해 추가
 		userClient,
 		userInfoCache,
 		log,
