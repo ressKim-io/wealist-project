@@ -29,43 +29,44 @@ import { WorkspaceMember } from '../types/user';
 import { AssigneeAvatarStack, AvatarStack } from '../components/common/AvartarStack';
 
 // ⚠️ Mock Data (API 호출 제거를 위한 임시 대안)
+// 💡 UUID 형식으로 변경하여 백엔드 검증 통과
 const MOCK_ROLES: CustomRoleResponse[] = [
   {
-    roleId: 'r-dev',
+    roleId: '00000000-0000-0000-0000-000000000004',
     label: '개발',
     color: '#8B5CF6',
     displayOrder: 0,
-    fieldId: 'role',
+    fieldId: '00000000-0000-0000-0000-000000000011',
     description: '기본값',
     isSystemDefault: true,
   },
   {
-    roleId: 'r-design',
+    roleId: '00000000-0000-0000-0000-000000000013',
     label: '디자인',
     color: '#F59E0B',
     displayOrder: 1,
-    fieldId: 'role',
+    fieldId: '00000000-0000-0000-0000-000000000011',
     description: '',
     isSystemDefault: false,
   },
 ];
 const MOCK_IMPORTANCES: CustomImportanceResponse[] = [
   {
-    importanceId: 'i-high',
+    importanceId: '00000000-0000-0000-0000-000000000006',
     label: '긴급',
     color: '#EF4444',
     displayOrder: 0,
-    fieldId: 'importance',
+    fieldId: '00000000-0000-0000-0000-000000000012',
     description: '',
     isSystemDefault: false,
     level: 5,
   },
   {
-    importanceId: 'i-low',
+    importanceId: '00000000-0000-0000-0000-000000000007',
     label: '낮음',
     color: '#10B981',
     displayOrder: 1,
-    fieldId: 'importance',
+    fieldId: '00000000-0000-0000-0000-000000000012',
     description: '기본값',
     isSystemDefault: true,
     level: 1,
@@ -73,29 +74,29 @@ const MOCK_IMPORTANCES: CustomImportanceResponse[] = [
 ];
 const MOCK_STAGES_LIST: CustomStageResponse[] = [
   {
-    stageId: 's-triage',
+    stageId: '00000000-0000-0000-0000-000000000014',
     label: '트리아지',
     color: '#64748B',
     displayOrder: 0,
-    fieldId: 'stage',
+    fieldId: '00000000-0000-0000-0000-000000000010',
     description: '기본값',
     isSystemDefault: true,
   },
   {
-    stageId: 's-progress',
+    stageId: '00000000-0000-0000-0000-000000000002',
     label: '진행중',
     color: '#3B82F6',
     displayOrder: 1,
-    fieldId: 'stage',
+    fieldId: '00000000-0000-0000-0000-000000000010',
     description: '',
     isSystemDefault: false,
   },
   {
-    stageId: 's-done',
+    stageId: '00000000-0000-0000-0000-000000000003',
     label: '완료',
     color: '#10B981',
     displayOrder: 2,
-    fieldId: 'stage',
+    fieldId: '00000000-0000-0000-0000-000000000010',
     description: '',
     isSystemDefault: true,
   },
