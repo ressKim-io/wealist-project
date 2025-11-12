@@ -38,67 +38,67 @@ interface CreateBoardModalProps {
 
 // ⚠️ 임시 Mock Data: API 호출이 제거되었으므로, 컴포넌트 로직을 유지하기 위해 최소한의 Mock 데이터를 사용합니다.
 const MOCK_STAGES: CustomStageResponse[] = [
-  // 💡 label 대신 name을 사용하고 있었으므로, label로 키를 변경하고 description 추가
+  // 💡 UUID 형식으로 변경하여 백엔드 검증 통과
   {
-    stageId: 's-waiting',
+    stageId: '00000000-0000-0000-0000-000000000001',
     label: '대기',
     color: '#F59E0B',
     displayOrder: 1,
-    fieldId: 'stage',
+    fieldId: '00000000-0000-0000-0000-000000000010',
     description: '대기 단계',
   },
   {
-    stageId: 's-progress',
+    stageId: '00000000-0000-0000-0000-000000000002',
     label: '진행중',
     color: '#3B82F6',
     displayOrder: 2,
-    fieldId: 'stage',
+    fieldId: '00000000-0000-0000-0000-000000000010',
     description: '진행 단계',
   },
   {
-    stageId: 's-done',
+    stageId: '00000000-0000-0000-0000-000000000003',
     label: '완료',
     color: '#10B981',
     displayOrder: 3,
-    fieldId: 'stage',
+    fieldId: '00000000-0000-0000-0000-000000000010',
     description: '완료 단계',
   },
 ];
 const MOCK_ROLES: CustomRoleResponse[] = [
-  // 💡 label 대신 name을 사용하고 있었으므로, label로 키를 변경하고 description 추가
+  // 💡 UUID 형식으로 변경하여 백엔드 검증 통과
   {
-    roleId: 'r-frontend',
+    roleId: '00000000-0000-0000-0000-000000000004',
     label: '프론트엔드',
     color: '#8B5CF6',
     displayOrder: 1,
-    fieldId: 'role',
+    fieldId: '00000000-0000-0000-0000-000000000011',
     description: '프론트 역할',
   },
   {
-    roleId: 'r-backend',
+    roleId: '00000000-0000-0000-0000-000000000005',
     label: '백엔드',
     color: '#EC4899',
     displayOrder: 2,
-    fieldId: 'role',
+    fieldId: '00000000-0000-0000-0000-000000000011',
     description: '백엔드 역할',
   },
 ];
 const MOCK_IMPORTANCES: CustomImportanceResponse[] = [
-  // 💡 label 대신 name을 사용하고 있었으므로, label로 키를 변경하고 description 추가
+  // 💡 UUID 형식으로 변경하여 백엔드 검증 통과
   {
-    importanceId: 'i-high',
+    importanceId: '00000000-0000-0000-0000-000000000006',
     label: '높음',
     color: '#F59E0B',
     displayOrder: 1,
-    fieldId: 'importance',
+    fieldId: '00000000-0000-0000-0000-000000000012',
     description: '높은 중요도',
   },
   {
-    importanceId: 'i-low',
+    importanceId: '00000000-0000-0000-0000-000000000007',
     label: '낮음',
     color: '#10B981',
     displayOrder: 2,
-    fieldId: 'importance',
+    fieldId: '00000000-0000-0000-0000-000000000012',
     description: '낮은 중요도',
   },
 ];
