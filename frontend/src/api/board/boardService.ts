@@ -1,15 +1,5 @@
 // src/api/boardService.ts
-import axios from 'axios';
-
-// API 문서에 맞춰 기본 URL 변경 (문서에는 8000 포트가 기본 URL에 포함되어 있으나, 보통 VITE_REACT_APP_GO_API_URL이 전체 URL을 가지고 있다고 가정하고 /api 접두사만 제거함)
-const BOARD_API_URL = import.meta.env.VITE_REACT_APP_GO_API_URL || 'http://localhost:8000';
-
-const boardService = axios.create({
-  baseURL: BOARD_API_URL, // ex: http://localhost:8000
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+import { boardServiceClient } from '../apiConfig';
 
 /**
  * ========================================
@@ -55,7 +45,7 @@ export const getProjects = async (
   token: string,
 ): Promise<ProjectResponse[]> => {
   try {
-    const response = await boardService.get('/api/projects', {
+    const response = await boardServiceClient.get('/api/projects', {
       params: { workspaceId: workspaceId },
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -79,7 +69,7 @@ export const getProjects = async (
  */
 export const getProject = async (projectId: string, token: string): Promise<ProjectResponse> => {
   try {
-    const response = await boardService.get(`/api/projects/${projectId}`, {
+    const response = await boardServiceClient.get(`/api/projects/${projectId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     // API 문서 응답 구조는 명확하지 않지만, 상세 조회는 단일 객체를 기대하고, 기존 코드 유지
@@ -104,7 +94,7 @@ export const createProject = async (
   // 목업 로직 제거 (USE_MOCK_DATA가 false이므로)
 
   try {
-    const response = await boardService.post('/api/projects', data, {
+    const response = await boardServiceClient.post('/api/projects', data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -128,7 +118,7 @@ export const updateProject = async (
   token: string,
 ): Promise<ProjectResponse> => {
   try {
-    const response = await boardService.put(`/api/projects/${projectId}`, data, {
+    const response = await boardServiceClient.put(`/api/projects/${projectId}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     // API 문서 응답은 200 OK, 응답 본문 구조는 미제공, 기존 코드 유지
@@ -148,7 +138,7 @@ export const updateProject = async (
  */
 export const deleteProject = async (projectId: string, token: string): Promise<any> => {
   try {
-    const response = await boardService.delete(`/api/projects/${projectId}`, {
+    const response = await boardServiceClient.delete(`/api/projects/${projectId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     // API 문서 응답은 200 OK, 응답 본문 구조는 미제공, 기존 코드 유지
@@ -173,7 +163,7 @@ export const searchProjects = async (
   token: string,
 ): Promise<ProjectResponse[]> => {
   try {
-    const response = await boardService.get('/api/projects/search', {
+    const response = await boardServiceClient.get('/api/projects/search', {
       params: { workspaceId, query },
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -265,7 +255,7 @@ export const getBoards = async (
 
   try {
     const params = { projectId, ...filters };
-    const response = await boardService.get('/api/boards', {
+    const response = await boardServiceClient.get('/api/boards', {
       params,
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -293,7 +283,7 @@ export const getBoard = async (boardId: string, token: string): Promise<BoardRes
   }
 
   try {
-    const response = await boardService.get(`/api/boards/${boardId}`, {
+    const response = await boardServiceClient.get(`/api/boards/${boardId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -315,7 +305,7 @@ export const createBoard = async (
   token: string,
 ): Promise<BoardResponse> => {
   try {
-    const response = await boardService.post('/api/boards', data, {
+    const response = await boardServiceClient.post('/api/boards', data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -340,7 +330,7 @@ export const updateBoard = async (
 ): Promise<BoardResponse> => {
   try {
     // 💡 PUT /boards/{boardId} 엔드포인트 사용
-    const response = await boardService.put(`/api/boards/${boardId}`, data, {
+    const response = await boardServiceClient.put(`/api/boards/${boardId}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -359,7 +349,7 @@ export const updateBoard = async (
  */
 export const deleteBoard = async (boardId: string, token: string): Promise<any> => {
   try {
-    const response = await boardService.delete(`/api/boards/${boardId}`, {
+    const response = await boardServiceClient.delete(`/api/boards/${boardId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data;
@@ -402,7 +392,7 @@ export const moveBoard = async (
   token: string,
 ): Promise<MoveBoardResponse> => {
   try {
-    const response = await boardService.put(`/api/boards/${boardId}/move`, data, {
+    const response = await boardServiceClient.put(`/api/boards/${boardId}/move`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -462,7 +452,7 @@ export const getProjectFields = async (
   token: string,
 ): Promise<FieldResponse[]> => {
   try {
-    const response = await boardService.get(`/api/projects/${projectId}/fields`, {
+    const response = await boardServiceClient.get(`/api/projects/${projectId}/fields`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data || [];
@@ -485,7 +475,7 @@ export const getFieldOptions = async (
   token: string,
 ): Promise<FieldOptionResponse[]> => {
   try {
-    const response = await boardService.get(`/api/fields/${fieldId}/options`, {
+    const response = await boardServiceClient.get(`/api/fields/${fieldId}/options`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data || [];
@@ -495,9 +485,364 @@ export const getFieldOptions = async (
   }
 };
 
-// 💡 기존 Custom Fields CRUD 함수 제거 및 새로운 Fields/Options CRUD 함수 추가 (문서 기반)
-// (기존 Custom Fields CRUD 함수는 문서의 Field/Option CRUD API로 대체되어야 합니다.
-//  여기서는 모든 CRUD를 다 추가하지 않고, 프로젝트에서 자주 사용되는 조회 함수만 대표적으로 남깁니다.)
+// ============================================================================
+// 필드 CRUD API
+// ============================================================================
+
+export interface CreateFieldRequest {
+  projectId: string;
+  name: string;
+  description?: string;
+  fieldType:
+    | 'text'
+    | 'number'
+    | 'single_select'
+    | 'multi_select'
+    | 'date'
+    | 'datetime'
+    | 'single_user'
+    | 'multi_user'
+    | 'checkbox'
+    | 'url';
+  isRequired?: boolean;
+  config?: Record<string, any>;
+}
+
+export interface UpdateFieldRequest {
+  name?: string;
+  description?: string;
+  isRequired?: boolean;
+  config?: Record<string, any>;
+}
+
+/**
+ * 새 커스텀 필드를 생성합니다.
+ * POST /api/fields
+ * @param data 필드 생성 정보
+ * @param token 액세스 토큰
+ * @returns 생성된 필드
+ */
+export const createField = async (
+  data: CreateFieldRequest,
+  token: string,
+): Promise<FieldResponse> => {
+  try {
+    const response = await boardServiceClient.post('/api/fields', data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('createField error:', error);
+    throw error;
+  }
+};
+
+/**
+ * 특정 필드를 조회합니다.
+ * GET /api/fields/{fieldId}
+ * @param fieldId 필드 ID
+ * @param token 액세스 토큰
+ * @returns 필드 정보
+ */
+export const getField = async (fieldId: string, token: string): Promise<FieldResponse> => {
+  try {
+    const response = await boardServiceClient.get(`/api/fields/${fieldId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('getField error:', error);
+    throw error;
+  }
+};
+
+/**
+ * 필드를 수정합니다.
+ * PATCH /api/fields/{fieldId}
+ * @param fieldId 필드 ID
+ * @param data 수정할 필드 정보
+ * @param token 액세스 토큰
+ * @returns 수정된 필드
+ */
+export const updateField = async (
+  fieldId: string,
+  data: UpdateFieldRequest,
+  token: string,
+): Promise<FieldResponse> => {
+  try {
+    const response = await boardServiceClient.patch(`/api/fields/${fieldId}`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('updateField error:', error);
+    throw error;
+  }
+};
+
+/**
+ * 필드를 삭제합니다.
+ * DELETE /api/fields/{fieldId}
+ * @param fieldId 필드 ID
+ * @param token 액세스 토큰
+ */
+export const deleteField = async (fieldId: string, token: string): Promise<void> => {
+  try {
+    await boardServiceClient.delete(`/api/fields/${fieldId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (error) {
+    console.error('deleteField error:', error);
+    throw error;
+  }
+};
+
+// ============================================================================
+// 필드 옵션 CRUD API
+// ============================================================================
+
+export interface CreateFieldOptionRequest {
+  fieldId: string;
+  label: string;
+  description?: string;
+  color?: string;
+}
+
+export interface UpdateFieldOptionRequest {
+  label?: string;
+  description?: string;
+  color?: string;
+}
+
+/**
+ * 필드 옵션을 생성합니다.
+ * POST /api/field-options
+ * @param data 옵션 생성 정보
+ * @param token 액세스 토큰
+ * @returns 생성된 옵션
+ */
+export const createFieldOption = async (
+  data: CreateFieldOptionRequest,
+  token: string,
+): Promise<FieldOptionResponse> => {
+  try {
+    const response = await boardServiceClient.post('/api/field-options', data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('createFieldOption error:', error);
+    throw error;
+  }
+};
+
+/**
+ * 필드 옵션을 수정합니다.
+ * PATCH /api/field-options/{optionId}
+ * @param optionId 옵션 ID
+ * @param data 수정할 옵션 정보
+ * @param token 액세스 토큰
+ * @returns 수정된 옵션
+ */
+export const updateFieldOption = async (
+  optionId: string,
+  data: UpdateFieldOptionRequest,
+  token: string,
+): Promise<FieldOptionResponse> => {
+  try {
+    const response = await boardServiceClient.patch(`/api/field-options/${optionId}`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('updateFieldOption error:', error);
+    throw error;
+  }
+};
+
+/**
+ * 필드 옵션을 삭제합니다.
+ * DELETE /api/field-options/{optionId}
+ * @param optionId 옵션 ID
+ * @param token 액세스 토큰
+ */
+export const deleteFieldOption = async (optionId: string, token: string): Promise<void> => {
+  try {
+    await boardServiceClient.delete(`/api/field-options/${optionId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (error) {
+    console.error('deleteFieldOption error:', error);
+    throw error;
+  }
+};
+
+// ============================================================================
+// 보드 필드 값 관리 API
+// ============================================================================
+
+export interface BoardFieldValue {
+  fieldId: string;
+  fieldName: string;
+  fieldType: string;
+  value: any;
+}
+
+export interface SetFieldValueRequest {
+  boardId: string;
+  fieldId: string;
+  value: any;
+}
+
+export interface SetMultiSelectValueRequest {
+  boardId: string;
+  fieldId: string;
+  optionIds: string[];
+}
+
+/**
+ * 보드의 모든 필드 값을 조회합니다.
+ * GET /api/boards/{boardId}/field-values
+ * @param boardId 보드 ID
+ * @param token 액세스 토큰
+ * @returns 필드 값 배열
+ */
+export const getBoardFieldValues = async (
+  boardId: string,
+  token: string,
+): Promise<BoardFieldValue[]> => {
+  try {
+    const response = await boardServiceClient.get(`/api/boards/${boardId}/field-values`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data || [];
+  } catch (error) {
+    console.error('getBoardFieldValues error:', error);
+    throw error;
+  }
+};
+
+/**
+ * 보드의 필드 값을 설정합니다.
+ * POST /api/board-field-values
+ * @param data 필드 값 설정 정보
+ * @param token 액세스 토큰
+ * @returns 설정된 필드 값
+ */
+export const setFieldValue = async (
+  data: SetFieldValueRequest,
+  token: string,
+): Promise<BoardFieldValue> => {
+  try {
+    const response = await boardServiceClient.post('/api/board-field-values', data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('setFieldValue error:', error);
+    throw error;
+  }
+};
+
+/**
+ * 보드의 멀티 셀렉트 필드 값을 설정합니다.
+ * POST /api/board-field-values/multi-select
+ * @param data 멀티 셀렉트 값 설정 정보
+ * @param token 액세스 토큰
+ * @returns 설정된 필드 값
+ */
+export const setMultiSelectValue = async (
+  data: SetMultiSelectValueRequest,
+  token: string,
+): Promise<BoardFieldValue> => {
+  try {
+    const response = await boardServiceClient.post('/api/board-field-values/multi-select', data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('setMultiSelectValue error:', error);
+    throw error;
+  }
+};
+
+/**
+ * 보드의 필드 값을 삭제합니다.
+ * DELETE /api/boards/{boardId}/field-values/{fieldId}
+ * @param boardId 보드 ID
+ * @param fieldId 필드 ID
+ * @param token 액세스 토큰
+ */
+export const deleteFieldValue = async (
+  boardId: string,
+  fieldId: string,
+  token: string,
+): Promise<void> => {
+  try {
+    await boardServiceClient.delete(`/api/boards/${boardId}/field-values/${fieldId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (error) {
+    console.error('deleteFieldValue error:', error);
+    throw error;
+  }
+};
+
+// ============================================================================
+// 순서 관리 API
+// ============================================================================
+
+export interface UpdateFieldOrderRequest {
+  fieldIds: string[];
+}
+
+export interface UpdateOptionOrderRequest {
+  optionIds: string[];
+}
+
+/**
+ * 프로젝트 필드의 순서를 변경합니다.
+ * PUT /api/projects/{projectId}/fields/order
+ * @param projectId 프로젝트 ID
+ * @param data 필드 ID 배열 (순서대로)
+ * @param token 액세스 토큰
+ */
+export const updateFieldOrder = async (
+  projectId: string,
+  data: UpdateFieldOrderRequest,
+  token: string,
+): Promise<void> => {
+  try {
+    await boardServiceClient.put(`/api/projects/${projectId}/fields/order`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (error) {
+    console.error('updateFieldOrder error:', error);
+    throw error;
+  }
+};
+
+/**
+ * 필드 옵션의 순서를 변경합니다.
+ * PUT /api/fields/{fieldId}/options/order
+ * @param fieldId 필드 ID
+ * @param data 옵션 ID 배열 (순서대로)
+ * @param token 액세스 토큰
+ */
+export const updateOptionOrder = async (
+  fieldId: string,
+  data: UpdateOptionOrderRequest,
+  token: string,
+): Promise<void> => {
+  try {
+    await boardServiceClient.put(`/api/fields/${fieldId}/options/order`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (error) {
+    console.error('updateOptionOrder error:', error);
+    throw error;
+  }
+};
 
 // ============================================================================
 // 댓글 관리 API
@@ -531,7 +876,7 @@ export interface UpdateCommentRequest {
  */
 export const getComments = async (boardId: string, token: string): Promise<CommentResponse[]> => {
   try {
-    const response = await boardService.get('/api/comments', {
+    const response = await boardServiceClient.get('/api/comments', {
       params: { boardId }, // 💡 쿼리 파라미터 boardId 사용
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -555,7 +900,7 @@ export const createComment = async (
   token: string,
 ): Promise<CommentResponse> => {
   try {
-    const response = await boardService.post('/api/comments', data, {
+    const response = await boardServiceClient.post('/api/comments', data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -579,7 +924,7 @@ export const updateComment = async (
   token: string,
 ): Promise<CommentResponse> => {
   try {
-    const response = await boardService.put(`/api/comments/${commentId}`, data, {
+    const response = await boardServiceClient.put(`/api/comments/${commentId}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -597,7 +942,7 @@ export const updateComment = async (
  */
 export const deleteComment = async (commentId: string, token: string): Promise<void> => {
   try {
-    await boardService.delete(`/api/comments/${commentId}`, {
+    await boardServiceClient.delete(`/api/comments/${commentId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
   } catch (error) {
@@ -610,7 +955,7 @@ export const deleteComment = async (commentId: string, token: string): Promise<v
 // 뷰 관리 API (기존 Stage/Role 기반 뷰 API 대신 문서의 뷰 API로 대체)
 // ============================================================================
 
-// 💡 뷰 응답/요청 타입 정의 (문서의 응답 예시가 불완전하여 일반적인 뷰 정보만 정의)
+// 💡 뷰 응답/요청 타입 정의
 export interface ViewResponse {
   viewId: string;
   projectId: string;
@@ -618,7 +963,36 @@ export interface ViewResponse {
   description?: string;
   isDefault: boolean;
   isShared: boolean;
-  // ... 기타 필터/정렬/그룹화 필드
+  filterConditions?: Record<string, any>;
+  sortConditions?: Array<{ fieldId: string; direction: 'asc' | 'desc' }>;
+  groupByFieldId?: string;
+}
+
+export interface CreateViewRequest {
+  projectId: string;
+  name: string;
+  description?: string;
+  isDefault?: boolean;
+  isShared?: boolean;
+  filterConditions?: Record<string, any>;
+  sortConditions?: Array<{ fieldId: string; direction: 'asc' | 'desc' }>;
+  groupByFieldId?: string;
+}
+
+export interface UpdateViewRequest {
+  name?: string;
+  description?: string;
+  isDefault?: boolean;
+  isShared?: boolean;
+  filterConditions?: Record<string, any>;
+  sortConditions?: Array<{ fieldId: string; direction: 'asc' | 'desc' }>;
+  groupByFieldId?: string;
+}
+
+export interface UpdateBoardOrderRequest {
+  viewId: string;
+  boardId: string;
+  newPosition: string;
 }
 
 /**
@@ -630,7 +1004,7 @@ export const getProjectViews = async (
   token: string,
 ): Promise<ViewResponse[]> => {
   try {
-    const response = await boardService.get(`/api/projects/${projectId}/views`, {
+    const response = await boardServiceClient.get(`/api/projects/${projectId}/views`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data || [];
@@ -641,8 +1015,94 @@ export const getProjectViews = async (
 };
 
 /**
+ * 뷰를 생성합니다.
+ * POST /api/views
+ * @param data 뷰 생성 정보
+ * @param token 액세스 토큰
+ * @returns 생성된 뷰
+ */
+export const createView = async (
+  data: CreateViewRequest,
+  token: string,
+): Promise<ViewResponse> => {
+  try {
+    const response = await boardServiceClient.post('/api/views', data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('createView error:', error);
+    throw error;
+  }
+};
+
+/**
+ * 특정 뷰를 조회합니다.
+ * GET /api/views/{viewId}
+ * @param viewId 뷰 ID
+ * @param token 액세스 토큰
+ * @returns 뷰 정보
+ */
+export const getView = async (viewId: string, token: string): Promise<ViewResponse> => {
+  try {
+    const response = await boardServiceClient.get(`/api/views/${viewId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('getView error:', error);
+    throw error;
+  }
+};
+
+/**
+ * 뷰를 수정합니다.
+ * PATCH /api/views/{viewId}
+ * @param viewId 뷰 ID
+ * @param data 수정할 뷰 정보
+ * @param token 액세스 토큰
+ * @returns 수정된 뷰
+ */
+export const updateView = async (
+  viewId: string,
+  data: UpdateViewRequest,
+  token: string,
+): Promise<ViewResponse> => {
+  try {
+    const response = await boardServiceClient.patch(`/api/views/${viewId}`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('updateView error:', error);
+    throw error;
+  }
+};
+
+/**
+ * 뷰를 삭제합니다.
+ * DELETE /api/views/{viewId}
+ * @param viewId 뷰 ID
+ * @param token 액세스 토큰
+ */
+export const deleteView = async (viewId: string, token: string): Promise<void> => {
+  try {
+    await boardServiceClient.delete(`/api/views/${viewId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (error) {
+    console.error('deleteView error:', error);
+    throw error;
+  }
+};
+
+/**
  * 뷰 적용하여 보드 조회
  * GET /api/views/{viewId}/boards
+ * @param viewId 뷰 ID
+ * @param token 액세스 토큰
+ * @param filters 페이징 필터
+ * @returns 페이징된 보드 응답
  */
 export const getBoardsByView = async (
   viewId: string,
@@ -653,11 +1113,10 @@ export const getBoardsByView = async (
   },
 ): Promise<PaginatedBoardsResponse> => {
   try {
-    const response = await boardService.get(`/api/views/${viewId}/boards`, {
+    const response = await boardServiceClient.get(`/api/views/${viewId}/boards`, {
       params: filters,
       headers: { Authorization: `Bearer ${token}` },
     });
-    // API 문서 응답 구조는 명확하지 않지만, 보드 목록을 반환할 것으로 예상
     return response.data.data || { boards: [], total: 0, page: 1, limit: 20 };
   } catch (error) {
     console.error('getBoardsByView error:', error);
@@ -665,5 +1124,22 @@ export const getBoardsByView = async (
   }
 };
 
-// ❌ 기존 Stage/Role 기반 뷰 API (getRoleBasedBoardView, getStageBasedBoardView, updateStageColumnOrder, updateStageBoardOrder)는
-//    API 문서에 명시된 내용이 아니므로 삭제 처리했습니다.
+/**
+ * 뷰에서 보드 순서를 변경합니다.
+ * PUT /api/view-board-orders
+ * @param data 보드 순서 변경 정보
+ * @param token 액세스 토큰
+ */
+export const updateViewBoardOrder = async (
+  data: UpdateBoardOrderRequest,
+  token: string,
+): Promise<void> => {
+  try {
+    await boardServiceClient.put('/api/view-board-orders', data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (error) {
+    console.error('updateViewBoardOrder error:', error);
+    throw error;
+  }
+};
