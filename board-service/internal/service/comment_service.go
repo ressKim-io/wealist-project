@@ -153,7 +153,12 @@ func (s *commentService) UpdateComment(ctx context.Context, commentID uuid.UUID,
 		return nil, apperrors.New(apperrors.ErrCodeForbidden, "user does not have permission to update this comment", 403)
 	}
 
-	comment.Content = req.Content
+	// Domain 메서드 사용: 검증 로직이 Domain에 포함됨
+	if err := comment.UpdateContent(req.Content); err != nil {
+		// Domain 에러를 Infrastructure 에러로 변환
+		return nil, apperrors.FromDomainError(err)
+	}
+
 	if err := s.commentRepo.Update(comment); err != nil {
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "failed to update comment", 500)
 	}

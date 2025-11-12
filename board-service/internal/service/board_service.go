@@ -4,9 +4,15 @@ import (
 	"board-service/internal/apperrors"
 	"board-service/internal/cache"
 	"board-service/internal/client"
+	"board-service/internal/common/auth"
+	"board-service/internal/common/pagination"
+	"board-service/internal/common/parser"
+	"board-service/internal/common/validator"
 	"board-service/internal/domain"
 	"board-service/internal/dto"
+	"board-service/internal/metrics"
 	"board-service/internal/repository"
+	"board-service/internal/uow"
 	"board-service/internal/util"
 	"context"
 	"encoding/json"
@@ -31,11 +37,15 @@ type boardService struct {
 	repo          repository.BoardRepository
 	projectRepo   repository.ProjectRepository
 	roleRepo      repository.RoleRepository
-	fieldRepo     repository.FieldRepository // For custom fields system
+	fieldRepo     repository.FieldRepository       // For custom fields system
+	commentRepo   repository.CommentRepository     // For UnitOfWork operations
+	authorizer    auth.ProjectAuthorizer           // Centralized authorization
 	userClient    client.UserClient
 	userInfoCache cache.UserInfoCache
 	logger        *zap.Logger
 	db            *gorm.DB
+	uow           uow.UnitOfWork                   // Unit of Work for transaction management
+	mapper        *dto.BoardMapper                 // DTO Mapper for reducing duplication
 }
 
 func NewBoardService(
@@ -43,34 +53,52 @@ func NewBoardService(
 	projectRepo repository.ProjectRepository,
 	roleRepo repository.RoleRepository,
 	fieldRepo repository.FieldRepository,
+	commentRepo repository.CommentRepository,
 	userClient client.UserClient,
 	userInfoCache cache.UserInfoCache,
 	logger *zap.Logger,
 	db *gorm.DB,
 ) BoardService {
+	// Create authorizer
+	authorizer := auth.NewProjectAuthorizer(projectRepo, roleRepo)
+
+	// Create Unit of Work
+	unitOfWork := uow.NewUnitOfWork(db)
+
+	// Create DTO Mapper
+	boardMapper := dto.NewBoardMapper(logger)
+
 	return &boardService{
 		repo:          repo,
 		projectRepo:   projectRepo,
 		roleRepo:      roleRepo,
 		fieldRepo:     fieldRepo,
+		commentRepo:   commentRepo,
+		authorizer:    authorizer,
 		userClient:    userClient,
 		userInfoCache: userInfoCache,
 		logger:        logger,
 		db:            db,
+		uow:           unitOfWork,
+		mapper:        boardMapper,
 	}
 }
 
 // ==================== Create Board ====================
 
 func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (*dto.BoardResponse, error) {
-	userUUID, err := uuid.Parse(userID)
+	// Metrics: Start timer
+	start := time.Now()
+
+	// Parse and validate UUIDs using common parser
+	userUUID, err := parser.ParseUserID(userID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
+		return nil, err
 	}
 
-	projectUUID, err := uuid.Parse(req.ProjectID)
+	projectUUID, err := parser.ParseProjectID(req.ProjectID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 프로젝트 ID", 400)
+		return nil, err
 	}
 
 	// 1. Check if user is project member
@@ -82,16 +110,14 @@ func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
 	}
 
-	// 2. Validate Assignee (optional)
-	var assigneeUUID *uuid.UUID
-	if req.AssigneeID != nil {
-		parsedAssigneeUUID, err := uuid.Parse(*req.AssigneeID)
-		if err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 담당자 ID", 400)
-		}
-		assigneeUUID = &parsedAssigneeUUID
+	// 2. Validate Assignee (optional) using common parser
+	assigneeUUID, err := parser.ParseOptionalUUID(req.AssigneeID, "담당자")
+	if err != nil {
+		return nil, err
+	}
 
-		_, err = s.projectRepo.FindMemberByUserAndProject(parsedAssigneeUUID, projectUUID)
+	if assigneeUUID != nil {
+		_, err = s.projectRepo.FindMemberByUserAndProject(*assigneeUUID, projectUUID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil, apperrors.New(apperrors.ErrCodeNotFound, "담당자가 프로젝트 멤버가 아닙니다", 404)
@@ -100,14 +126,14 @@ func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (
 		}
 	}
 
-	// 3. Parse DueDate (optional)
+	// 3. Parse DueDate (optional) using common validator
 	var dueDate *time.Time
 	if req.DueDate != nil {
-		parsed, err := time.Parse(time.RFC3339, *req.DueDate)
+		parsed, err := validator.ValidateDateFormat(*req.DueDate, "마감일")
 		if err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 마감일 형식입니다 (ISO 8601 required)", 400)
+			return nil, err
 		}
-		dueDate = &parsed
+		dueDate = parsed
 	}
 
 	// 4. Create Board
@@ -127,6 +153,11 @@ func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "칸반 생성 실패", 500)
 	}
 
+	// Metrics: Record success
+	projectIDStr := projectUUID.String()
+	metrics.BoardCreatedTotal.WithLabelValues(projectIDStr).Inc()
+	metrics.RecordDuration(start, metrics.BoardOperationDuration, "create", projectIDStr)
+
 	// Note: Custom field values (stage, role, importance) should be set via FieldValueService
 	// after board creation using /field-values API
 
@@ -137,14 +168,15 @@ func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (
 // ==================== Get Single Board ====================
 
 func (s *boardService) GetBoard(boardID, userID string) (*dto.BoardResponse, error) {
-	boardUUID, err := uuid.Parse(boardID)
+	// Parse UUIDs using common parser
+	boardUUID, err := parser.ParseBoardID(boardID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 보드 ID", 400)
+		return nil, err
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	userUUID, err := parser.ParseUserID(userID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
+		return nil, err
 	}
 
 	// 1. Find board
@@ -156,13 +188,10 @@ func (s *boardService) GetBoard(boardID, userID string) (*dto.BoardResponse, err
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 조회 실패", 500)
 	}
 
-	// 2. Check if user is project member
-	_, err = s.projectRepo.FindMemberByUserAndProject(userUUID, board.ProjectID)
+	// 2. Check if user is project member (using authorizer)
+	_, err = s.authorizer.RequireMember(userUUID, board.ProjectID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "프로젝트 멤버가 아닙니다", 403)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
+		return nil, err
 	}
 
 	// 3. Build response
@@ -174,14 +203,15 @@ func (s *boardService) GetBoard(boardID, userID string) (*dto.BoardResponse, err
 // ==================== Get Boards (List with Filters) ====================
 
 func (s *boardService) GetBoards(userID string, req *dto.GetBoardsRequest) (*dto.PaginatedBoardsResponse, error) {
-	projectUUID, err := uuid.Parse(req.ProjectID)
+	// Parse UUIDs using common parser
+	projectUUID, err := parser.ParseProjectID(req.ProjectID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 프로젝트 ID", 400)
+		return nil, err
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	userUUID, err := parser.ParseUserID(userID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
+		return nil, err
 	}
 
 	ctx := context.Background()
@@ -196,31 +226,22 @@ func (s *boardService) GetBoards(userID string, req *dto.GetBoardsRequest) (*dto
 	}
 
 	// 2. Build filters
-	// Note: Custom field filtering (stage, role, importance, etc.) is now done
-	// via ViewService using JSONB queries on custom_fields_cache column
 	filters := repository.BoardFilters{}
 	if req.AssigneeID != "" {
-		assigneeUUID, err := uuid.Parse(req.AssigneeID)
+		assigneeUUID, err := parser.ParseUUID(req.AssigneeID, "담당자")
 		if err == nil {
 			filters.AssigneeID = assigneeUUID
 		}
 	}
 	if req.AuthorID != "" {
-		authorUUID, err := uuid.Parse(req.AuthorID)
+		authorUUID, err := parser.ParseUUID(req.AuthorID, "작성자")
 		if err == nil {
 			filters.AuthorID = authorUUID
 		}
 	}
 
-	// 3. Default pagination
-	page := req.Page
-	if page < 1 {
-		page = 1
-	}
-	limit := req.Limit
-	if limit < 1 {
-		limit = 20
-	}
+	// 3. Validate pagination using common pagination utility
+	page, limit := pagination.ValidatePaginationParams(req.Page, req.Limit)
 
 	// 4. Fetch boards
 	boards, total, err := s.repo.FindByProject(projectUUID, filters, page, limit)
@@ -270,14 +291,18 @@ func (s *boardService) GetBoards(userID string, req *dto.GetBoardsRequest) (*dto
 // ==================== Update Board ====================
 
 func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardRequest) (*dto.BoardResponse, error) {
-	boardUUID, err := uuid.Parse(boardID)
+	// Metrics: Start timer
+	start := time.Now()
+
+	// Parse UUIDs using common parser
+	boardUUID, err := parser.ParseBoardID(boardID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 보드 ID", 400)
+		return nil, err
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	userUUID, err := parser.ParseUserID(userID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
+		return nil, err
 	}
 
 	// 1. Find board
@@ -289,56 +314,57 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 조회 실패", 500)
 	}
 
-	// 2. Check permission (author or ADMIN+)
-	member, err := s.projectRepo.FindMemberByUserAndProject(userUUID, board.ProjectID)
+	// 2. Check permission (author or ADMIN+) using authorizer
+	canEdit, err := s.authorizer.CanEdit(userUUID, board.ProjectID, board.CreatedBy)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "프로젝트 멤버가 아닙니다", 403)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
+		return nil, err
 	}
-
-	// Get member role
-	role, err := s.roleRepo.FindByID(member.RoleID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "권한 조회 실패", 500)
-	}
-
-	// Check if user is author or has ADMIN+ permission
-	if board.CreatedBy != userUUID && role.Name == "MEMBER" {
+	if !canEdit {
 		return nil, apperrors.New(apperrors.ErrCodeForbidden, "수정 권한이 없습니다", 403)
 	}
 
-	// 3. Update fields
+	// 3. Update fields using Domain methods (Rich Domain Model)
 	if req.Title != "" {
-		board.Title = req.Title
+		// Domain 메서드 사용: 검증 로직이 Domain에 포함됨
+		if err := board.UpdateTitle(req.Title); err != nil {
+			// Domain 에러를 Infrastructure 에러로 변환
+			return nil, apperrors.FromDomainError(err)
+		}
 	}
 	if req.Content != "" {
-		board.Description = req.Content
+		// Domain 메서드 사용: 비즈니스 로직이 Domain에 캡슐화됨
+		board.UpdateDescription(req.Content)
 	}
 
 	// Note: Stage, Importance, and Role updates should now be done via FieldValueService
 	// using /field-values API endpoints
 
 	if req.AssigneeID != nil {
-		assigneeUUID, err := uuid.Parse(*req.AssigneeID)
+		assigneeUUID, err := parser.ParseOptionalUUID(req.AssigneeID, "담당자")
 		if err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 담당자 ID", 400)
+			return nil, err
 		}
 
-		_, err = s.projectRepo.FindMemberByUserAndProject(assigneeUUID, board.ProjectID)
-		if err != nil {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, "담당자가 프로젝트 멤버가 아닙니다", 404)
+		if assigneeUUID != nil {
+			_, err = s.projectRepo.FindMemberByUserAndProject(*assigneeUUID, board.ProjectID)
+			if err != nil {
+				return nil, apperrors.New(apperrors.ErrCodeNotFound, "담당자가 프로젝트 멤버가 아닙니다", 404)
+			}
+			// Domain 메서드 사용: 할당 로직이 Domain에 캡슐화됨
+			board.Assign(*assigneeUUID)
+		} else {
+			// Domain 메서드 사용: 할당 해제 로직이 Domain에 캡슐화됨
+			board.Unassign()
 		}
-		board.AssigneeID = &assigneeUUID
 	}
 
 	if req.DueDate != nil {
-		parsed, err := time.Parse(time.RFC3339, *req.DueDate)
+		dueDate, err := validator.ValidateDateFormat(*req.DueDate, "마감일")
 		if err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 마감일 형식입니다 (ISO 8601 required)", 400)
+			return nil, err
 		}
-		board.DueDate = &parsed
+		// Domain 메서드 사용: 마감일 설정 로직이 Domain에 캡슐화됨
+		board.SetDueDate(*dueDate)
 	}
 
 	// 4. Save board
@@ -346,58 +372,93 @@ func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardR
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 수정 실패", 500)
 	}
 
+	// Metrics: Record success
+	projectIDStr := board.ProjectID.String()
+	metrics.BoardUpdatedTotal.WithLabelValues(projectIDStr).Inc()
+	metrics.RecordDuration(start, metrics.BoardOperationDuration, "update", projectIDStr)
+
 	// 5. Return updated board
 	return s.GetBoard(board.ID.String(), userID)
 }
 
 // ==================== Delete Board (Soft) ====================
+// UnitOfWork 패턴을 사용하여 보드와 관련 댓글을 트랜잭션으로 삭제합니다
 
 func (s *boardService) DeleteBoard(boardID, userID string) error {
-	boardUUID, err := uuid.Parse(boardID)
+	// Metrics: Start timer
+	start := time.Now()
+
+	// Parse UUIDs using common parser
+	boardUUID, err := parser.ParseBoardID(boardID)
 	if err != nil {
-		return apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 보드 ID", 400)
+		return err
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	userUUID, err := parser.ParseUserID(userID)
 	if err != nil {
-		return apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
+		return err
 	}
 
-	// 1. Find board
+	// 1. Find board (권한 체크는 트랜잭션 밖에서)
 	board, err := s.repo.FindByID(boardUUID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return apperrors.New(apperrors.ErrCodeNotFound, "보드을 찾을 수 없습니다", 404)
+			return apperrors.New(apperrors.ErrCodeNotFound, "보드를 찾을 수 없습니다", 404)
 		}
 		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 조회 실패", 500)
 	}
 
-	// 2. Check permission (author or ADMIN+)
-	member, err := s.projectRepo.FindMemberByUserAndProject(userUUID, board.ProjectID)
+	// 2. Check permission (author or ADMIN+) using authorizer
+	canDelete, err := s.authorizer.CanDelete(userUUID, board.ProjectID, board.CreatedBy)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return apperrors.New(apperrors.ErrCodeForbidden, "프로젝트 멤버가 아닙니다", 403)
-		}
-		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
+		return err
 	}
-
-	// Get member role
-	role, err := s.roleRepo.FindByID(member.RoleID)
-	if err != nil {
-		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "권한 조회 실패", 500)
-	}
-
-	// Check if user is author or has ADMIN+ permission
-	if board.CreatedBy != userUUID && role.Name == "MEMBER" {
+	if !canDelete {
 		return apperrors.New(apperrors.ErrCodeForbidden, "삭제 권한이 없습니다", 403)
 	}
 
-	// 3. Soft delete
-	if err := s.repo.Delete(board.ID); err != nil {
-		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 삭제 실패", 500)
+	projectIDStr := board.ProjectID.String()
+
+	// 3. UnitOfWork로 보드와 댓글을 트랜잭션으로 삭제
+	err = s.uow.Do(func(repos *uow.Repositories) error {
+		// 3-1. 보드 삭제 (Domain 메서드 사용)
+		board.MarkAsDeleted()
+		if err := repos.Board.Update(board); err != nil {
+			return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 삭제 실패", 500)
+		}
+
+		// 3-2. 관련 댓글 모두 조회 및 삭제
+		comments, err := repos.Comment.FindByBoard(boardUUID)
+		if err != nil {
+			// 댓글이 없을 수도 있으므로 NotFound는 무시
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "댓글 조회 실패", 500)
+			}
+		}
+
+		// 댓글 삭제
+		for _, comment := range comments {
+			if err := repos.Comment.Delete(comment.ID); err != nil {
+				return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "댓글 삭제 실패", 500)
+			}
+		}
+
+		s.logger.Info("보드와 댓글 삭제 완료",
+			zap.String("board_id", boardUUID.String()),
+			zap.Int("comments_deleted", len(comments)),
+		)
+
+		// 모두 성공하거나 모두 실패 (원자성 보장)
+		return nil
+	})
+
+	// Metrics: Record success if no error
+	if err == nil {
+		metrics.BoardDeletedTotal.WithLabelValues(projectIDStr).Inc()
+		metrics.RecordDuration(start, metrics.BoardOperationDuration, "delete", projectIDStr)
 	}
 
-	return nil
+	return err
 }
 
 // ==================== Helper: Build Board Response ====================
@@ -413,67 +474,8 @@ func (s *boardService) buildBoardResponse(board *domain.Board) (*dto.BoardRespon
 	ctx := context.Background()
 	userMap := s.getUserInfoBatch(ctx, userIDs)
 
-	// Parse custom_fields_cache
-	var customFields map[string]interface{}
-	if board.CustomFieldsCache != "" && board.CustomFieldsCache != "{}" {
-		if err := json.Unmarshal([]byte(board.CustomFieldsCache), &customFields); err != nil {
-			s.logger.Warn("Failed to parse custom_fields_cache", zap.Error(err), zap.String("board_id", board.ID.String()))
-			customFields = make(map[string]interface{})
-		}
-	} else {
-		customFields = make(map[string]interface{})
-	}
-
-	// Build response
-	response := &dto.BoardResponse{
-		ID:           board.ID.String(),
-		ProjectID:    board.ProjectID.String(),
-		Title:        board.Title,
-		Content:      board.Description,
-		CustomFields: customFields,  // Include JSONB custom fields
-		DueDate:      board.DueDate,
-		CreatedAt:    board.CreatedAt,
-		UpdatedAt:    board.UpdatedAt,
-	}
-
-	// Author
-	if author, ok := userMap[board.CreatedBy.String()]; ok {
-		response.Author = dto.UserInfo{
-			UserID:   author.UserID,
-			Name:     author.Name,
-			Email:    author.Email,
-			IsActive: author.IsActive,
-		}
-	} else {
-		// Fallback if user not found
-		response.Author = dto.UserInfo{
-			UserID:   board.CreatedBy.String(),
-			Name:     "Unknown User",
-			Email:    "",
-			IsActive: false,
-		}
-	}
-
-	// Assignee
-	if board.AssigneeID != nil {
-		if assignee, ok := userMap[board.AssigneeID.String()]; ok {
-			response.Assignee = &dto.UserInfo{
-				UserID:   assignee.UserID,
-				Name:     assignee.Name,
-				Email:    assignee.Email,
-				IsActive: assignee.IsActive,
-			}
-		} else {
-			// Fallback if user not found
-			response.Assignee = &dto.UserInfo{
-				UserID:   board.AssigneeID.String(),
-				Name:     "Unknown User",
-				Email:    "",
-				IsActive: false,
-			}
-		}
-	}
-
+	// Use mapper to build response (eliminates duplication)
+	response := s.mapper.ToResponseWithUserMap(board, userMap)
 	return response, nil
 }
 
@@ -482,67 +484,8 @@ func (s *boardService) buildBoardResponseOptimized(
 	board *domain.Board,
 	userMap map[string]client.UserInfo,
 ) (*dto.BoardResponse, error) {
-	// Parse custom_fields_cache
-	var customFields map[string]interface{}
-	if board.CustomFieldsCache != "" && board.CustomFieldsCache != "{}" {
-		if err := json.Unmarshal([]byte(board.CustomFieldsCache), &customFields); err != nil {
-			s.logger.Warn("Failed to parse custom_fields_cache", zap.Error(err), zap.String("board_id", board.ID.String()))
-			customFields = make(map[string]interface{})
-		}
-	} else {
-		customFields = make(map[string]interface{})
-	}
-
-	// Build response
-	response := &dto.BoardResponse{
-		ID:           board.ID.String(),
-		ProjectID:    board.ProjectID.String(),
-		Title:        board.Title,
-		Content:      board.Description,
-		CustomFields: customFields,
-		DueDate:      board.DueDate,
-		CreatedAt:    board.CreatedAt,
-		UpdatedAt:    board.UpdatedAt,
-	}
-
-	// Author (from userMap)
-	if author, ok := userMap[board.CreatedBy.String()]; ok {
-		response.Author = dto.UserInfo{
-			UserID:   author.UserID,
-			Name:     author.Name,
-			Email:    author.Email,
-			IsActive: author.IsActive,
-		}
-	} else {
-		// Fallback if user not found
-		response.Author = dto.UserInfo{
-			UserID:   board.CreatedBy.String(),
-			Name:     "Unknown User",
-			Email:    "",
-			IsActive: false,
-		}
-	}
-
-	// Assignee (from userMap)
-	if board.AssigneeID != nil {
-		if assignee, ok := userMap[board.AssigneeID.String()]; ok {
-			response.Assignee = &dto.UserInfo{
-				UserID:   assignee.UserID,
-				Name:     assignee.Name,
-				Email:    assignee.Email,
-				IsActive: assignee.IsActive,
-			}
-		} else {
-			// Fallback if user not found
-			response.Assignee = &dto.UserInfo{
-				UserID:   board.AssigneeID.String(),
-				Name:     "Unknown User",
-				Email:    "",
-				IsActive: false,
-			}
-		}
-	}
-
+	// Use mapper to build response (eliminates duplication)
+	response := s.mapper.ToResponseWithUserMap(board, userMap)
 	return response, nil
 }
 
@@ -614,29 +557,30 @@ func (s *boardService) getUserInfoBatch(ctx context.Context, userIDs []string) m
 // This API combines field value change + position update in a single transaction
 // Uses fractional indexing for O(1) operations - only 1 row updated!
 func (s *boardService) MoveBoard(userID, boardID string, req *dto.MoveBoardRequest) (*dto.MoveBoardResponse, error) {
-	userUUID, err := uuid.Parse(userID)
+	// Parse UUIDs using common parser
+	userUUID, err := parser.ParseUserID(userID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
+		return nil, err
 	}
 
-	boardUUID, err := uuid.Parse(boardID)
+	boardUUID, err := parser.ParseBoardID(boardID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 보드 ID", 400)
+		return nil, err
 	}
 
-	viewUUID, err := uuid.Parse(req.ViewID)
+	viewUUID, err := parser.ParseUUID(req.ViewID, "뷰")
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 뷰 ID", 400)
+		return nil, err
 	}
 
-	fieldUUID, err := uuid.Parse(req.GroupByFieldID)
+	fieldUUID, err := parser.ParseFieldID(req.GroupByFieldID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 필드 ID", 400)
+		return nil, err
 	}
 
-	newValueUUID, err := uuid.Parse(req.NewFieldValue)
+	newValueUUID, err := parser.ParseUUID(req.NewFieldValue, "필드 값")
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 필드 값 ID", 400)
+		return nil, err
 	}
 
 	// 1. Fetch board

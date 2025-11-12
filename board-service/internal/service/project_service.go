@@ -243,12 +243,17 @@ func (s *projectService) UpdateProject(projectID, userID string, req *dto.Update
 		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "프로젝트 조회 실패", 500)
 	}
 
-	// Update fields
+	// Update fields using Domain methods (Rich Domain Model)
 	if req.Name != "" {
-		project.Name = req.Name
+		// Domain 메서드 사용: 검증 로직이 Domain에 포함됨
+		if err := project.UpdateName(req.Name); err != nil {
+			// Domain 에러를 Infrastructure 에러로 변환
+			return nil, apperrors.FromDomainError(err)
+		}
 	}
 	if req.Description != "" {
-		project.Description = req.Description
+		// Domain 메서드 사용: 비즈니스 로직이 Domain에 캡슐화됨
+		project.UpdateDescription(req.Description)
 	}
 
 	if err := s.repo.Update(project); err != nil {
