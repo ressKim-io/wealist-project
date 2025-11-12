@@ -376,6 +376,40 @@ func (m *MockFieldRepository) DeleteBoardOrder(viewID, userID, boardID uuid.UUID
 	return args.Error(0)
 }
 
+// ==================== Mock CommentRepository ====================
+
+type MockCommentRepository struct {
+	mock.Mock
+}
+
+func (m *MockCommentRepository) Create(comment *domain.Comment) error {
+	args := m.Called(comment)
+	return args.Error(0)
+}
+
+func (m *MockCommentRepository) FindByID(id uuid.UUID) (*domain.Comment, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Comment), args.Error(1)
+}
+
+func (m *MockCommentRepository) FindByBoardID(boardID uuid.UUID) ([]domain.Comment, error) {
+	args := m.Called(boardID)
+	return args.Get(0).([]domain.Comment), args.Error(1)
+}
+
+func (m *MockCommentRepository) Update(comment *domain.Comment) error {
+	args := m.Called(comment)
+	return args.Error(0)
+}
+
+func (m *MockCommentRepository) Delete(id uuid.UUID) error {
+	args := m.Called(id)
+	return args.Error(0)
+}
+
 // ==================== Helper Functions ====================
 
 // ExpectNotFoundError configures mock to return gorm.ErrRecordNotFound
