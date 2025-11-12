@@ -1,11 +1,11 @@
 # Board Service 개선 사항
 
 **Last Updated**: 2025-11-12
-**Status**: Phase 1, 2, 3-1 완료 ✅
+**Status**: Phase 1, 2, 3 완료 ✅
 
 ## 📋 분석 결과 요약
 
-7단계 리팩토링을 통해 구조가 크게 개선되었으며, **Phase 1 (전체), Phase 2 (전체), Phase 3-1이 완료**되었습니다.
+7단계 리팩토링을 통해 구조가 크게 개선되었으며, **Phase 1, 2, 3 (전체) 완료**되었습니다!
 
 ---
 
@@ -390,20 +390,42 @@ func TestBoardAPI_CreateBoard_E2E(t *testing.T) {
 
 ## 🟡 중간 우선순위 (Medium Priority) - 미완료
 
-### 8. ⚠️ Cache 전략이 명확하지 않음 (Phase 3-2)
-**현재 상태**:
-```go
-// Cache가 Service에서 선택적으로 사용됨
-userMap := s.getUserInfoBatch(ctx, userIDs)  // Cache 사용
+### 8. ✅ Cache 전략 명확화 완료 (Phase 3-2)
 
-// 일부 조회는 Cache 없이 직접 DB 접근
-project, _ := s.projectRepo.FindByID(projectID)
+**완료 내용**:
+- ✅ **CACHE_STRATEGY.md** 생성 - 전체 캐시 전략 문서화
+- ✅ 3가지 Cache 타입 명확히 정의:
+  - **UserInfoCache**: 10분 TTL, Batch 최적화 (MGET/Pipeline)
+  - **WorkspaceCache**: 5분 TTL, Membership 검증 캐싱
+  - **FieldCache**: Flexible TTL, Smart Invalidation (Tracking Set)
+- ✅ Invalidation 전략: Write-Through + TTL-Based
+- ✅ 성능 최적화 패턴 (N+1 방지, Batch Operations)
+- ✅ Cache 에러 처리 가이드라인
+- ✅ 모니터링 권장 사항 (Hit Rate 측정)
+
+**Cache 구현 현황**:
+```go
+// UserInfoCache: 10분 TTL, Redis 기반
+userInfoCache := cache.NewUserInfoCache(redisClient)
+
+// 1. Cache-Aside Pattern
+cacheExists, cachedUser, _ := userInfoCache.GetSimpleUser(ctx, userID)
+if cacheExists {
+    return *cachedUser, nil
+}
+
+// 2. Batch Optimization (MGET)
+userMap, _ := userInfoCache.GetSimpleUsersBatch(ctx, userIDs)
+
+// 3. Invalidation
+userInfoCache.InvalidateUser(ctx, userID)
 ```
 
-**문제점**:
-1. 어떤 데이터를 캐싱할지 불명확
-2. Cache 만료 정책 없음
-3. Cache Invalidation 전략 부재
+**Key Patterns**:
+- ✅ Cache-Aside (Lazy Loading)
+- ✅ Write-Through (Immediate Invalidation)
+- ✅ TTL-Based Expiration
+- ✅ Batch Operations (Pipeline, MGET)
 
 **개선 방안**:
 ```go
@@ -458,16 +480,26 @@ const (
 
 ## 🟢 낮은 우선순위 (Low Priority)
 
-### 9. ⚠️ 메트릭 및 모니터링 부족 (Phase 3-3)
-**현재 상태**:
-- Prometheus `/metrics` 엔드포인트만 존재
-- 커스텀 메트릭 없음
+### 9. ✅ Prometheus 비즈니스 메트릭 추가 완료 (Phase 3-3)
 
-**개선 방안**:
+**완료 내용**:
+- ✅ **internal/metrics/metrics.go** 생성 - 전체 메트릭 정의
+- ✅ 비즈니스 메트릭 정의:
+  - **Board**: created_total, updated_total, deleted_total, operation_duration
+  - **Project**: created_total, member_added_total, operation_duration
+  - **Comment**: created_total, deleted_total
+  - **Field**: created_total, value_set_total
+- ✅ 인프라 메트릭 정의:
+  - **Cache**: hit_total, miss_total, operation_duration
+  - **Database**: query_duration, error_total
+  - **External Service**: request_total, duration
+- ✅ BoardService 메트릭 적용 (CreateBoard, UpdateBoard, DeleteBoard)
+
+**메트릭 구현 현황**:
 ```go
-// 비즈니스 메트릭 추가
+// metrics/metrics.go - 메트릭 정의
 var (
-    boardCreatedCounter = prometheus.NewCounterVec(
+    BoardCreatedTotal = promauto.NewCounterVec(
         prometheus.CounterOpts{
             Name: "board_created_total",
             Help: "Total number of boards created",
@@ -475,26 +507,34 @@ var (
         []string{"project_id"},
     )
 
-    boardUpdateDuration = prometheus.NewHistogramVec(
+    BoardOperationDuration = promauto.NewHistogramVec(
         prometheus.HistogramOpts{
-            Name:    "board_update_duration_seconds",
-            Help:    "Board update duration",
+            Name:    "board_operation_duration_seconds",
+            Help:    "Duration of board operations in seconds",
             Buckets: prometheus.DefBuckets,
         },
-        []string{"project_id"},
+        []string{"operation", "project_id"},
     )
 )
 
-// Service에서 사용
+// board_service.go - 메트릭 기록
 func (s *boardService) CreateBoard() error {
+    start := time.Now()
+
     // ... 비즈니스 로직
 
-    boardCreatedCounter.WithLabelValues(projectID).Inc()
+    metrics.BoardCreatedTotal.WithLabelValues(projectID).Inc()
+    metrics.RecordDuration(start, metrics.BoardOperationDuration, "create", projectID)
     return nil
 }
 ```
 
-**예상 작업 시간**: 2-3시간
+**제공되는 메트릭**:
+1. **Counter**: created_total, updated_total, deleted_total
+2. **Histogram**: operation_duration (처리 시간 분포)
+3. **Labels**: project_id, operation, cache_type 등
+
+**커밋**: `feat: [Phase 3] Cache 전략 문서화 + Prometheus 비즈니스 메트릭 추가`
 
 ---
 
@@ -581,10 +621,10 @@ func (s *boardService) GetBoard() error {
 5. ✅ **DTO Mapper 도입** - 140+ 줄 중복 제거
 6. ✅ **테스트 커버리지 향상** - 177개 테스트 케이스 (+74개)
 
-### ✅ Phase 3: 운영 안정성 (부분 완료)
+### ✅ Phase 3: 운영 안정성 (완료)
 7. ✅ **로깅 전략 수립** - 구조화된 로깅 + Audit Log
-8. ⏳ **Cache 전략 명확화** - 미완료
-9. ⏳ **메트릭 및 모니터링** - 미완료
+8. ✅ **Cache 전략 명확화** - CACHE_STRATEGY.md 문서화
+9. ✅ **메트릭 및 모니터링** - Prometheus 비즈니스 메트릭
 
 ### Phase 4: 확장성 (4-8주)
 10. **Rate Limiting** (Low Priority #10)
@@ -597,9 +637,9 @@ func (s *boardService) GetBoard() error {
 | 우선순위 | 작업 수 | 완료 | 진행률 | 남은 시간 |
 |---------|--------|------|--------|----------|
 | 🔴 High | 4개 | 4개 ✅ | 100% | 0시간 |
-| 🟡 Medium | 4개 | 2개 ✅ | 50% | 10-15시간 |
+| 🟡 Medium | 4개 | 4개 ✅ | 100% | 0시간 |
 | 🟢 Low | 3개 | 0개 | 0% | 8-12시간 |
-| **총합** | **11개** | **6개 ✅** | **55%** | **18-27시간**
+| **총합** | **11개** | **8개 ✅** | **73%** | **8-12시간**
 
 ---
 
@@ -630,9 +670,10 @@ func (s *boardService) GetBoard() error {
 | 3 | `feat: [Phase 2] Repository 인터페이스 문서화 + DTO Mapper 패턴 도입` | Phase 2-1, 2-2 | 2025-11-12 |
 | 4 | `feat: [Phase 3-1] 구조화된 로깅 전략 구현` | Phase 3-1 | 2025-11-12 |
 | 5 | `feat: [Phase 2-3] 테스트 커버리지 향상 - Service & Repository 테스트 추가` | Phase 2-3 | 2025-11-12 |
+| 6 | `feat: [Phase 3] Cache 전략 문서화 + Prometheus 비즈니스 메트릭 추가` | Phase 3-2, 3-3 | 2025-11-12 |
 
 ---
 
 **Last Updated**: 2025-11-12
-**Status**: Phase 1 (완료), Phase 2 (완료), Phase 3-1 (완료) ✅
-**Next Steps**: Phase 3-2 (Cache 전략), Phase 3-3 (Prometheus 메트릭)
+**Status**: Phase 1, 2, 3 완료 ✅ (73% 달성)
+**Next Steps**: Phase 4 (Rate Limiting, 국제화 지원) - Low Priority
