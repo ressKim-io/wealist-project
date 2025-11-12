@@ -36,14 +36,15 @@ type boardService struct {
 	repo          repository.BoardRepository
 	projectRepo   repository.ProjectRepository
 	roleRepo      repository.RoleRepository
-	fieldRepo     repository.FieldRepository // For custom fields system
-	commentRepo   repository.CommentRepository // For UnitOfWork operations
-	authorizer    auth.ProjectAuthorizer     // Centralized authorization
+	fieldRepo     repository.FieldRepository       // For custom fields system
+	commentRepo   repository.CommentRepository     // For UnitOfWork operations
+	authorizer    auth.ProjectAuthorizer           // Centralized authorization
 	userClient    client.UserClient
 	userInfoCache cache.UserInfoCache
 	logger        *zap.Logger
 	db            *gorm.DB
-	uow           uow.UnitOfWork // Unit of Work for transaction management
+	uow           uow.UnitOfWork                   // Unit of Work for transaction management
+	mapper        *dto.BoardMapper                 // DTO Mapper for reducing duplication
 }
 
 func NewBoardService(
@@ -63,6 +64,9 @@ func NewBoardService(
 	// Create Unit of Work
 	unitOfWork := uow.NewUnitOfWork(db)
 
+	// Create DTO Mapper
+	boardMapper := dto.NewBoardMapper(logger)
+
 	return &boardService{
 		repo:          repo,
 		projectRepo:   projectRepo,
@@ -75,6 +79,7 @@ func NewBoardService(
 		logger:        logger,
 		db:            db,
 		uow:           unitOfWork,
+		mapper:        boardMapper,
 	}
 }
 
@@ -439,67 +444,8 @@ func (s *boardService) buildBoardResponse(board *domain.Board) (*dto.BoardRespon
 	ctx := context.Background()
 	userMap := s.getUserInfoBatch(ctx, userIDs)
 
-	// Parse custom_fields_cache
-	var customFields map[string]interface{}
-	if board.CustomFieldsCache != "" && board.CustomFieldsCache != "{}" {
-		if err := json.Unmarshal([]byte(board.CustomFieldsCache), &customFields); err != nil {
-			s.logger.Warn("Failed to parse custom_fields_cache", zap.Error(err), zap.String("board_id", board.ID.String()))
-			customFields = make(map[string]interface{})
-		}
-	} else {
-		customFields = make(map[string]interface{})
-	}
-
-	// Build response
-	response := &dto.BoardResponse{
-		ID:           board.ID.String(),
-		ProjectID:    board.ProjectID.String(),
-		Title:        board.Title,
-		Content:      board.Description,
-		CustomFields: customFields,  // Include JSONB custom fields
-		DueDate:      board.DueDate,
-		CreatedAt:    board.CreatedAt,
-		UpdatedAt:    board.UpdatedAt,
-	}
-
-	// Author
-	if author, ok := userMap[board.CreatedBy.String()]; ok {
-		response.Author = dto.UserInfo{
-			UserID:   author.UserID,
-			Name:     author.Name,
-			Email:    author.Email,
-			IsActive: author.IsActive,
-		}
-	} else {
-		// Fallback if user not found
-		response.Author = dto.UserInfo{
-			UserID:   board.CreatedBy.String(),
-			Name:     "Unknown User",
-			Email:    "",
-			IsActive: false,
-		}
-	}
-
-	// Assignee
-	if board.AssigneeID != nil {
-		if assignee, ok := userMap[board.AssigneeID.String()]; ok {
-			response.Assignee = &dto.UserInfo{
-				UserID:   assignee.UserID,
-				Name:     assignee.Name,
-				Email:    assignee.Email,
-				IsActive: assignee.IsActive,
-			}
-		} else {
-			// Fallback if user not found
-			response.Assignee = &dto.UserInfo{
-				UserID:   board.AssigneeID.String(),
-				Name:     "Unknown User",
-				Email:    "",
-				IsActive: false,
-			}
-		}
-	}
-
+	// Use mapper to build response (eliminates duplication)
+	response := s.mapper.ToResponseWithUserMap(board, userMap)
 	return response, nil
 }
 
@@ -508,67 +454,8 @@ func (s *boardService) buildBoardResponseOptimized(
 	board *domain.Board,
 	userMap map[string]client.UserInfo,
 ) (*dto.BoardResponse, error) {
-	// Parse custom_fields_cache
-	var customFields map[string]interface{}
-	if board.CustomFieldsCache != "" && board.CustomFieldsCache != "{}" {
-		if err := json.Unmarshal([]byte(board.CustomFieldsCache), &customFields); err != nil {
-			s.logger.Warn("Failed to parse custom_fields_cache", zap.Error(err), zap.String("board_id", board.ID.String()))
-			customFields = make(map[string]interface{})
-		}
-	} else {
-		customFields = make(map[string]interface{})
-	}
-
-	// Build response
-	response := &dto.BoardResponse{
-		ID:           board.ID.String(),
-		ProjectID:    board.ProjectID.String(),
-		Title:        board.Title,
-		Content:      board.Description,
-		CustomFields: customFields,
-		DueDate:      board.DueDate,
-		CreatedAt:    board.CreatedAt,
-		UpdatedAt:    board.UpdatedAt,
-	}
-
-	// Author (from userMap)
-	if author, ok := userMap[board.CreatedBy.String()]; ok {
-		response.Author = dto.UserInfo{
-			UserID:   author.UserID,
-			Name:     author.Name,
-			Email:    author.Email,
-			IsActive: author.IsActive,
-		}
-	} else {
-		// Fallback if user not found
-		response.Author = dto.UserInfo{
-			UserID:   board.CreatedBy.String(),
-			Name:     "Unknown User",
-			Email:    "",
-			IsActive: false,
-		}
-	}
-
-	// Assignee (from userMap)
-	if board.AssigneeID != nil {
-		if assignee, ok := userMap[board.AssigneeID.String()]; ok {
-			response.Assignee = &dto.UserInfo{
-				UserID:   assignee.UserID,
-				Name:     assignee.Name,
-				Email:    assignee.Email,
-				IsActive: assignee.IsActive,
-			}
-		} else {
-			// Fallback if user not found
-			response.Assignee = &dto.UserInfo{
-				UserID:   board.AssigneeID.String(),
-				Name:     "Unknown User",
-				Email:    "",
-				IsActive: false,
-			}
-		}
-	}
-
+	// Use mapper to build response (eliminates duplication)
+	response := s.mapper.ToResponseWithUserMap(board, userMap)
 	return response, nil
 }
 
