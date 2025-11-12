@@ -1,15 +1,5 @@
 // src/api/boardService.ts
-import axios from 'axios';
-
-// API 문서에 맞춰 기본 URL 변경 (문서에는 8000 포트가 기본 URL에 포함되어 있으나, 보통 VITE_REACT_APP_GO_API_URL이 전체 URL을 가지고 있다고 가정하고 /api 접두사만 제거함)
-const BOARD_API_URL = import.meta.env.VITE_REACT_APP_GO_API_URL || 'http://localhost:8000';
-
-const boardService = axios.create({
-  baseURL: BOARD_API_URL, // ex: http://localhost:8000
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+import { boardServiceClient } from '../apiConfig';
 
 /**
  * ========================================
@@ -55,7 +45,7 @@ export const getProjects = async (
   token: string,
 ): Promise<ProjectResponse[]> => {
   try {
-    const response = await boardService.get('/api/projects', {
+    const response = await boardServiceClient.get('/api/projects', {
       params: { workspaceId: workspaceId },
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -79,7 +69,7 @@ export const getProjects = async (
  */
 export const getProject = async (projectId: string, token: string): Promise<ProjectResponse> => {
   try {
-    const response = await boardService.get(`/api/projects/${projectId}`, {
+    const response = await boardServiceClient.get(`/api/projects/${projectId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     // API 문서 응답 구조는 명확하지 않지만, 상세 조회는 단일 객체를 기대하고, 기존 코드 유지
@@ -104,7 +94,7 @@ export const createProject = async (
   // 목업 로직 제거 (USE_MOCK_DATA가 false이므로)
 
   try {
-    const response = await boardService.post('/api/projects', data, {
+    const response = await boardServiceClient.post('/api/projects', data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -128,7 +118,7 @@ export const updateProject = async (
   token: string,
 ): Promise<ProjectResponse> => {
   try {
-    const response = await boardService.put(`/api/projects/${projectId}`, data, {
+    const response = await boardServiceClient.put(`/api/projects/${projectId}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     // API 문서 응답은 200 OK, 응답 본문 구조는 미제공, 기존 코드 유지
@@ -148,7 +138,7 @@ export const updateProject = async (
  */
 export const deleteProject = async (projectId: string, token: string): Promise<any> => {
   try {
-    const response = await boardService.delete(`/api/projects/${projectId}`, {
+    const response = await boardServiceClient.delete(`/api/projects/${projectId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     // API 문서 응답은 200 OK, 응답 본문 구조는 미제공, 기존 코드 유지
@@ -173,7 +163,7 @@ export const searchProjects = async (
   token: string,
 ): Promise<ProjectResponse[]> => {
   try {
-    const response = await boardService.get('/api/projects/search', {
+    const response = await boardServiceClient.get('/api/projects/search', {
       params: { workspaceId, query },
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -265,7 +255,7 @@ export const getBoards = async (
 
   try {
     const params = { projectId, ...filters };
-    const response = await boardService.get('/api/boards', {
+    const response = await boardServiceClient.get('/api/boards', {
       params,
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -293,7 +283,7 @@ export const getBoard = async (boardId: string, token: string): Promise<BoardRes
   }
 
   try {
-    const response = await boardService.get(`/api/boards/${boardId}`, {
+    const response = await boardServiceClient.get(`/api/boards/${boardId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -315,7 +305,7 @@ export const createBoard = async (
   token: string,
 ): Promise<BoardResponse> => {
   try {
-    const response = await boardService.post('/api/boards', data, {
+    const response = await boardServiceClient.post('/api/boards', data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -340,7 +330,7 @@ export const updateBoard = async (
 ): Promise<BoardResponse> => {
   try {
     // 💡 PUT /boards/{boardId} 엔드포인트 사용
-    const response = await boardService.put(`/api/boards/${boardId}`, data, {
+    const response = await boardServiceClient.put(`/api/boards/${boardId}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -359,7 +349,7 @@ export const updateBoard = async (
  */
 export const deleteBoard = async (boardId: string, token: string): Promise<any> => {
   try {
-    const response = await boardService.delete(`/api/boards/${boardId}`, {
+    const response = await boardServiceClient.delete(`/api/boards/${boardId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data;
@@ -402,7 +392,7 @@ export const moveBoard = async (
   token: string,
 ): Promise<MoveBoardResponse> => {
   try {
-    const response = await boardService.put(`/api/boards/${boardId}/move`, data, {
+    const response = await boardServiceClient.put(`/api/boards/${boardId}/move`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -462,7 +452,7 @@ export const getProjectFields = async (
   token: string,
 ): Promise<FieldResponse[]> => {
   try {
-    const response = await boardService.get(`/api/projects/${projectId}/fields`, {
+    const response = await boardServiceClient.get(`/api/projects/${projectId}/fields`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data || [];
@@ -485,7 +475,7 @@ export const getFieldOptions = async (
   token: string,
 ): Promise<FieldOptionResponse[]> => {
   try {
-    const response = await boardService.get(`/api/fields/${fieldId}/options`, {
+    const response = await boardServiceClient.get(`/api/fields/${fieldId}/options`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data || [];
@@ -531,7 +521,7 @@ export interface UpdateCommentRequest {
  */
 export const getComments = async (boardId: string, token: string): Promise<CommentResponse[]> => {
   try {
-    const response = await boardService.get('/api/comments', {
+    const response = await boardServiceClient.get('/api/comments', {
       params: { boardId }, // 💡 쿼리 파라미터 boardId 사용
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -555,7 +545,7 @@ export const createComment = async (
   token: string,
 ): Promise<CommentResponse> => {
   try {
-    const response = await boardService.post('/api/comments', data, {
+    const response = await boardServiceClient.post('/api/comments', data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -579,7 +569,7 @@ export const updateComment = async (
   token: string,
 ): Promise<CommentResponse> => {
   try {
-    const response = await boardService.put(`/api/comments/${commentId}`, data, {
+    const response = await boardServiceClient.put(`/api/comments/${commentId}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data;
@@ -597,7 +587,7 @@ export const updateComment = async (
  */
 export const deleteComment = async (commentId: string, token: string): Promise<void> => {
   try {
-    await boardService.delete(`/api/comments/${commentId}`, {
+    await boardServiceClient.delete(`/api/comments/${commentId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
   } catch (error) {
@@ -630,7 +620,7 @@ export const getProjectViews = async (
   token: string,
 ): Promise<ViewResponse[]> => {
   try {
-    const response = await boardService.get(`/api/projects/${projectId}/views`, {
+    const response = await boardServiceClient.get(`/api/projects/${projectId}/views`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.data.data || [];
@@ -653,7 +643,7 @@ export const getBoardsByView = async (
   },
 ): Promise<PaginatedBoardsResponse> => {
   try {
-    const response = await boardService.get(`/api/views/${viewId}/boards`, {
+    const response = await boardServiceClient.get(`/api/views/${viewId}/boards`, {
       params: filters,
       headers: { Authorization: `Bearer ${token}` },
     });
