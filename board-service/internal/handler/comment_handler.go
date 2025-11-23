@@ -1,144 +1,187 @@
 package handler
 
 import (
-	"board-service/internal/apperrors"
-	"board-service/internal/dto"
-	"board-service/internal/service"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+
+	"project-board-api/internal/dto"
+	"project-board-api/internal/response"
+	"project-board-api/internal/service"
 )
 
-// CommentHandler handles HTTP requests for comments.
 type CommentHandler struct {
 	commentService service.CommentService
 }
 
-// NewCommentHandler creates a new instance of CommentHandler.
-func NewCommentHandler(cs service.CommentService) *CommentHandler {
-	return &CommentHandler{commentService: cs}
+func NewCommentHandler(commentService service.CommentService) *CommentHandler {
+	return &CommentHandler{
+		commentService: commentService,
+	}
 }
 
-// CreateComment handles the creation of a new comment.
+// CreateComment godoc
+// @Summary      Comment 생성
+// @Description  Board에 새로운 Comment를 작성합니다
+// @Tags         comments
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.CreateCommentRequest true "Comment 생성 요청"
+// @Success      201 {object} response.SuccessResponse{data=dto.CommentResponse} "Comment 생성 성공"
+// @Failure      400 {object} response.ErrorResponse "잘못된 요청"
+// @Failure      404 {object} response.ErrorResponse "Board를 찾을 수 없음"
+// @Failure      500 {object} response.ErrorResponse "서버 에러"
+// @Router       /comments [post]
 func (h *CommentHandler) CreateComment(c *gin.Context) {
-	userIDStr := c.GetString("user_id")
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		dto.Error(c, apperrors.New(apperrors.ErrCodeBadRequest, "Invalid user ID format", http.StatusBadRequest))
+	// Extract user ID from context
+	userID, exists := c.Get("user_id")
+	if !exists {
+		response.SendError(c, http.StatusUnauthorized, response.ErrCodeUnauthorized, "User ID not found in context")
+		return
+	}
+	userUUID, ok := userID.(uuid.UUID)
+	if !ok {
+		response.SendError(c, http.StatusUnauthorized, response.ErrCodeUnauthorized, "Invalid user ID format")
 		return
 	}
 
 	var req dto.CreateCommentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		dto.Error(c, apperrors.Wrap(err, apperrors.ErrCodeValidation, "Invalid request body", http.StatusBadRequest))
+		response.SendError(c, http.StatusBadRequest, response.ErrCodeValidation, "Invalid request body")
 		return
 	}
 
-	resp, err := h.commentService.CreateComment(c.Request.Context(), req, userID)
+	comment, err := h.commentService.CreateComment(c.Request.Context(), userUUID, &req)
 	if err != nil {
-		if appErr, ok := err.(*apperrors.AppError); ok {
-			dto.Error(c, appErr)
-		} else {
-			dto.Error(c, apperrors.ErrInternalServer)
-		}
+		handleServiceError(c, err)
 		return
 	}
 
-	dto.SuccessWithStatus(c, http.StatusCreated, resp)
+	response.SendSuccess(c, http.StatusCreated, comment)
 }
 
-// GetCommentsByBoardID handles fetching all comments for a board.
-func (h *CommentHandler) GetCommentsByBoardID(c *gin.Context) {
-	userIDStr := c.GetString("user_id")
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		dto.Error(c, apperrors.New(apperrors.ErrCodeBadRequest, "Invalid user ID format", http.StatusBadRequest))
-		return
-	}
-
-	boardIDStr := c.Query("boardId")
-	if boardIDStr == "" {
-		dto.Error(c, apperrors.New(apperrors.ErrCodeBadRequest, "boardId query parameter is required", http.StatusBadRequest))
-		return
-	}
-
+// GetComments godoc
+// @Summary      Board의 Comment 목록 조회
+// @Description  특정 Board의 모든 Comment를 조회합니다
+// @Tags         comments
+// @Produce      json
+// @Param        boardId path string true "Board ID (UUID)"
+// @Success      200 {object} response.SuccessResponse{data=[]dto.CommentResponse} "Comment 목록 조회 성공"
+// @Failure      400 {object} response.ErrorResponse "잘못된 Board ID"
+// @Failure      404 {object} response.ErrorResponse "Board를 찾을 수 없음"
+// @Failure      500 {object} response.ErrorResponse "서버 에러"
+// @Router       /comments/board/{boardId} [get]
+func (h *CommentHandler) GetComments(c *gin.Context) {
+	boardIDStr := c.Param("boardId")
 	boardID, err := uuid.Parse(boardIDStr)
 	if err != nil {
-		dto.Error(c, apperrors.New(apperrors.ErrCodeBadRequest, "Invalid board ID format", http.StatusBadRequest))
+		response.SendError(c, http.StatusBadRequest, response.ErrCodeValidation, "Invalid board ID")
 		return
 	}
 
-	resp, err := h.commentService.GetCommentsByBoardID(c.Request.Context(), boardID, userID)
+	comments, err := h.commentService.GetComments(c.Request.Context(), boardID)
 	if err != nil {
-		if appErr, ok := err.(*apperrors.AppError); ok {
-			dto.Error(c, appErr)
-		} else {
-			dto.Error(c, apperrors.ErrInternalServer)
-		}
+		handleServiceError(c, err)
 		return
 	}
 
-	dto.Success(c, resp)
+	response.SendSuccess(c, http.StatusOK, comments)
 }
 
-// UpdateComment handles the update of an existing comment.
-func (h *CommentHandler) UpdateComment(c *gin.Context) {
-	userIDStr := c.GetString("user_id")
-	userID, err := uuid.Parse(userIDStr)
+// GetCommentsByQuery godoc
+// @Summary      Board의 Comment 목록 조회 (쿼리 파라미터 방식)
+// @Description  특정 Board의 모든 Comment를 조회합니다. 프론트엔드 호환용 엔드포인트
+// @Tags         comments
+// @Produce      json
+// @Param        boardId query string true "Board ID (UUID)"
+// @Success      200 {object} response.SuccessResponse{data=[]dto.CommentResponse} "Comment 목록 조회 성공"
+// @Failure      400 {object} response.ErrorResponse "잘못된 Board ID"
+// @Failure      404 {object} response.ErrorResponse "Board를 찾을 수 없음"
+// @Failure      500 {object} response.ErrorResponse "서버 에러"
+// @Router       /comments [get]
+func (h *CommentHandler) GetCommentsByQuery(c *gin.Context) {
+	boardIDStr := c.Query("boardId")
+	if boardIDStr == "" {
+		response.SendError(c, http.StatusBadRequest, response.ErrCodeValidation, "Board ID is required")
+		return
+	}
+	
+	boardID, err := uuid.Parse(boardIDStr)
 	if err != nil {
-		dto.Error(c, apperrors.New(apperrors.ErrCodeBadRequest, "Invalid user ID format", http.StatusBadRequest))
+		response.SendError(c, http.StatusBadRequest, response.ErrCodeValidation, "Invalid board ID")
 		return
 	}
 
-	commentID, err := uuid.Parse(c.Param("commentId"))
+	comments, err := h.commentService.GetComments(c.Request.Context(), boardID)
 	if err != nil {
-		dto.Error(c, apperrors.New(apperrors.ErrCodeBadRequest, "Invalid comment ID format", http.StatusBadRequest))
+		handleServiceError(c, err)
+		return
+	}
+
+	response.SendSuccess(c, http.StatusOK, comments)
+}
+
+// UpdateComment godoc
+// @Summary      Comment 수정
+// @Description  Comment 내용을 수정합니다
+// @Tags         comments
+// @Accept       json
+// @Produce      json
+// @Param        commentId path string true "Comment ID (UUID)"
+// @Param        request body dto.UpdateCommentRequest true "Comment 수정 요청"
+// @Success      200 {object} response.SuccessResponse{data=dto.CommentResponse} "Comment 수정 성공"
+// @Failure      400 {object} response.ErrorResponse "잘못된 요청"
+// @Failure      404 {object} response.ErrorResponse "Comment를 찾을 수 없음"
+// @Failure      500 {object} response.ErrorResponse "서버 에러"
+// @Router       /comments/{commentId} [put]
+func (h *CommentHandler) UpdateComment(c *gin.Context) {
+	commentIDStr := c.Param("commentId")
+	commentID, err := uuid.Parse(commentIDStr)
+	if err != nil {
+		response.SendError(c, http.StatusBadRequest, response.ErrCodeValidation, "Invalid comment ID")
 		return
 	}
 
 	var req dto.UpdateCommentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		dto.Error(c, apperrors.Wrap(err, apperrors.ErrCodeValidation, "Invalid request body", http.StatusBadRequest))
+		response.SendError(c, http.StatusBadRequest, response.ErrCodeValidation, "Invalid request body")
 		return
 	}
 
-	resp, err := h.commentService.UpdateComment(c.Request.Context(), commentID, req, userID)
+	comment, err := h.commentService.UpdateComment(c.Request.Context(), commentID, &req)
 	if err != nil {
-		if appErr, ok := err.(*apperrors.AppError); ok {
-			dto.Error(c, appErr)
-		} else {
-			dto.Error(c, apperrors.ErrInternalServer)
-		}
+		handleServiceError(c, err)
 		return
 	}
 
-	dto.Success(c, resp)
+	response.SendSuccess(c, http.StatusOK, comment)
 }
 
-// DeleteComment handles the deletion of a comment.
+// DeleteComment godoc
+// @Summary      Comment 삭제
+// @Description  Comment를 소프트 삭제합니다
+// @Tags         comments
+// @Produce      json
+// @Param        commentId path string true "Comment ID (UUID)"
+// @Success      200 {object} response.SuccessResponse "Comment 삭제 성공"
+// @Failure      400 {object} response.ErrorResponse "잘못된 Comment ID"
+// @Failure      404 {object} response.ErrorResponse "Comment를 찾을 수 없음"
+// @Failure      500 {object} response.ErrorResponse "서버 에러"
+// @Router       /comments/{commentId} [delete]
 func (h *CommentHandler) DeleteComment(c *gin.Context) {
-	userIDStr := c.GetString("user_id")
-	userID, err := uuid.Parse(userIDStr)
+	commentIDStr := c.Param("commentId")
+	commentID, err := uuid.Parse(commentIDStr)
 	if err != nil {
-		dto.Error(c, apperrors.New(apperrors.ErrCodeBadRequest, "Invalid user ID format", http.StatusBadRequest))
+		response.SendError(c, http.StatusBadRequest, response.ErrCodeValidation, "Invalid comment ID")
 		return
 	}
 
-	commentID, err := uuid.Parse(c.Param("commentId"))
+	err = h.commentService.DeleteComment(c.Request.Context(), commentID)
 	if err != nil {
-		dto.Error(c, apperrors.New(apperrors.ErrCodeBadRequest, "Invalid comment ID format", http.StatusBadRequest))
+		handleServiceError(c, err)
 		return
 	}
 
-	if err := h.commentService.DeleteComment(c.Request.Context(), commentID, userID); err != nil {
-		if appErr, ok := err.(*apperrors.AppError); ok {
-			dto.Error(c, appErr)
-		} else {
-			dto.Error(c, apperrors.ErrInternalServer)
-		}
-		return
-	}
-
-	c.Status(http.StatusNoContent)
+	response.SendSuccess(c, http.StatusOK, nil)
 }

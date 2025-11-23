@@ -2,6 +2,7 @@ package OrangeCloud.UserRepo.controller;
 
 import OrangeCloud.UserRepo.dto.*;
 import OrangeCloud.UserRepo.dto.auth.AuthResponse;
+import OrangeCloud.UserRepo.dto.auth.TokenValidationResponse;
 import OrangeCloud.UserRepo.entity.User;
 import OrangeCloud.UserRepo.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -75,14 +76,20 @@ public class AuthController {
     }
 
     /**
-     * 테스트용 Google OAuth 사용자 생성
-     * GET /api/auth/test
+     * 외부 서비스용 Access Token 유효성 검증
+     * GET /api/auth/validate-access-token?token={token_string}
+     * Board Service (Go)가 WS 연결 전 호출하여 사용자 ID를 확인하는 용도.
      */
-    @GetMapping("/test")
-    @Operation(summary = "테스트 로그인", description = "테스트용 Google OAuth 사용자를 생성하고 토큰을 발급합니다.")
-    public ResponseEntity<AuthResponse> testUser() {
-        logger.debug("Test login request");
-        return ResponseEntity.ok(authService.TestLogin());
+    @GetMapping("/validate-access-token")
+    @Operation(summary = "Access Token 유효성 검증", description = "다른 서비스에서 JWT 유효성을 검사하고 사용자 ID를 반환합니다. (쿼리 파라미터)")
+    public ResponseEntity<TokenValidationResponse> validateAccessToken(@RequestParam("token") String token) {
+        logger.debug("Received token validation request.");
+
+        // 💡 [핵심] AuthService의 유효성 검증 로직 호출
+        UUID userId = authService.validateTokenAndGetUserId(token);
+
+        logger.info("Token validation successful for user ID: {}", userId);
+        return ResponseEntity.ok(new TokenValidationResponse(userId.toString(), true, "Token is valid"));
     }
 
     /**

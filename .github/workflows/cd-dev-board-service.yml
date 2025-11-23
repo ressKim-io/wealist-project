@@ -1,0 +1,945 @@
+name: CD - Dev Board Service
+
+on:
+  # 1. CI 완료 후 자동 실행 (workflow_run)
+  workflow_run:
+    workflows: ["CI - Dev Board Service"]
+    types:
+      - completed
+    # branches 필터 제거 - job level에서 브랜치 체크
+
+  # 2. 인프라 변경 시 직접 실행 (deploy-dev 브랜치만)
+  push:
+    branches:
+      - deploy-dev
+    paths:
+      - "docker/compose/docker-compose.ec2-dev.yml"
+      - ".github/workflows/cd-dev-board-service.yml"
+
+  # 3. 수동 실행 (강제 재배포)
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: '배포 사유 (선택)'
+        required: false
+        type: string
+      upload-compose:
+        description: 'Upload docker-compose file to EC2'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  deploy:
+    name: Deploy to EC2 via SSM
+    runs-on: ubuntu-latest
+    environment: development
+    # workflow_run으로 트리거된 경우, CI가 성공했고 deploy-dev 브랜치일 때만 실행
+    if: |
+      github.event_name == 'push' || 
+      github.event_name == 'workflow_dispatch' || 
+      (github.event_name == 'workflow_run' && 
+       github.event.workflow_run.conclusion == 'success' && 
+       github.event.workflow_run.head_branch == 'deploy-dev')
+
+    steps:
+      # ============================================
+      # 0. 워크플로우 트리거 정보 출력 (디버깅)
+      # ============================================
+      - name: 🔍 Debug Workflow Trigger
+        run: |
+          echo "=== Workflow Trigger Information ==="
+          echo "Event Name: ${{ github.event_name }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "SHA: ${{ github.sha }}"
+          
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo ""
+            echo "=== Workflow Run Details ==="
+            echo "Triggering Workflow: ${{ github.event.workflow_run.name }}"
+            echo "Triggering Workflow ID: ${{ github.event.workflow_run.id }}"
+            echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
+            echo "Head Branch: ${{ github.event.workflow_run.head_branch }}"
+            echo "Head SHA: ${{ github.event.workflow_run.head_sha }}"
+            echo "Event: ${{ github.event.workflow_run.event }}"
+          fi
+          
+          echo ""
+          echo "=== Job Condition Check ==="
+          echo "Should run: true (this job is running)"
+
+      # ============================================
+      # 1. 코드 체크아웃 (스크립트 읽기 위해)
+      # ============================================
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          # workflow_run 이벤트의 경우 트리거한 워크플로우의 SHA 사용
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      # ============================================
+      # 2. AWS Credentials 설정 (임시 - Parameter Store 로드용)
+      # ============================================
+      - name: 🔐 Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.WEALIST_DEV_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.WEALIST_DEV_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      # ============================================
+      # 3. Parameter Store에서 설정 로드
+      # ============================================
+      - name: 📥 Load Configuration from Parameter Store
+        id: config
+        run: |
+          echo "📥 Loading CD configuration from Parameter Store..."
+          
+          # CD 관련 파라미터 로드
+          AWS_REGION=$(aws ssm get-parameter \
+            --name "/wealist/dev/cd/aws_region" \
+            --query 'Parameter.Value' \
+            --output text)
+          
+          PARAMETER_PREFIX=$(aws ssm get-parameter \
+            --name "/wealist/dev/cd/parameter_prefix" \
+            --query 'Parameter.Value' \
+            --output text)
+          
+          COMPOSE_FILE_PATH=$(aws ssm get-parameter \
+            --name "/wealist/dev/cd/compose_file_path" \
+            --query 'Parameter.Value' \
+            --output text)
+          
+          EC2_INSTANCE_ID=$(aws ssm get-parameter \
+            --name "/wealist/dev/cd/ec2_instance_id" \
+            --query 'Parameter.Value' \
+            --output text)
+          
+          # 출력 변수로 설정
+          echo "aws-region=${AWS_REGION}" >> $GITHUB_OUTPUT
+          echo "parameter-prefix=${PARAMETER_PREFIX}" >> $GITHUB_OUTPUT
+          echo "compose-file-path=${COMPOSE_FILE_PATH}" >> $GITHUB_OUTPUT
+          echo "ec2-instance-id=${EC2_INSTANCE_ID}" >> $GITHUB_OUTPUT
+          
+          echo "✅ Configuration loaded successfully"
+          echo "  - AWS Region: ${AWS_REGION}"
+          echo "  - Parameter Prefix: ${PARAMETER_PREFIX}"
+          echo "  - Compose File Path: ${COMPOSE_FILE_PATH}"
+          echo "  - EC2 Instance ID: ${EC2_INSTANCE_ID}"
+
+      # ============================================
+      # 4. docker-compose 파일 보안 검증
+      # ============================================
+      - name: 🔍 Validate docker-compose Security
+        if: github.event.inputs.upload-compose == 'true' || github.event_name == 'push'
+        run: |
+          echo "🔍 Validating docker-compose file for hardcoded secrets..."
+          
+          if [ -f "scripts/validate-compose-secrets.sh" ]; then
+            bash scripts/validate-compose-secrets.sh docker/compose/docker-compose.ec2-dev.yml
+            echo "✅ Security validation passed"
+          else
+            echo "⚠️  Validation script not found, skipping security check"
+          fi
+
+      # ============================================
+      # 5. docker-compose 파일을 EC2에 복사 (선택적)
+      # ============================================
+      - name: 📦 Upload docker-compose file to EC2
+        if: github.event.inputs.upload-compose == 'true' || github.event_name == 'push'
+        run: |
+          echo "📦 Uploading docker-compose file to EC2..."
+          
+          # docker-compose 파일을 Base64로 인코딩
+          COMPOSE_CONTENT=$(base64 -w 0 docker/compose/docker-compose.ec2-dev.yml)
+          
+          # SSM으로 파일 전송
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ steps.config.outputs.ec2-instance-id }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Upload docker-compose file - ${{ github.sha }}" \
+            --timeout-seconds 60 \
+            --parameters commands="[
+              \"echo 'Uploading docker-compose file...'\",
+              \"mkdir -p $(dirname ${{ steps.config.outputs.compose-file-path }})\",
+              \"echo '${COMPOSE_CONTENT}' | base64 -d > ${{ steps.config.outputs.compose-file-path }}\",
+              \"chown ubuntu:ubuntu ${{ steps.config.outputs.compose-file-path }}\",
+              \"echo '✅ docker-compose file uploaded successfully'\",
+              \"ls -lh ${{ steps.config.outputs.compose-file-path }}\"
+            ]" \
+            --output text \
+            --query "Command.CommandId")
+          
+          echo "⏳ Waiting for file upload..."
+          aws ssm wait command-executed \
+            --command-id "${COMMAND_ID}" \
+            --instance-id "${{ steps.config.outputs.ec2-instance-id }}"
+          
+          echo "✅ docker-compose file uploaded"
+
+      # ============================================
+      # 6. 배포 스크립트 생성 (Git에서 관리)
+      # ============================================
+      - name: 📝 Prepare Deployment Script
+        id: script
+        run: |
+          cat << 'DEPLOY_SCRIPT' > /tmp/deploy-board.sh
+          #!/bin/bash
+          
+          # =============================================================================
+          # 스크립트 초기 설정
+          # =============================================================================
+          # 에러 발생 시 즉시 중단
+          set -euo pipefail
+          
+          # 환경변수 정리 함수
+          cleanup_environment() {
+            echo ""
+            echo "🧹 Cleaning up environment variables..."
+            
+            # 민감한 환경변수 목록
+            local sensitive_vars=(
+              "POSTGRES_SUPERUSER_PASSWORD"
+              "USER_DB_PASSWORD"
+              "BOARD_DB_PASSWORD"
+              "REDIS_PASSWORD"
+              "JWT_SECRET"
+              "GOOGLE_CLIENT_ID"
+              "GOOGLE_CLIENT_SECRET"
+              "OAUTH2_CLIENT_REDIRECT_BASE"
+              "OAUTH2_REDIRECT_URL_ENV"
+              "OAUTH2_CLIENT_REDIRECT_URI"
+            )
+            
+            # 환경변수 unset
+            for var in "${sensitive_vars[@]}"; do
+              if [ -n "${!var:-}" ]; then
+                unset "$var"
+              fi
+            done
+            
+            echo "✅ Sensitive environment variables cleaned up"
+          }
+          
+          # 에러 트랩 설정 (에러 발생 시 정리 후 종료)
+          trap 'echo "❌ Error occurred at line $LINENO. Deployment failed!" >&2; cleanup_environment; exit 1' ERR
+          
+          # 정상 종료 시에도 환경변수 정리
+          trap cleanup_environment EXIT
+
+          echo "🚀 Starting Board Service Deployment..."
+          echo "📅 Deployment started at: $(date '+%Y-%m-%d %H:%M:%S')"
+
+          # 환경변수 설정 (GitHub Actions에서 전달)
+          PARAMETER_PREFIX="${PARAMETER_PREFIX}"
+          AWS_REGION="${AWS_REGION}"
+          COMPOSE_FILE="${COMPOSE_FILE}"
+
+          # =============================================================================
+          # Parameter Store에서 환경변수 로드
+          # =============================================================================
+          echo "📥 Loading environment variables from Parameter Store..."
+          echo "  📍 Parameter Prefix: ${PARAMETER_PREFIX}"
+          echo "  📍 AWS Region: ${AWS_REGION}"
+          echo ""
+          
+          # AWS CLI 및 IAM 권한 확인 (선택적)
+          echo "🔍 Verifying AWS CLI and IAM permissions..."
+          if aws sts get-caller-identity > /dev/null 2>&1; then
+            echo "✅ AWS credentials verified"
+            echo "📋 IAM Identity:"
+            aws sts get-caller-identity
+          else
+            echo "⚠️  Could not verify AWS credentials via STS (endpoint may not be available)"
+            echo "   This is expected if STS VPC endpoint is not configured"
+            echo "   Proceeding with deployment - Parameter Store access will be tested next..."
+          fi
+          echo ""
+
+          load_param() {
+            local param_name="$1"
+            local error_output
+            local value
+            local full_param_path="${PARAMETER_PREFIX}/${param_name}"
+            
+            echo "  ⏳ Loading parameter: ${param_name}" >&2
+            
+            error_output=$(mktemp)
+            value=$(aws ssm get-parameter \
+              --name "${full_param_path}" \
+              --query 'Parameter.Value' \
+              --output text \
+              --region ${AWS_REGION} 2>"$error_output")
+            local exit_code=$?
+            
+            if [ $exit_code -ne 0 ] || [ -z "$value" ] || [ "$value" = "None" ]; then
+              echo "  ❌ Failed to load parameter: ${param_name}" >&2
+              echo "     Full path: ${full_param_path}" >&2
+              echo "  📋 Troubleshooting:" >&2
+              echo "     - Check if parameter exists in Parameter Store" >&2
+              echo "     - Verify IAM role has ssm:GetParameter permission" >&2
+              echo "     - Confirm AWS region is correct: ${AWS_REGION}" >&2
+              # Don't output the actual error which might contain sensitive info
+              rm -f "$error_output"
+              exit 1
+            fi
+            
+            rm -f "$error_output"
+            echo "  ✅ Loaded: ${param_name}" >&2
+            echo "$value"
+          }
+
+          load_secret() {
+            local param_name="$1"
+            local error_output
+            local value
+            local full_param_path="${PARAMETER_PREFIX}/${param_name}"
+            
+            echo "  ⏳ Loading secret parameter: ${param_name}" >&2
+            
+            error_output=$(mktemp)
+            value=$(aws ssm get-parameter \
+              --name "${full_param_path}" \
+              --with-decryption \
+              --query 'Parameter.Value' \
+              --output text \
+              --region ${AWS_REGION} 2>"$error_output")
+            local exit_code=$?
+            
+            if [ $exit_code -ne 0 ] || [ -z "$value" ] || [ "$value" = "None" ]; then
+              echo "  ❌ Failed to load secret parameter: ${param_name}" >&2
+              echo "     Full path: ${full_param_path}" >&2
+              echo "  📋 Troubleshooting:" >&2
+              echo "     - Check if parameter exists in Parameter Store" >&2
+              echo "     - Verify IAM role has ssm:GetParameter permission" >&2
+              echo "     - Confirm parameter type is SecureString" >&2
+              echo "     - Verify KMS key permissions for decryption" >&2
+              echo "     - Confirm AWS region is correct: ${AWS_REGION}" >&2
+              # Don't output the actual error which might contain sensitive info
+              rm -f "$error_output"
+              exit 1
+            fi
+            
+            rm -f "$error_output"
+            echo "  ✅ Loaded: ${param_name} (SecureString)" >&2
+            echo "$value"
+          }
+
+          # 필수 환경 변수 로드
+          export AWS_ACCOUNT_ID=$(load_param "aws_account_id")
+          export AWS_REGION="${AWS_REGION}"
+          export VERSION="latest"
+
+          # PostgreSQL
+          export POSTGRES_SUPERUSER=$(load_param "db/postgres_superuser")
+          export POSTGRES_SUPERUSER_PASSWORD=$(load_secret "db/postgres_superuser_password")
+
+          # User DB
+          export USER_DB_NAME=$(load_param "db/user_db_name")
+          export USER_DB_USER=$(load_param "db/user_db_user")
+          export USER_DB_PASSWORD=$(load_secret "db/user_db_password")
+
+          # Board DB
+          export BOARD_DB_NAME=$(load_param "db/board_db_name")
+          export BOARD_DB_USER=$(load_param "db/board_db_user")
+          export BOARD_DB_PASSWORD=$(load_secret "db/board_db_password")
+
+          # Redis
+          export REDIS_PASSWORD=$(load_secret "cache/redis_password")
+
+          # JWT
+          export JWT_SECRET=$(load_secret "jwt/jwt_secret")
+          export JWT_ACCESS_TOKEN_EXPIRATION_MS="1800000"
+          export JWT_REFRESH_TOKEN_EXPIRATION_MS="604800000"
+
+          # OAuth
+          export GOOGLE_CLIENT_ID=$(load_secret "oauth/google_client_id")
+          export GOOGLE_CLIENT_SECRET=$(load_secret "oauth/google-client-secret")
+          
+          # OAuth URLs (user-service에서 필요)
+          export OAUTH2_CLIENT_REDIRECT_BASE=$(load_param "url/oauth2_client_redirect_base")
+          if [ -z "$OAUTH2_CLIENT_REDIRECT_BASE" ]; then
+            echo "❌ ERROR: Parameter 'url/oauth2_client_redirect_base' not found in Parameter Store" >&2
+            echo "Please set the parameter using:" >&2
+            echo "  aws ssm put-parameter --name '/wealist/dev/url/oauth2_client_redirect_base' --value 'https://api.wealist.co.kr' --type String" >&2
+            exit 1
+          fi
+          
+          export OAUTH2_REDIRECT_URL_ENV=$(load_param "url/oauth2_redirect_url")
+          if [ -z "$OAUTH2_REDIRECT_URL_ENV" ]; then
+            echo "❌ ERROR: Parameter 'url/oauth2_redirect_url' not found in Parameter Store" >&2
+            echo "Please set the parameter using:" >&2
+            echo "  aws ssm put-parameter --name '/wealist/dev/url/oauth2_redirect_url' --value 'https://wealist.co.kr/oauth/callback' --type String" >&2
+            exit 1
+          fi
+          
+          export OAUTH2_CLIENT_REDIRECT_URI="${OAUTH2_CLIENT_REDIRECT_BASE}/api/users/login/oauth2/code/google"
+
+
+
+          # Service URLs
+          export USER_SERVICE_URL=$(load_param "service/user_service_url")
+
+          # S3 Configuration
+          export S3_BUCKET=$(load_param "s3/bucket")
+          export S3_REGION=$(load_param "s3/region")
+          export S3_ACCESS_KEY=$(load_secret "s3/access-key")
+          export S3_SECRET_KEY=$(load_secret "s3/secret-key")
+
+          # 환경 변수 검증
+          required_vars=(
+            "AWS_ACCOUNT_ID"
+            "POSTGRES_SUPERUSER"
+            "POSTGRES_SUPERUSER_PASSWORD"
+            "BOARD_DB_NAME"
+            "BOARD_DB_USER"
+            "BOARD_DB_PASSWORD"
+            "REDIS_PASSWORD"
+            "JWT_SECRET"
+            "USER_SERVICE_URL"
+          )
+
+          for var in "${required_vars[@]}"; do
+            if [ -z "${!var}" ]; then
+              echo "❌ Required environment variable not set: $var" >&2
+              exit 1
+            fi
+          done
+
+          echo ""
+          echo "✅ Environment variables loaded successfully"
+          echo "📋 Loaded variables summary:"
+          echo "   - AWS_ACCOUNT_ID: ${AWS_ACCOUNT_ID}"
+          echo "   - AWS_REGION: ${AWS_REGION}"
+          echo "   - VERSION: ${VERSION}"
+          echo "   - POSTGRES_SUPERUSER: ${POSTGRES_SUPERUSER}"
+          echo "   - POSTGRES_SUPERUSER_PASSWORD: [REDACTED]"
+          echo "   - USER_DB_NAME: ${USER_DB_NAME}"
+          echo "   - USER_DB_USER: ${USER_DB_USER}"
+          echo "   - USER_DB_PASSWORD: [REDACTED]"
+          echo "   - BOARD_DB_NAME: ${BOARD_DB_NAME}"
+          echo "   - BOARD_DB_USER: ${BOARD_DB_USER}"
+          echo "   - BOARD_DB_PASSWORD: [REDACTED]"
+          echo "   - REDIS_PASSWORD: [REDACTED]"
+          echo "   - JWT_SECRET: [REDACTED]"
+          echo "   - JWT_ACCESS_TOKEN_EXPIRATION_MS: ${JWT_ACCESS_TOKEN_EXPIRATION_MS}"
+          echo "   - JWT_REFRESH_TOKEN_EXPIRATION_MS: ${JWT_REFRESH_TOKEN_EXPIRATION_MS}"
+          echo "   - GOOGLE_CLIENT_ID: [REDACTED]"
+          echo "   - GOOGLE_CLIENT_SECRET: [REDACTED]"
+          echo "   - OAUTH2_CLIENT_REDIRECT_BASE: ${OAUTH2_CLIENT_REDIRECT_BASE}"
+          echo "   - OAUTH2_REDIRECT_URL_ENV: ${OAUTH2_REDIRECT_URL_ENV}"
+          echo "   - OAUTH2_CLIENT_REDIRECT_URI: ${OAUTH2_CLIENT_REDIRECT_URI}"
+          echo "   - USER_SERVICE_URL: ${USER_SERVICE_URL}"
+          echo ""
+
+          # =============================================================================
+          # ECR 로그인
+          # =============================================================================
+          echo "🔑 Logging into Amazon ECR..."
+          echo "  📍 ECR Registry: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          
+          ecr_error=$(mktemp)
+          if ! aws ecr get-login-password --region ${AWS_REGION} 2>"$ecr_error" | \
+            docker login --username AWS --password-stdin \
+            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com 2>&1 | tee -a "$ecr_error"; then
+            echo "❌ Failed to login to ECR" >&2
+            echo "📋 Error details:" >&2
+            cat "$ecr_error" >&2
+            rm -f "$ecr_error"
+            exit 1
+          fi
+          rm -f "$ecr_error"
+          echo "✅ ECR login successful"
+
+          # =============================================================================
+          # 최신 이미지 Pull
+          # =============================================================================
+          echo "📥 Pulling latest board-service image..."
+          IMAGE_NAME="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/wealist-dev-board-service:latest"
+          echo "  📍 Image: ${IMAGE_NAME}"
+          
+          pull_error=$(mktemp)
+          if ! docker pull ${IMAGE_NAME} 2>&1 | tee "$pull_error"; then
+            echo "❌ Failed to pull board-service image" >&2
+            echo "📋 Error details:" >&2
+            cat "$pull_error" >&2
+            rm -f "$pull_error"
+            exit 1
+          fi
+          rm -f "$pull_error"
+          echo "✅ Image pulled successfully"
+
+          # =============================================================================
+          # 인프라 컨테이너 확인 및 시작
+          # =============================================================================
+          echo "🔍 Checking infrastructure services..."
+
+          # Docker Compose 명령어 감지 (v1 vs v2)
+          echo "  🔍 Detecting Docker Compose version..."
+          if command -v docker-compose &> /dev/null; then
+            COMPOSE_CMD="docker-compose"
+            COMPOSE_VERSION=$(docker-compose version --short 2>/dev/null || echo "unknown")
+            echo "  📦 Using Docker Compose v1: docker-compose (version: ${COMPOSE_VERSION})"
+          elif docker compose version &> /dev/null 2>&1; then
+            COMPOSE_CMD="docker compose"
+            COMPOSE_VERSION=$(docker compose version --short 2>/dev/null || echo "unknown")
+            echo "  📦 Using Docker Compose v2: docker compose (version: ${COMPOSE_VERSION})"
+          else
+            echo "  ❌ Docker Compose not found" >&2
+            echo "  📋 Please install Docker Compose:" >&2
+            echo "     - v1: sudo apt-get install docker-compose" >&2
+            echo "     - v2: sudo apt-get install docker-compose-plugin" >&2
+            exit 1
+          fi
+
+          # 인프라 서비스 목록 정의 (데이터베이스, 캐시만)
+          INFRA_SERVICES="postgres redis"
+          
+          # 각 서비스 실행 여부 확인
+          echo "  🔍 Checking service status..."
+          SERVICES_TO_START=""
+          
+          for service in $INFRA_SERVICES; do
+            container_name="wealist-${service}"
+            if docker ps --format '{{.Names}}' | grep -q "^${container_name}$"; then
+              echo "  ✅ ${service} is running"
+            else
+              echo "  ⚠️  ${service} is not running"
+              SERVICES_TO_START="${SERVICES_TO_START} ${service}"
+            fi
+          done
+
+          # 시작이 필요한 서비스가 있으면 시작
+          if [ -n "$SERVICES_TO_START" ]; then
+            echo "  🚀 Starting infrastructure services:${SERVICES_TO_START}"
+            
+            # 인프라 서비스 시작
+            infra_error=$(mktemp)
+            if ! $COMPOSE_CMD -f ${COMPOSE_FILE} up -d $SERVICES_TO_START 2>&1 | tee "$infra_error"; then
+              echo "  ❌ Failed to start infrastructure services" >&2
+              echo "  📋 Error details:" >&2
+              cat "$infra_error" >&2
+              echo "  📋 Docker Compose status:" >&2
+              $COMPOSE_CMD -f ${COMPOSE_FILE} ps 2>&1 || echo "  ⚠️  Could not retrieve status" >&2
+              echo "  📋 Recent logs:" >&2
+              $COMPOSE_CMD -f ${COMPOSE_FILE} logs --tail=50 $SERVICES_TO_START 2>&1 || echo "  ⚠️  Could not retrieve logs" >&2
+              rm -f "$infra_error"
+              exit 1
+            fi
+            rm -f "$infra_error"
+            
+            echo "  ✅ Infrastructure services started"
+            echo "  ⏳ Waiting for services to be ready..."
+            
+            # PostgreSQL 헬스체크 (최대 30초 대기)
+            echo "  🏥 Checking PostgreSQL health..."
+            POSTGRES_READY=false
+            for i in {1..6}; do
+              if docker exec wealist-postgres pg_isready -U ${POSTGRES_SUPERUSER} > /dev/null 2>&1; then
+                echo "  ✅ PostgreSQL is ready (attempt $i/6)"
+                POSTGRES_READY=true
+                break
+              fi
+              echo "  ⏳ Waiting for PostgreSQL... (attempt $i/6)"
+              sleep 5
+            done
+            
+            if [ "$POSTGRES_READY" = false ]; then
+              echo "  ❌ PostgreSQL failed to become ready" >&2
+              echo "  📋 Container status:" >&2
+              docker ps -a --filter "name=wealist-postgres" --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' >&2
+              echo "  📋 Recent logs:" >&2
+              docker logs wealist-postgres --tail=50 2>&1 >&2
+              exit 1
+            fi
+            
+            # Redis 헬스체크 (최대 30초 대기)
+            echo "  🏥 Checking Redis health..."
+            REDIS_READY=false
+            for i in {1..6}; do
+              if docker exec wealist-redis redis-cli -a "${REDIS_PASSWORD}" ping > /dev/null 2>&1; then
+                echo "  ✅ Redis is ready (attempt $i/6)"
+                REDIS_READY=true
+                break
+              fi
+              echo "  ⏳ Waiting for Redis... (attempt $i/6)"
+              sleep 5
+            done
+            
+            if [ "$REDIS_READY" = false ]; then
+              echo "  ❌ Redis failed to become ready" >&2
+              echo "  📋 Container status:" >&2
+              docker ps -a --filter "name=wealist-redis" --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' >&2
+              echo "  📋 Recent logs:" >&2
+              docker logs wealist-redis --tail=50 2>&1 >&2
+              exit 1
+            fi
+            
+            echo "  ✅ All infrastructure services are healthy and ready"
+          else
+            echo "  ✅ All infrastructure services already running"
+            
+            # 이미 실행 중이더라도 헬스체크 수행
+            echo "  🏥 Verifying infrastructure health..."
+            
+            # PostgreSQL 헬스체크
+            if docker exec wealist-postgres pg_isready -U ${POSTGRES_SUPERUSER} > /dev/null 2>&1; then
+              echo "  ✅ PostgreSQL is healthy"
+            else
+              echo "  ⚠️  PostgreSQL health check failed, but container is running" >&2
+              echo "  📋 Container status:" >&2
+              docker ps --filter "name=wealist-postgres" --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' >&2
+            fi
+            
+            # Redis 헬스체크
+            if docker exec wealist-redis redis-cli -a "${REDIS_PASSWORD}" ping > /dev/null 2>&1; then
+              echo "  ✅ Redis is healthy"
+            else
+              echo "  ⚠️  Redis health check failed, but container is running" >&2
+              echo "  📋 Container status:" >&2
+              docker ps --filter "name=wealist-redis" --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' >&2
+            fi
+          fi
+          
+          echo ""
+
+          # =============================================================================
+          # 데이터베이스 확인 및 권한 설정 (인프라 시작 후)
+          # =============================================================================
+          echo "🗄️  Checking database and permissions..."
+          echo "  📍 Database: ${BOARD_DB_NAME}"
+          echo "  📍 User: ${BOARD_DB_USER}"
+          
+          # 데이터베이스 존재 여부 확인
+          echo "  🔍 Checking if database exists..."
+          DB_EXISTS=$(docker exec wealist-postgres psql -U ${POSTGRES_SUPERUSER} -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='${BOARD_DB_NAME}';" 2>&1)
+          
+          if [ "$DB_EXISTS" = "1" ]; then
+            echo "  ✅ Database already exists - preserving existing data"
+            
+            # 권한만 확인/설정
+            echo "  🔐 Ensuring proper permissions..."
+            docker exec wealist-postgres psql -U ${POSTGRES_SUPERUSER} -d postgres -c "
+            GRANT ALL PRIVILEGES ON DATABASE ${BOARD_DB_NAME} TO ${BOARD_DB_USER};
+            " 2>&1
+            
+            echo "  ✅ Database permissions verified"
+          else
+            echo "  📦 Database does not exist - creating new database..."
+            
+            # 데이터베이스 생성 (OWNER 설정으로 모든 권한 자동 부여)
+            docker exec wealist-postgres psql -U ${POSTGRES_SUPERUSER} -d postgres -c "CREATE DATABASE ${BOARD_DB_NAME} OWNER ${BOARD_DB_USER};" 2>&1
+            
+            if [ $? -eq 0 ]; then
+              echo "  ✅ Database created successfully with owner ${BOARD_DB_USER}"
+            else
+              echo "  ❌ Failed to create database" >&2
+              exit 1
+            fi
+          fi
+          
+          echo "✅ Database ready (GORM will handle schema migrations)"
+          echo ""
+
+          # =============================================================================
+          # NOTE: Database migrations are handled by GORM auto-migration
+          # SQL migration files are not used in this deployment
+          # Schema changes are automatically applied when board-service starts
+          # =============================================================================
+
+          # =============================================================================
+          # Board Service 재시작
+          # =============================================================================
+          echo "🔄 Restarting board-service..."
+          echo "  📍 Compose file: ${COMPOSE_FILE}"
+          
+          # Docker Compose 명령어는 이미 인프라 확인 단계에서 감지됨
+          # COMPOSE_CMD 변수가 설정되어 있지 않으면 다시 감지
+          if [ -z "${COMPOSE_CMD:-}" ]; then
+            echo "  🔍 Detecting Docker Compose version..."
+            if command -v docker-compose &> /dev/null; then
+              COMPOSE_CMD="docker-compose"
+              COMPOSE_VERSION=$(docker-compose version --short 2>/dev/null || echo "unknown")
+              echo "  📦 Using Docker Compose v1: docker-compose (version: ${COMPOSE_VERSION})"
+            elif docker compose version &> /dev/null 2>&1; then
+              COMPOSE_CMD="docker compose"
+              COMPOSE_VERSION=$(docker compose version --short 2>/dev/null || echo "unknown")
+              echo "  📦 Using Docker Compose v2: docker compose (version: ${COMPOSE_VERSION})"
+            else
+              echo "  ❌ Docker Compose not found" >&2
+              echo "  📋 Please install Docker Compose:" >&2
+              echo "     - v1: sudo apt-get install docker-compose" >&2
+              echo "     - v2: sudo apt-get install docker-compose-plugin" >&2
+              exit 1
+            fi
+          fi
+          
+          # board-service 재시작
+          echo "  🔄 Recreating board-service..."
+          restart_error=$(mktemp)
+          if ! $COMPOSE_CMD -f ${COMPOSE_FILE} up -d --force-recreate board-service 2>&1 | tee "$restart_error"; then
+            echo "  ❌ Failed to restart board-service" >&2
+            echo "  📋 Error details:" >&2
+            cat "$restart_error" >&2
+            echo "  📋 Recent service logs:" >&2
+            $COMPOSE_CMD -f ${COMPOSE_FILE} logs --tail=50 board-service 2>&1 || echo "  ⚠️  Could not retrieve logs" >&2
+            echo "  📋 Container status:" >&2
+            docker ps -a --filter "name=board-service" --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' >&2
+            rm -f "$restart_error"
+            exit 1
+          fi
+          rm -f "$restart_error"
+          
+          echo "  ✅ Board service container recreated"
+          echo "✅ Board service restarted successfully"
+
+          # =============================================================================
+          # Health Check
+          # =============================================================================
+          echo "🏥 Performing health check..."
+          echo "  ⏳ Waiting 10 seconds for service to initialize..."
+          sleep 10
+
+          MAX_RETRIES=12
+          HEALTH_ENDPOINT="http://localhost:8000/api/boards/health"
+          echo "  📍 Health endpoint: ${HEALTH_ENDPOINT}"
+          echo "  📊 Max retries: ${MAX_RETRIES} (60 seconds total)"
+          
+          for i in $(seq 1 $MAX_RETRIES); do
+            health_output=$(mktemp)
+            if curl -f -s ${HEALTH_ENDPOINT} > "$health_output" 2>&1; then
+              echo "  ✅ Health check passed!"
+              echo "  📋 Health response:"
+              cat "$health_output"
+              rm -f "$health_output"
+              echo "✅ Board Service is healthy!"
+              
+              # =============================================================================
+              # 리소스 정리
+              # =============================================================================
+              echo ""
+              echo "🧹 Cleaning up unused Docker images..."
+              cleanup_output=$(docker image prune -f 2>&1)
+              echo "  📋 Cleanup result:"
+              echo "$cleanup_output" | head -5
+              echo "✅ Docker cleanup completed"
+              
+              echo ""
+              echo "✅ Deployment completed successfully!"
+              echo "📅 Deployment finished at: $(date '+%Y-%m-%d %H:%M:%S')"
+              echo ""
+              echo "Note: Environment variables will be cleaned up automatically"
+              exit 0
+            fi
+            rm -f "$health_output"
+            echo "  ⏳ Waiting for service... ($i/$MAX_RETRIES)"
+            sleep 5
+          done
+
+          echo "  ❌ Health check failed after ${MAX_RETRIES} attempts!" >&2
+          echo "  📋 Diagnostic information:" >&2
+          echo "" >&2
+          echo "  🔍 Container status:" >&2
+          docker ps -a --filter "name=board-service" --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' >&2
+          echo "" >&2
+          echo "  📋 Recent service logs (last 100 lines):" >&2
+          $COMPOSE_CMD -f ${COMPOSE_FILE} logs --tail=100 board-service 2>&1 >&2
+          echo "" >&2
+          echo "  🌐 Network connectivity test:" >&2
+          curl -v ${HEALTH_ENDPOINT} 2>&1 | head -20 >&2 || echo "  ⚠️  Could not connect to health endpoint" >&2
+          exit 1
+          DEPLOY_SCRIPT
+
+          chmod +x /tmp/deploy-board.sh
+          echo "✅ Deployment script prepared"
+
+      # ============================================
+      # 7. SSM Run Command로 스크립트 전송 & 실행
+      # ============================================
+      - name: 🚀 Deploy via SSM Run Command
+        id: deploy
+        run: |
+          echo "📋 Deployment Configuration:"
+          echo "  - Instance ID: ${{ steps.config.outputs.ec2-instance-id }}"
+          echo "  - AWS Region: ${{ steps.config.outputs.aws-region }}"
+          echo "  - Parameter Prefix: ${{ steps.config.outputs.parameter-prefix }}"
+          echo "  - Compose File: ${{ steps.config.outputs.compose-file-path }}"
+          echo "  - Commit SHA: ${{ github.sha }}"
+          echo ""
+          
+          # 스크립트를 Base64로 인코딩 (특수문자 안전하게 전송)
+          echo "📦 Encoding deployment script..."
+          SCRIPT_BASE64=$(base64 -w 0 /tmp/deploy-board.sh)
+          echo "✅ Script encoded (${#SCRIPT_BASE64} bytes)"
+          echo ""
+
+          # SSM Run Command 실행
+          echo "🚀 Sending command to EC2 instance..."
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ steps.config.outputs.ec2-instance-id }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy Board Service - ${{ github.sha }}" \
+            --timeout-seconds 300 \
+            --parameters commands="[
+              \"echo '=== Deployment Script Received ===' \",
+              \"echo 'Timestamp: '\$(date) \",
+              \"echo 'Instance ID: '\$(ec2-metadata --instance-id 2>/dev/null || echo 'N/A') \",
+              \"echo '' \",
+              \"echo '${SCRIPT_BASE64}' | base64 -d > /tmp/deploy.sh\",
+              \"chmod +x /tmp/deploy.sh\",
+              \"echo '🚀 Starting deployment script execution...' \",
+              \"export PARAMETER_PREFIX='${{ steps.config.outputs.parameter-prefix }}'\",
+              \"export AWS_REGION='${{ steps.config.outputs.aws-region }}'\",
+              \"export COMPOSE_FILE='${{ steps.config.outputs.compose-file-path }}'\",
+              \"/tmp/deploy.sh 2>&1 | tee /tmp/deploy.log\",
+              \"DEPLOY_EXIT_CODE=\${PIPESTATUS[0]}\",
+              \"echo '' \",
+              \"echo '=== Deployment Script Finished ===' \",
+              \"echo 'Exit Code: '\$DEPLOY_EXIT_CODE \",
+              \"rm -f /tmp/deploy.sh\",
+              \"exit \$DEPLOY_EXIT_CODE\"
+            ]" \
+            --output text \
+            --query "Command.CommandId")
+
+          if [ -z "$COMMAND_ID" ]; then
+            echo "❌ Failed to send SSM command - no Command ID returned"
+            exit 1
+          fi
+
+          echo "command-id=${COMMAND_ID}" >> $GITHUB_OUTPUT
+          echo "✅ Command sent successfully"
+          echo "📝 Command ID: ${COMMAND_ID}"
+          echo ""
+
+      # ============================================
+      # 6. 배포 결과 대기
+      # ============================================
+      - name: ⏳ Wait for Deployment
+        run: |
+          COMMAND_ID="${{ steps.deploy.outputs.command-id }}"
+          INSTANCE_ID="${{ steps.config.outputs.ec2-instance-id }}"
+
+          echo "⏳ Waiting for deployment to complete..."
+          echo "  - Command ID: ${COMMAND_ID}"
+          echo "  - Instance ID: ${INSTANCE_ID}"
+          echo ""
+          
+          # 명령어 실행 대기 (최대 5분)
+          echo "⏳ Polling command status..."
+          MAX_WAIT=60  # 5분 (5초 간격)
+          WAIT_COUNT=0
+          LAST_OUTPUT_LINE=""
+          
+          while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "${COMMAND_ID}" \
+              --instance-id "${INSTANCE_ID}" \
+              --query "Status" \
+              --output text 2>/dev/null || echo "Pending")
+            
+            # 30초마다 현재 출력 확인 (진행 상황 표시)
+            if [ $((WAIT_COUNT % 6)) -eq 0 ]; then
+              CURRENT_OUTPUT=$(aws ssm get-command-invocation \
+                --command-id "${COMMAND_ID}" \
+                --instance-id "${INSTANCE_ID}" \
+                --query "StandardOutputContent" \
+                --output text 2>/dev/null | tail -1)
+              
+              if [ "$CURRENT_OUTPUT" != "$LAST_OUTPUT_LINE" ] && [ -n "$CURRENT_OUTPUT" ]; then
+                echo "  [$((WAIT_COUNT * 5))s] Status: ${STATUS} | Last output: ${CURRENT_OUTPUT}"
+                LAST_OUTPUT_LINE="$CURRENT_OUTPUT"
+              else
+                echo "  [$((WAIT_COUNT * 5))s] Status: ${STATUS}"
+              fi
+            fi
+            
+            if [ "$STATUS" = "Success" ] || [ "$STATUS" = "Failed" ] || [ "$STATUS" = "TimedOut" ] || [ "$STATUS" = "Cancelled" ]; then
+              break
+            fi
+            
+            sleep 5
+            WAIT_COUNT=$((WAIT_COUNT + 1))
+          done
+          
+          # 타임아웃 체크
+          if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
+            echo ""
+            echo "⚠️  Polling timeout reached (5 minutes)"
+            echo "   Command may still be running on EC2"
+            echo "   Check SSM command status manually:"
+            echo "   aws ssm get-command-invocation --command-id ${COMMAND_ID} --instance-id ${INSTANCE_ID}"
+          fi
+          
+          echo ""
+          echo "📊 Final Status: ${STATUS}"
+          echo ""
+
+          if [ "$STATUS" != "Success" ]; then
+            echo "❌ Deployment failed with status: ${STATUS}"
+            echo ""
+            echo "📋 Error Output:"
+            aws ssm get-command-invocation \
+              --command-id "${COMMAND_ID}" \
+              --instance-id "${INSTANCE_ID}" \
+              --query "StandardErrorContent" \
+              --output text
+            echo ""
+            echo "📋 Standard Output:"
+            aws ssm get-command-invocation \
+              --command-id "${COMMAND_ID}" \
+              --instance-id "${INSTANCE_ID}" \
+              --query "StandardOutputContent" \
+              --output text
+            exit 1
+          fi
+
+          echo "✅ Deployment completed successfully!"
+
+      # ============================================
+      # 7. 배포 로그 출력
+      # ============================================
+      - name: 📋 Show Deployment Logs
+        if: always()
+        run: |
+          echo "📋 Full Deployment Output:"
+          echo "================================"
+          aws ssm get-command-invocation \
+            --command-id "${{ steps.deploy.outputs.command-id }}" \
+            --instance-id "${{ steps.config.outputs.ec2-instance-id }}" \
+            --query "StandardOutputContent" \
+            --output text || echo "⚠️  Could not retrieve output"
+          echo ""
+          echo "================================"
+
+      # ============================================
+      # 8. Summary
+      # ============================================
+      - name: 📊 Deployment Summary
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          
+          if [ "$STATUS" = "success" ]; then
+            ICON="✅"
+            TITLE="Board Service Deployed Successfully"
+          else
+            ICON="❌"
+            TITLE="Board Service Deployment Failed"
+          fi
+          
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ### ${ICON} ${TITLE}
+
+          - **Commit:** \`${{ github.sha }}\`
+          - **Instance:** \`${{ steps.config.outputs.ec2-instance-id }}\`
+          - **Command ID:** \`${{ steps.deploy.outputs.command-id }}\`
+          - **Status:** ${STATUS}
+          - **Timestamp:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          
+          #### Quick Links
+          - [View Commit](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+          - [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          EOF

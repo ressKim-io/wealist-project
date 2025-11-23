@@ -1,4 +1,4 @@
-# weAlist Project
+# weAlist BASIC Project
 
 프로젝트 관리 플랫폼 - 마이크로서비스 아키텍처
 
@@ -10,6 +10,94 @@
 | **User Service** | Spring Boot (Java) | 8080 | ✅ Active | 사용자 인증 및 관리 |
 | **Board Service** | Gin (Go) | 8000 | ✅ Active | 보드/칸반 관리, 커스텀 필드 |
 | **Frontend** | React (TypeScript) | 3000 | 🚧 Dev | 프론트엔드 애플리케이션 |
+
+## 🌐 ALB Path-Based Routing
+
+AWS 환경에서는 Application Load Balancer(ALB)를 통해 서비스별 경로 기반 라우팅을 제공합니다.
+
+### 라우팅 구조
+
+```
+Client Request
+    ↓
+ALB (https://api.wealist.co.kr)
+    ├─ /api/users/*   → User Service (port 8080)
+    └─ /api/boards/*  → Board Service (port 8000)
+```
+
+### 환경별 설정
+
+#### 로컬 개발 환경
+- ALB 없이 직접 서비스 접근
+- Context/Base Path 설정 없음
+
+```bash
+# User Service
+curl http://localhost:8080/api/workspaces/all
+
+# Board Service
+curl http://localhost:8000/health
+```
+
+#### AWS 환경 (Production)
+- ALB를 통한 통합 엔드포인트
+- 서비스별 prefix 자동 제거
+
+```bash
+# User Service (ALB → /api/users 제거 → User Service)
+curl https://api.wealist.co.kr/api/users/api/workspaces/all
+
+# Board Service (ALB → /api/boards 제거 → Board Service)
+curl https://api.wealist.co.kr/api/boards/health
+```
+
+### API 엔드포인트 예시
+
+| 환경 | User Service | Board Service |
+|------|-------------|---------------|
+| **로컬** | `http://localhost:8080/api/workspaces/all` | `http://localhost:8000/health` |
+| **AWS** | `https://api.wealist.co.kr/api/users/api/workspaces/all` | `https://api.wealist.co.kr/api/boards/health` |
+
+### 서비스별 Path 설정
+
+**User Service (Spring Boot)**
+- AWS 환경: `server.servlet.context-path=/api/users` (application-aws.yml)
+- 로컬 환경: Context path 없음 (application-local.yml)
+- Profile 전환: `SPRING_PROFILES_ACTIVE` 환경 변수
+
+**Board Service (Go)**
+- AWS 환경: `SERVER_BASE_PATH=/api/boards` 환경 변수
+- 로컬 환경: `SERVER_BASE_PATH=""` (빈 문자열)
+- 환경 전환: `ENV` 환경 변수
+
+자세한 배포 가이드는 [docs/ALB_ROUTING_DEPLOYMENT.md](docs/ALB_ROUTING_DEPLOYMENT.md)를 참조하세요.
+
+### ALB 설정 검증
+
+ALB 설정이 올바르게 구성되었는지 확인하는 스크립트를 제공합니다.
+
+#### 1. API 엔드포인트 검증
+```bash
+# 기본 검증 (Health check만)
+./scripts/verify-alb-setup.sh
+
+# 상세 검증 (응답 내용 포함)
+VERBOSE=true ./scripts/verify-alb-setup.sh
+
+# 커스텀 ALB URL 사용
+ALB_URL=https://your-alb-url.com ./scripts/verify-alb-setup.sh
+```
+
+#### 2. Target Group Health 확인 (AWS CLI 필요)
+```bash
+# Target Group health 상태 및 Listener Rules 확인
+./scripts/check-alb-health.sh
+```
+
+**참고**: `check-alb-health.sh` 스크립트는 AWS CLI가 설치되어 있고 적절한 권한이 설정되어 있어야 합니다.
+
+#### 3. 상세 검증 가이드
+AWS Console에서 직접 확인하는 방법을 포함한 전체 검증 절차는 [docs/ALB_VERIFICATION_GUIDE.md](docs/ALB_VERIFICATION_GUIDE.md)를 참조하세요.
 
 ## 🚀 주요 기능
 

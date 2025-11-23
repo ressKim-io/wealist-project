@@ -2,11 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 
-// ⚠️ 백엔드 OAuth2 인증 시작 엔드포인트
-// VITE_REACT_APP_JAVA_API_URL이 'http://localhost:8080'을 가리킨다고 가정
-const GOOGLE_AUTH_URL = `http://localhost:8080/oauth2/authorization/google`;
+// 1. Base URL 결정 (dev.sh에서 주입된 값 또는 하드코딩된 배포 도메인)
+const BASE_DOMAIN = import.meta.env.VITE_API_BASE_URL || 'https://api.wealist.co.kr';
 
-// onLogin prop 제거 (TS6133 에러 해결)
+// 2. 로컬 개발 환경(development)일 경우에만 8080 포트를 붙입니다.
+// 이 조건문은 VITE_API_BASE_URL이 'http://localhost'일 때만 포트가 붙도록 보장합니다.
+// 배포 환경(production)에서는 포트가 붙지 않습니다.
+const OAUTH_BASE =
+  BASE_DOMAIN === 'http://localhost' || BASE_DOMAIN.includes('127.0.0.1')
+    ? `${BASE_DOMAIN}:8080`
+    : BASE_DOMAIN + '/api/users';
+
+// ⚠️ 백엔드 OAuth2 인증 시작 엔드포인트
+const GOOGLE_AUTH_URL = `${OAUTH_BASE}/oauth2/authorization/google`;
 const AuthPage: React.FC = () => {
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -27,7 +35,7 @@ const AuthPage: React.FC = () => {
       // 불완전한 인증 정보가 있으면 정리
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
-      localStorage.removeItem('userId');
+      localStorage.removeItem('nickName');
       localStorage.removeItem('userEmail');
     }
   }, [navigate]);
@@ -38,7 +46,6 @@ const AuthPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // 🚀 백엔드가 제공한 OAuth2 시작 URL로 브라우저를 리다이렉션합니다.
       window.location.href = GOOGLE_AUTH_URL;
     } catch (e) {
       setIsLoading(false);

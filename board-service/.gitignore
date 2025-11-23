@@ -4,45 +4,49 @@
 *.dll
 *.so
 *.dylib
-board-api
-/board-api
 
 # Test binary, built with `go test -c`
 *.test
 
 # Output of the go coverage tool
 *.out
-coverage.txt
-coverage.html
-
-# Dependency directories
-vendor/
 
 # Go workspace file
 go.work
 
-# Environment files
-.env
-.env.*
-!.env.example
+# Dependency directories
+vendor/
 
-# IDE directories
+# Build output
+/bin/
+/dist/
+main
+api
+board-api
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-.DS_Store
 
-# OS files
+# OS
+.DS_Store
 Thumbs.db
-.DS_Store
 
-# Temporary files
-*.tmp
+# Environment variables
+.env
+.env.local
+
+# Logs
 *.log
+logs/
 
-# Build artifacts
-dist/
-build/
-bin/
+# Database
+*.db
+*.sqlite
+
+# Config (keep example files)
+configs/config.yaml
+!configs/config.yaml.example

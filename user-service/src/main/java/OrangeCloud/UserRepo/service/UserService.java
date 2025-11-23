@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import OrangeCloud.UserRepo.dto.user.UpdateUserRequest;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -21,6 +22,8 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
+    private static final UUID DEFAULT_WORKSPACE_ID = UUID.fromString("00000000-0000-0000-0000-000000000000");
+
 
     /**
      * Google OAuth 로그인/가입
@@ -62,9 +65,10 @@ public class UserService {
         // UserProfile도 함께 생성
         UserProfile profile = UserProfile.builder()
                 .userId(savedUser.getUserId())
-                .nickName(nickName)
+                .nickName(nickName != null && !nickName.isEmpty() ? nickName : email)
+                .workspaceId(DEFAULT_WORKSPACE_ID)
                 .build();
-
+//
         userProfileRepository.save(profile);
         log.debug("UserProfile created for userId={}, nickName={}", savedUser.getUserId(), nickName);
 
@@ -91,6 +95,8 @@ public class UserService {
     /**
      * 이메일로 조회
      */
+
+
     public User getUserByEmail(String email) {
         log.debug("Fetching user by email: {}", email);
 
@@ -104,9 +110,31 @@ public class UserService {
         return user;
     }
 
+    @Transactional
+    public User updateUser(UUID userId, UpdateUserRequest request) {
+        log.debug("Updating user: {}", userId);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> {
+                    log.warn("User not found for ID: {}", userId);
+                    return new UserNotFoundException("사용자를 찾을 수 없습니다.");
+                });
+
+        if (request.getEmail() != null && !request.getEmail().isEmpty()) {
+            user.setEmail(request.getEmail());
+        }
+
+        if (request.getGoogleId() != null && !request.getGoogleId().isEmpty()) {
+            user.setGoogleId(request.getGoogleId());
+        }
+
+        return userRepository.save(user);
+    }
+
     /**
      * 사용자 소프트 삭제
      */
+
     public void softDeleteUser(UUID userId) {
         log.debug("Soft deleting user: {}", userId);
 

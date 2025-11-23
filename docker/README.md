@@ -1,5 +1,7 @@
 # weAlist Docker Environment Guide
 
+> **Note**: 상세한 Docker 환경 가이드는 [.kiro/docs/DOCKER_ENVIRONMENT_GUIDE.md](../.kiro/docs/DOCKER_ENVIRONMENT_GUIDE.md)로 이동되었습니다.
+
 weAlist 프로젝트의 Docker 환경 설정 가이드입니다.
 
 ## 디렉토리 구조
@@ -56,6 +58,8 @@ docker compose --env-file docker/env/.env.dev \
 - **Board Service Swagger**: http://localhost:8000/swagger/index.html
 - **PostgreSQL**: localhost:5432
 - **Redis**: localhost:6379
+- **MinIO Console**: http://localhost:9001 (로그인: minioadmin / minioadmin123)
+- **MinIO API**: http://localhost:9000
 
 ## 환경변수 파일 설명
 
@@ -287,6 +291,7 @@ docker compose --env-file docker/env/.env.dev \
 
 - `wealist-postgres-data`: PostgreSQL 데이터 영구 저장
 - `wealist-redis-data`: Redis 데이터 영구 저장
+- `minio-data`: MinIO 객체 스토리지 데이터 (개발 환경 전용)
 
 ## 보안 고려사항
 

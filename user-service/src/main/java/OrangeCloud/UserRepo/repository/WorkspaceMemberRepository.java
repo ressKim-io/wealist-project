@@ -59,5 +59,9 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
     /**
      * 특정 사용자의 기본(Default) Workspace 멤버십 조회
      */
-    Optional<WorkspaceMember> findByUserIdAndIsDefaultTrue(UUID userId);
+
+    boolean existsByUserIdAndWorkspaceId(UUID userId, UUID workspaceId);
+
+
+
 }

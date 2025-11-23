@@ -1,54 +1,84 @@
 package repository
 
 import (
-	"board-service/internal/domain"
+	"context"
+	"errors"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"project-board-api/internal/domain"
 )
 
-// CommentRepository defines the interface for comment data operations.
+// CommentRepository defines the interface for comment data access
 type CommentRepository interface {
-	Create(comment *domain.Comment) error
-	FindByID(id uuid.UUID) (*domain.Comment, error)
-	FindByBoardID(boardID uuid.UUID) ([]domain.Comment, error)
-	Update(comment *domain.Comment) error
-	Delete(id uuid.UUID) error
+	Create(ctx context.Context, comment *domain.Comment) error
+	FindByID(ctx context.Context, id uuid.UUID) (*domain.Comment, error)
+	FindByBoardID(ctx context.Context, boardID uuid.UUID) ([]*domain.Comment, error)
+	Update(ctx context.Context, comment *domain.Comment) error
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
-type commentRepository struct {
+// commentRepositoryImpl is the GORM implementation of CommentRepository
+type commentRepositoryImpl struct {
 	db *gorm.DB
 }
 
-// NewCommentRepository creates a new instance of CommentRepository.
+// NewCommentRepository creates a new instance of CommentRepository
 func NewCommentRepository(db *gorm.DB) CommentRepository {
-	return &commentRepository{db: db}
+	return &commentRepositoryImpl{db: db}
 }
 
-// Create adds a new comment to the database.
-func (r *commentRepository) Create(comment *domain.Comment) error {
-	return r.db.Create(comment).Error
+// Create creates a new comment
+func (r *commentRepositoryImpl) Create(ctx context.Context, comment *domain.Comment) error {
+	if err := r.db.WithContext(ctx).Create(comment).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
-// FindByID retrieves a comment by its ID.
-func (r *commentRepository) FindByID(id uuid.UUID) (*domain.Comment, error) {
+// FindByID finds a comment by ID
+// ✅ 수정: Preload("Attachments") 제거 - service에서 별도 로드
+func (r *commentRepositoryImpl) FindByID(ctx context.Context, id uuid.UUID) (*domain.Comment, error) {
 	var comment domain.Comment
-	err := r.db.First(&comment, "id = ?", id).Error
-	return &comment, err
+	if err := r.db.WithContext(ctx).
+		// Preload("Attachments"). // ✅ 제거
+		Where("id = ?", id).
+		First(&comment).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
+		return nil, err
+	}
+	return &comment, nil
 }
 
-// FindByBoardID retrieves all comments for a given Board ID.
-func (r *commentRepository) FindByBoardID(boardID uuid.UUID) ([]domain.Comment, error) {
-	var comments []domain.Comment
-	err := r.db.Where("board_id = ?", boardID).Order("created_at asc").Find(&comments).Error
-	return comments, err
+// FindByBoardID finds all comments by board ID, ordered by creation time
+// ✅ 수정: Preload("Attachments") 제거 - service에서 별도 로드
+func (r *commentRepositoryImpl) FindByBoardID(ctx context.Context, boardID uuid.UUID) ([]*domain.Comment, error) {
+	var comments []*domain.Comment
+	if err := r.db.WithContext(ctx).
+		// Preload("Attachments"). // ✅ 제거
+		Where("board_id = ?", boardID).
+		Order("created_at ASC").
+		Find(&comments).Error; err != nil {
+		return nil, err
+	}
+	return comments, nil
 }
 
-// Update modifies an existing comment in the database.
-func (r *commentRepository) Update(comment *domain.Comment) error {
-	return r.db.Save(comment).Error
+// Update updates a comment
+func (r *commentRepositoryImpl) Update(ctx context.Context, comment *domain.Comment) error {
+	if err := r.db.WithContext(ctx).Save(comment).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
-// Delete removes a comment from the database.
-func (r *commentRepository) Delete(id uuid.UUID) error {
-	return r.db.Delete(&domain.Comment{}, "id = ?", id).Error
+// Delete soft deletes a comment
+func (r *commentRepositoryImpl) Delete(ctx context.Context, id uuid.UUID) error {
+	if err := r.db.WithContext(ctx).Delete(&domain.Comment{}, id).Error; err != nil {
+		return err
+	}
+	return nil
 }

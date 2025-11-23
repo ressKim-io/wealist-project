@@ -1,11 +1,31 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
-// 1. User/Workspace 서비스 (Java 백엔드) 기본 URL
-export const USER_REPO_API_URL = 'http://localhost:8080';
+// 환경 변수 가져오기
+const INJECTED_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// 2. Board/Project 서비스 (Go 백엔드) 기본 URL
-export const BOARD_SERVICE_API_URL = 'http://localhost:8000';
+// ============================================================================
+// 💡 [핵심 수정]: Context Path를 환경에 따라 조건부로 붙입니다.
+// ============================================================================
 
+const getApiBaseUrl = (path: string): string => {
+  // 1. 환경 변수 주입 확인
+  if (INJECTED_API_BASE_URL) {
+    // 쉘 스크립트에서 VITE_API_BASE_URL='http://localhost'가 주입된 경우
+    const isLocalDevelopment = INJECTED_API_BASE_URL.includes('localhost');
+
+    if (isLocalDevelopment)
+      return `${INJECTED_API_BASE_URL}${path === '/api/users' ? ':8080' : ':8000/api'}`;
+
+    return `${INJECTED_API_BASE_URL}${path}`;
+  }
+
+  // 환경 변수가 없을 경우 (Fallback, CI/CD 실패 대비)
+  return `https://api.wealist.co.kr${path}`;
+};
+
+export const USER_REPO_API_URL = getApiBaseUrl('/api/users');
+export const BOARD_SERVICE_API_URL = getApiBaseUrl('/api/boards/api');
+// export const BOARD_WS_URL = getApiBaseUrl('/api/ws/project');
 // ============================================================================
 // 인증 갱신 관련 변수
 // ============================================================================
@@ -33,6 +53,7 @@ const RETRY_DELAY_MS = 1000; // 재시도 간격 (1초)
 export const userRepoClient = axios.create({
   baseURL: USER_REPO_API_URL,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true, // CORS 인증 정보 포함
 });
 
 /**
@@ -41,6 +62,7 @@ export const userRepoClient = axios.create({
 export const boardServiceClient = axios.create({
   baseURL: BOARD_SERVICE_API_URL,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true, // CORS 인증 정보 포함
 });
 
 // ============================================================================
@@ -108,6 +130,32 @@ const refreshAccessToken = async (): Promise<string> => {
 
     throw error;
   }
+};
+
+// ============================================================================
+// 요청 인터셉터 설정 함수
+// ============================================================================
+
+/**
+ * localStorage에서 accessToken을 자동으로 가져와 Authorization 헤더에 추가합니다.
+ */
+const setupRequestInterceptor = (client: AxiosInstance) => {
+  client.interceptors.request.use(
+    (config) => {
+      // localStorage에서 accessToken 가져오기
+      const accessToken = localStorage.getItem('accessToken');
+
+      // Authorization 헤더가 이미 설정되어 있지 않고, accessToken이 있으면 추가
+      if (accessToken && !config.headers.Authorization) {
+        config.headers.Authorization = `Bearer ${accessToken}`;
+      }
+
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
+    },
+  );
 };
 
 // ============================================================================
@@ -203,7 +251,12 @@ const setupUnifiedResponseInterceptor = (client: AxiosInstance) => {
   );
 };
 
-// 💡 두 클라이언트 인스턴스에 통합 인터셉터 적용
+// 💡 두 클라이언트 인스턴스에 인터셉터 적용
+// 1. Request Interceptor: 자동으로 accessToken을 헤더에 추가
+setupRequestInterceptor(userRepoClient);
+setupRequestInterceptor(boardServiceClient);
+
+// 2. Response Interceptor: 토큰 갱신 및 네트워크 오류 재시도
 setupUnifiedResponseInterceptor(userRepoClient);
 setupUnifiedResponseInterceptor(boardServiceClient);
 

@@ -1,87 +1,103 @@
 package repository
 
 import (
-	"board-service/internal/domain"
+	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"project-board-api/internal/domain"
 )
 
+// BoardRepository defines the interface for board data access
 type BoardRepository interface {
-	// CRUD
-	Create(board *domain.Board) error
-	FindByID(id uuid.UUID) (*domain.Board, error)
-	FindByProject(projectID uuid.UUID, filters BoardFilters, page, limit int) ([]domain.Board, int64, error)
-	Update(board *domain.Board) error
-	Delete(id uuid.UUID) error
+	Create(ctx context.Context, board *domain.Board) error
+	FindByID(ctx context.Context, id uuid.UUID) (*domain.Board, error)
+	FindByProjectID(ctx context.Context, projectID uuid.UUID, filters interface{}) ([]*domain.Board, error)
+	Update(ctx context.Context, board *domain.Board) error
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
-type BoardFilters struct {
-	AssigneeID uuid.UUID
-	AuthorID   uuid.UUID
-	// Custom field filtering is now done via JSONB queries in ViewService
-	// using custom_fields_cache column with GIN index
-}
-
-type boardRepository struct {
+// boardRepositoryImpl is the GORM implementation of BoardRepository
+type boardRepositoryImpl struct {
 	db *gorm.DB
 }
 
+// NewBoardRepository creates a new instance of BoardRepository
 func NewBoardRepository(db *gorm.DB) BoardRepository {
-	return &boardRepository{db: db}
+	return &boardRepositoryImpl{db: db}
 }
 
-// ==================== CRUD ====================
-
-func (r *boardRepository) Create(board *domain.Board) error {
-	return r.db.Create(board).Error
+// Create creates a new board
+func (r *boardRepositoryImpl) Create(ctx context.Context, board *domain.Board) error {
+	if err := r.db.WithContext(ctx).Create(board).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
-func (r *boardRepository) FindByID(id uuid.UUID) (*domain.Board, error) {
+// FindByID finds a board by ID with preloaded participants and comments
+// ✅ 수정: Preload("Attachments") 제거 - service에서 별도 로드
+func (r *boardRepositoryImpl) FindByID(ctx context.Context, id uuid.UUID) (*domain.Board, error) {
 	var board domain.Board
-	if err := r.db.Where("id = ? AND is_deleted = ?", id, false).First(&board).Error; err != nil {
+	if err := r.db.WithContext(ctx).
+		Preload("Participants").
+		Preload("Comments").
+		// Preload("Attachments"). // ✅ 제거
+		Where("id = ?", id).
+		First(&board).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
 		return nil, err
 	}
 	return &board, nil
 }
 
-func (r *boardRepository) FindByProject(projectID uuid.UUID, filters BoardFilters, page, limit int) ([]domain.Board, int64, error) {
-	var boards []domain.Board
-	var total int64
+// FindByProjectID finds all boards by project ID with optional filters
+// ✅ 수정: Preload("Attachments") 제거 - service에서 별도 로드
+func (r *boardRepositoryImpl) FindByProjectID(ctx context.Context, projectID uuid.UUID, filters interface{}) ([]*domain.Board, error) {
+	var boards []*domain.Board
 
-	query := r.db.Model(&domain.Board{}).Where("project_id = ? AND is_deleted = ?", projectID, false)
+	// Start building the query with Participants preload
+	query := r.db.WithContext(ctx).
+		Preload("Participants").
+		// Preload("Attachments"). // ✅ 제거
+		Where("project_id = ?", projectID)
 
-	// Apply basic filters (Assignee, Author)
-	if filters.AssigneeID != uuid.Nil {
-		query = query.Where("assignee_id = ?", filters.AssigneeID)
-	}
-	if filters.AuthorID != uuid.Nil {
-		query = query.Where("created_by = ?", filters.AuthorID)
-	}
-
-	// Note: Custom field filtering (stage, role, importance, etc.) is now done
-	// via ViewService using JSONB queries on custom_fields_cache column
-	// Example: WHERE custom_fields_cache->>'field-id' = 'value'
-
-	// Total count
-	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	// Pagination
-	offset := (page - 1) * limit
-	if err := query.Order("created_at DESC").Offset(offset).Limit(limit).Find(&boards).Error; err != nil {
-		return nil, 0, err
+	// Apply filters if provided
+	if filters != nil {
+		// Type assertion to get customFields map
+		if customFields, ok := filters.(map[string]interface{}); ok {
+			// Apply JSONB filtering for each custom field
+			for key, value := range customFields {
+				// Use JSONB operator ->> to extract text value and compare
+				query = query.Where("custom_fields->>? = ?", key, value)
+			}
+		}
 	}
 
-	return boards, total, nil
+	// Execute the query
+	if err := query.Find(&boards).Error; err != nil {
+		return nil, err
+	}
+
+	return boards, nil
 }
 
-func (r *boardRepository) Update(board *domain.Board) error {
-	return r.db.Save(board).Error
+// Update updates a board
+func (r *boardRepositoryImpl) Update(ctx context.Context, board *domain.Board) error {
+	if err := r.db.WithContext(ctx).Save(board).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
-func (r *boardRepository) Delete(id uuid.UUID) error {
-	// Soft delete
-	return r.db.Model(&domain.Board{}).Where("id = ?", id).Update("is_deleted", true).Error
+// Delete soft deletes a board
+func (r *boardRepositoryImpl) Delete(ctx context.Context, id uuid.UUID) error {
+	if err := r.db.WithContext(ctx).Delete(&domain.Board{}, id).Error; err != nil {
+		return err
+	}
+	return nil
 }

@@ -1,224 +1,150 @@
 # Database Migrations
 
-This directory contains SQL migration files for the Board Service database schema.
+## ⚠️ MIGRATION POLICY CHANGE
 
-## 📋 File Naming Convention
+**As of November 2025, this project uses GORM auto-migration exclusively.**
 
-**Format**: `{YYYYMMDDHHMMSS}_{description}.{up|down}.sql`
+All SQL migration files have been archived to the `archived/` directory. The database schema is now managed automatically by GORM based on the Go struct definitions in `internal/domain/`.
 
-**Examples**:
-- `20250106120000_baseline_v1.0.0.up.sql`
-- `20250106120000_baseline_v1.0.0.down.sql`
-- `20250110153000_add_attachments_table.up.sql`
-- `20250110153000_add_attachments_table.down.sql`
+### Why the Change?
 
-**Execution Order**: Alphabetical order (timestamp-based)
+We experienced conflicts between SQL migrations and GORM auto-migration during deployments, causing "relation already exists" errors. To resolve this and simplify schema management, we've adopted a single-source-of-truth approach using GORM.
 
-## 🚀 Execution Methods
+### Archived Migration Files
 
-### Development Environment (AutoMigrate)
+The following SQL migration files are preserved in `archived/` for historical reference:
 
-For rapid prototyping, use GORM AutoMigrate:
+- `001_init_schema.sql` - Initial schema creation (up migration)
+- `001_init_schema_down.sql` - Schema rollback (down migration)
+- `002_add_project_members_and_board_fields.sql` - Add project members, join requests, and board fields (up migration)
+- `002_add_project_members_and_board_fields_down.sql` - Rollback project members and board fields (down migration)
+- `003_migrate_existing_project_owners.sql` - Create OWNER members for existing projects (up migration)
+- `003_migrate_existing_project_owners_down.sql` - Remove migrated OWNER members (down migration)
+- `004_add_field_options.sql` - Add field options table (up migration)
+- `004_add_field_options_down.sql` - Rollback field options (down migration)
+- `005_add_custom_fields_to_boards.sql` - Add custom fields to boards (up migration)
+- `005_add_custom_fields_to_boards_down.sql` - Rollback custom fields (down migration)
+- `005_add_project_id_to_field_options.sql` - Add project_id to field options (up migration)
+- `005_add_project_id_to_field_options_down.sql` - Rollback project_id addition (down migration)
 
-```bash
-# Set environment variable
-export USE_AUTO_MIGRATE=true
+## Schema Overview
 
-# Run server (AutoMigrate executes automatically)
-go run cmd/api/main.go
-```
+The migrations create the following tables:
 
-**Pros**:
-- Fast iteration
-- No manual SQL writing
-- Automatic schema updates
+1. **projects** - Projects within workspaces (with owner_id and is_public fields)
+2. **boards** - Work items with stage, importance, and role attributes (with author_id, assignee_id, and due_date fields)
+3. **participants** - Users participating in boards
+4. **comments** - Discussion comments on boards
+5. **project_members** - Members of projects with roles (OWNER, ADMIN, MEMBER)
+6. **project_join_requests** - Requests to join projects with approval workflow
 
-**Cons**:
-- Less control over migrations
-- Cannot rollback easily
-- Not suitable for production
+## GORM Auto-Migration
 
-### Production Environment (Manual Migrations)
+### How It Works
 
-For production, use manual SQL migrations:
+When the board-service application starts, GORM automatically:
 
-```bash
-# Apply all pending migrations
-./scripts/db/apply_migrations.sh prod
+1. Checks if tables exist
+2. Creates missing tables based on Go struct definitions
+3. Adds missing columns to existing tables
+4. Creates indexes and constraints
 
-# Rollback specific migration
-./scripts/db/rollback.sh prod 20250106120000
+The migration logic is implemented in `internal/database/automigrate.go` with the `SafeAutoMigrate` function.
 
-# Dump current schema
-./scripts/db/dump_schema.sh prod
-```
+### Schema Source of Truth
 
-**Pros**:
-- Full control over schema changes
-- Rollback capability
-- Audit trail via `schema_versions` table
-- Production-safe
+The database schema is defined by Go structs in `internal/domain/`:
 
-**Cons**:
-- Requires manual SQL writing
-- More time-consuming
+- `project.go` - Projects table
+- `board.go` - Boards table
+- `participant.go` - Participants table
+- `comment.go` - Comments table
+- `field_option.go` - Field options table
 
-## 📝 Creating New Migrations
+### Making Schema Changes
 
-### Step 1: Modify Domain Models
+To modify the database schema:
 
-Update models in `internal/domain/`:
+1. Update the Go struct in `internal/domain/`
+2. Add GORM tags for constraints, indexes, etc.
+3. Restart the application - GORM will apply changes automatically
 
+Example:
 ```go
-// internal/domain/attachment.go
-type Attachment struct {
+type Project struct {
     BaseModel
-    BoardID   uuid.UUID `gorm:"type:uuid;not null;index" json:"board_id"`
-    FileName  string    `gorm:"type:varchar(255);not null" json:"file_name"`
-    FileURL   string    `gorm:"type:text;not null" json:"file_url"`
-    FileSize  int64     `gorm:"not null" json:"file_size"`
-    IsDeleted bool      `gorm:"default:false" json:"is_deleted"`
+    WorkspaceID uuid.UUID `gorm:"type:uuid;not null;index"`
+    Name        string    `gorm:"type:varchar(255);not null"`
+    NewField    string    `gorm:"type:text"` // Add new field here
 }
 ```
 
-### Step 2: Test with AutoMigrate
+### Resetting the Database
+
+If you need to completely reset the database (e.g., when switching from SQL migrations to GORM):
 
 ```bash
-# Run locally with AutoMigrate
-ENV=dev USE_AUTO_MIGRATE=true go run cmd/api/main.go
+# Run the reset script
+./scripts/reset-database.sh
+
+# Or manually:
+psql -U postgres -d postgres -c "DROP DATABASE IF EXISTS project_board;"
+psql -U postgres -d postgres -c "CREATE DATABASE project_board;"
 ```
 
-### Step 3: Dump Schema
+After resetting, start the application and GORM will create all tables automatically.
 
-```bash
-# Dump current schema to docs/schema/
-./scripts/db/dump_schema.sh dev
+## Features
+
+### Automatic Timestamps
+
+All tables include automatic `updated_at` timestamp updates via database triggers.
+
+### Soft Deletes
+
+All tables support soft deletes through the `deleted_at` column. Indexes are optimized for queries that filter out soft-deleted records.
+
+### Constraints
+
+- **Foreign Keys**: Cascade deletes to maintain referential integrity
+- **Unique Constraints**: Prevent duplicate participants per board
+- **Check Constraints**: Validate enum values for stage, importance, and role
+
+### Indexes
+
+Optimized indexes for:
+- Foreign key lookups
+- Soft delete filtering
+- Workspace and project queries
+- Board filtering by stage, importance, and role
+- Comment ordering by creation time
+
+## Schema Diagram
+
+```
+projects (1) ──< (N) boards (1) ──< (N) participants
+    │                    │
+    │                    └──< (N) comments
+    │
+    ├──< (N) project_members
+    │
+    └──< (N) project_join_requests
 ```
 
-### Step 4: Create Migration Files
+## Archived SQL Migrations
 
-```bash
-# Create up migration
-cat > migrations/20250110153000_add_attachments_table.up.sql << 'EOF'
-CREATE TABLE IF NOT EXISTS attachments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    board_id UUID NOT NULL,
-    file_name VARCHAR(255) NOT NULL,
-    file_url TEXT NOT NULL,
-    file_size BIGINT NOT NULL,
-    is_deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
+The `archived/` directory contains historical SQL migration files that were used before switching to GORM auto-migration. These files are kept for:
 
-CREATE INDEX idx_attachments_board_id ON attachments(board_id);
+- Historical reference
+- Understanding schema evolution
+- Emergency rollback scenarios (if needed)
 
-COMMENT ON COLUMN attachments.board_id IS 'References boards.id (no FK for sharding compatibility)';
+**Do not use these files for new deployments.** GORM auto-migration handles all schema management.
 
-INSERT INTO schema_versions (version, description)
-VALUES ('20250110153000', 'Add attachments table');
-EOF
+## Notes
 
-# Create down migration
-cat > migrations/20250110153000_add_attachments_table.down.sql << 'EOF'
-DROP TABLE IF EXISTS attachments CASCADE;
-DELETE FROM schema_versions WHERE version = '20250110153000';
-EOF
-```
-
-### Step 5: Test Migration
-
-```bash
-# Apply migration
-./scripts/db/apply_migrations.sh dev
-
-# Test rollback
-./scripts/db/rollback.sh dev 20250110153000
-
-# Reapply to verify idempotency
-./scripts/db/apply_migrations.sh dev
-```
-
-### Step 6: Update AutoMigrate List
-
-Add new model to `internal/database/postgres.go`:
-
-```go
-func autoMigrateAll(db *gorm.DB, logger *zap.Logger) error {
-    models := []interface{}{
-        &domain.SchemaVersion{},
-        // ... existing models ...
-        &domain.Attachment{}, // Add new model
-    }
-    return db.AutoMigrate(models...)
-}
-```
-
-### Step 7: Create Pull Request
-
-- Include both `.up.sql` and `.down.sql` files
-- Update CLAUDE.md if needed
-- Test on staging environment before production
-
-## 🗄️ Schema Version Tracking
-
-All applied migrations are tracked in the `schema_versions` table:
-
-```sql
-SELECT version, description, applied_at
-FROM schema_versions
-ORDER BY applied_at DESC;
-```
-
-## 📚 Migration History
-
-| Version | Description | Applied Date |
-|---------|-------------|--------------|
-| 20250106120000 | Baseline v1.0.0 - Initial schema consolidation | 2025-01-06 |
-
-## ⚠️ Important Rules
-
-1. **Never modify committed migrations** - Create new ones instead
-2. **Always write both up and down migrations** - Rollback must be possible
-3. **Test migrations locally first** - Apply → Rollback → Reapply
-4. **No Foreign Keys** - Use comments instead: `-- References table.column (no FK)`
-5. **UUID Primary Keys** - Always use `UUID DEFAULT gen_random_uuid()`
-6. **Idempotent SQL** - Use `IF NOT EXISTS` / `IF EXISTS` clauses
-7. **Comment your migrations** - Explain complex schema changes
-
-## 🔍 Troubleshooting
-
-### Migration fails with "relation already exists"
-
-The migration is not idempotent. Add `IF NOT EXISTS`:
-
-```sql
-CREATE TABLE IF NOT EXISTS my_table (...);
-```
-
-### AutoMigrate vs Manual Migration mismatch
-
-Dump both schemas and compare:
-
-```bash
-# AutoMigrate schema
-ENV=dev USE_AUTO_MIGRATE=true go run cmd/api/main.go
-./scripts/db/dump_schema.sh dev
-
-# Manual migration schema
-./scripts/db/apply_migrations.sh dev
-./scripts/db/dump_schema.sh dev
-
-# Compare
-diff docs/schema/backups/schema_*.sql
-```
-
-### Rollback fails
-
-Check if the down migration correctly reverses the up migration. Test locally first.
-
-## 📖 Additional Resources
-
-- [GORM Documentation](https://gorm.io/docs/)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-- [Database Migration Best Practices](https://www.prisma.io/dataguide/types/relational/what-are-database-migrations)
+- All IDs use UUID type with automatic generation
+- The `pgcrypto` extension is required for UUID generation (GORM handles this)
+- Timestamps use PostgreSQL's `TIMESTAMP` type (without timezone)
+- All tables follow the soft delete pattern with `deleted_at` column
+- GORM automatically creates indexes and constraints based on struct tags

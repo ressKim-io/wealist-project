@@ -9,8 +9,6 @@
 #   운영: docker compose -f docker/compose/docker-compose.yml -f docker/compose/docker-compose.prod.yml up
 # =============================================================================
 
-version: '3.9'
-
 services:
   # ===========================================================================
   # Backend Services
@@ -60,6 +58,12 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
 
+      # Service URLs
+      - BOARD_SERVICE_URL=http://board-service:8000
+
+      # Sample Data Configuration
+      - SAMPLE_DATA_ENABLED=${SAMPLE_DATA_ENABLED:-false}
+
       # Java Options
       - JAVA_OPTS=-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
 
@@ -74,7 +78,14 @@ services:
         condition: service_healthy
 
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "-q",
+          "--spider",
+          "http://localhost:8080/actuator/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -246,7 +257,15 @@ services:
       - database-net
 
     healthcheck:
-      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "--no-auth-warning",
+          "-a",
+          "${REDIS_PASSWORD}",
+          "ping",
+        ]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -278,7 +297,7 @@ networks:
   database-net:
     driver: bridge
     name: wealist-database-net
-    internal: true  # 외부 접근 차단
+    internal: true # 외부 접근 차단
 
 # =============================================================================
 # Volumes

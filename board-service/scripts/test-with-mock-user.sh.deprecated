@@ -1,0 +1,324 @@
+#!/bin/bash
+# =============================================================================
+# Board Service Integration Test with Mock User (DEPRECATED)
+# =============================================================================
+# ⚠️  DEPRECATED: This script is kept for reference only.
+# ⚠️  Please use integration-test.sh instead, which uses real login API.
+# 
+# This script tests board-service endpoints using test users from user-service
+# DataInitializer creates 50 test users (user1@example.com ~ user50@example.com)
+# 
+# New script: ./board-service/scripts/integration-test.sh
+# =============================================================================
+
+set -e
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Configuration
+BOARD_API_URL="${BOARD_API_URL:-http://localhost:8000}"
+USER_API_URL="${USER_API_URL:-http://localhost:8080}"
+
+# Test user from DataInitializer
+TEST_USER_EMAIL="user1@example.com"
+
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}Board Service Integration Test${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
+echo -e "${CYAN}Configuration:${NC}"
+echo -e "  Board API: ${BOARD_API_URL}"
+echo -e "  User API:  ${USER_API_URL}"
+echo -e "  Test User: ${TEST_USER_EMAIL}"
+echo ""
+
+# =============================================================================
+# Step 1: Get test user information from user-service
+# =============================================================================
+echo -e "${YELLOW}Step 1: Fetching test user information...${NC}"
+
+# First, check if user-service is accessible
+HEALTH_CHECK=$(curl -s -o /dev/null -w "%{http_code}" "${USER_API_URL}/actuator/health")
+
+if [ "$HEALTH_CHECK" != "200" ]; then
+  echo -e "${RED}❌ Failed to connect to user-service (HTTP ${HEALTH_CHECK})${NC}"
+  echo -e "${YELLOW}💡 Make sure user-service is running:${NC}"
+  echo -e "   docker-compose up -d user-service"
+  echo -e "   docker logs user-service -f"
+  exit 1
+fi
+
+echo -e "${GREEN}✅ user-service is accessible${NC}"
+
+# Since there's no email lookup endpoint, we'll use a known test user ID
+# DataInitializer creates users with predictable data, so we can query the database
+# or use workspace members endpoint to find a user
+
+# Try to get workspaces first (this will give us user IDs)
+echo -e "${CYAN}   Attempting to find test users via workspaces...${NC}"
+
+# Get all workspaces (assuming there's an endpoint for this)
+# If not, we'll need to use a hardcoded test user ID from the database
+# For now, let's try a different approach: use the test token endpoint
+
+# Alternative: Generate a test token for a known user
+# We need to get a user ID first - let's try to find it via workspace endpoint
+# or use a database query
+
+# For simplicity, let's use a fixed test user ID that we know exists
+# You can get this by running: docker exec -it postgres psql -U wealist -d wealist -c "SELECT user_id, email FROM users LIMIT 1;"
+
+echo -e "${YELLOW}   Note: Using direct database query to find test user${NC}"
+echo -e "${YELLOW}   Getting first user from database...${NC}"
+
+# Try to get user ID from postgres directly
+# Try different possible container names and database configurations
+for CONTAINER_NAME in "wealist-postgres" "postgres" "wealist_postgres"; do
+  for DB_USER in "wealist_user" "wealist" "postgres"; do
+    for DB_NAME in "wealist_user_db" "wealist" "postgres"; do
+      USER_ID=$(docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -t -c "SELECT user_id FROM users WHERE email = '${TEST_USER_EMAIL}' LIMIT 1;" 2>/dev/null | tr -d ' \n')
+      if [ -n "$USER_ID" ]; then
+        break 3
+      fi
+    done
+  done
+done
+
+if [ -z "$USER_ID" ]; then
+  echo -e "${YELLOW}   Database query failed, trying alternative method...${NC}"
+  # Alternative: Get any user from the database
+  for CONTAINER_NAME in "wealist-postgres" "postgres" "wealist_postgres"; do
+    for DB_USER in "wealist_user" "wealist" "postgres"; do
+      for DB_NAME in "wealist_user_db" "wealist" "postgres"; do
+        USER_ID=$(docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -t -c "SELECT user_id FROM users WHERE is_active = true LIMIT 1;" 2>/dev/null | tr -d ' \n')
+        if [ -n "$USER_ID" ]; then
+          break 3
+        fi
+      done
+    done
+  done
+fi
+
+if [ -z "$USER_ID" ]; then
+  echo -e "${RED}❌ Failed to get user ID${NC}"
+  echo -e "${YELLOW}💡 Make sure:${NC}"
+  echo -e "   1. PostgreSQL container is running: docker ps | grep postgres"
+  echo -e "   2. Test data is initialized: docker logs user-service | grep 'Dummy data'"
+  echo -e "   3. Try restarting user-service: docker-compose restart user-service"
+  exit 1
+fi
+
+# Verify the user exists by calling the API
+USER_RESPONSE=$(curl -s "${USER_API_URL}/api/users/${USER_ID}")
+USER_EMAIL=$(echo "$USER_RESPONSE" | grep -o '"email":"[^"]*' | head -1 | cut -d'"' -f4)
+
+if [ -z "$USER_EMAIL" ]; then
+  echo -e "${RED}❌ User ID ${USER_ID} not found in user-service${NC}"
+  exit 1
+fi
+
+echo -e "${GREEN}✅ Found test user${NC}"
+echo -e "   User ID: ${USER_ID}"
+echo -e "   Email: ${USER_EMAIL}"
+
+# Get test token from user-service
+echo -e "${CYAN}   Generating test token...${NC}"
+TEST_TOKEN=$(curl -s "${USER_API_URL}/api/users/test/${USER_ID}")
+
+if [ -z "$TEST_TOKEN" ]; then
+  echo -e "${RED}❌ Failed to generate test token${NC}"
+  exit 1
+fi
+
+echo -e "${GREEN}✅ Test token generated${NC}"
+echo ""
+
+# =============================================================================
+# Step 2: Get user's workspaces
+# =============================================================================
+echo -e "${YELLOW}Step 2: Fetching user's workspaces...${NC}"
+
+# Get workspace from database directly since we don't have auth token
+WORKSPACE_ID=$(docker exec wealist-postgres psql -U wealist_user -d wealist_user_db -t -c "SELECT workspace_id FROM workspace_members WHERE user_id = '${USER_ID}' AND is_default = true LIMIT 1;" 2>/dev/null | tr -d ' \n')
+
+if [ -z "$WORKSPACE_ID" ]; then
+  # Fallback: get any workspace for this user
+  WORKSPACE_ID=$(docker exec wealist-postgres psql -U wealist_user -d wealist_user_db -t -c "SELECT workspace_id FROM workspace_members WHERE user_id = '${USER_ID}' LIMIT 1;" 2>/dev/null | tr -d ' \n')
+fi
+
+# If still no workspace, try to get from workspaces table
+if [ -z "$WORKSPACE_ID" ]; then
+  WORKSPACE_ID=$(docker exec wealist-postgres psql -U wealist_user -d wealist_user_db -t -c "SELECT workspace_id FROM workspaces WHERE is_active = true LIMIT 1;" 2>/dev/null | tr -d ' \n')
+fi
+
+# Store the response for backward compatibility
+WORKSPACES_RESPONSE="{\"workspaceId\":\"${WORKSPACE_ID}\"}"
+
+# Extract first workspace ID
+WORKSPACE_ID=$(echo "$WORKSPACES_RESPONSE" | grep -o '"workspaceId":"[^"]*' | head -1 | cut -d'"' -f4)
+
+if [ -z "$WORKSPACE_ID" ]; then
+  echo -e "${RED}❌ Failed to get workspace ID${NC}"
+  echo -e "${YELLOW}Response: $WORKSPACES_RESPONSE${NC}"
+  exit 1
+fi
+
+echo -e "${GREEN}✅ Found workspace${NC}"
+echo -e "   Workspace ID: ${WORKSPACE_ID}"
+echo ""
+
+# =============================================================================
+# Step 3: Test board-service endpoints
+# =============================================================================
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}Testing Board Service Endpoints${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
+
+# Test 1: GET /api/projects
+echo -e "${YELLOW}Test 1: GET /api/projects?workspaceId=${WORKSPACE_ID}${NC}"
+PROJECTS_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+  "${BOARD_API_URL}/api/projects?workspaceId=${WORKSPACE_ID}" \
+  -H "Authorization: Bearer ${TEST_TOKEN}")
+
+HTTP_STATUS=$(echo "$PROJECTS_RESPONSE" | grep "HTTP_STATUS" | cut -d':' -f2)
+RESPONSE_BODY=$(echo "$PROJECTS_RESPONSE" | sed '/HTTP_STATUS/d')
+
+echo "   HTTP Status: $HTTP_STATUS"
+echo "   Response: $RESPONSE_BODY"
+
+if [ "$HTTP_STATUS" = "200" ]; then
+  echo -e "${GREEN}   ✅ PASSED: Received 200 OK${NC}"
+else
+  echo -e "${RED}   ❌ FAILED: Expected 200, got ${HTTP_STATUS}${NC}"
+  echo -e "${YELLOW}   💡 Check board-service logs for errors${NC}"
+fi
+echo ""
+
+# Test 2: POST /api/projects (Create project)
+echo -e "${YELLOW}Test 2: POST /api/projects (Create new project)${NC}"
+PROJECT_NAME="Test Project $(date +%s)"
+CREATE_PROJECT_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
+  "${BOARD_API_URL}/api/projects" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${TEST_TOKEN}" \
+  -d "{
+    \"workspaceId\": \"${WORKSPACE_ID}\",
+    \"projectName\": \"${PROJECT_NAME}\",
+    \"projectDescription\": \"Test project created by integration test\",
+    \"projectColor\": \"#3B82F6\"
+  }")
+
+CREATE_HTTP_STATUS=$(echo "$CREATE_PROJECT_RESPONSE" | grep "HTTP_STATUS" | cut -d':' -f2)
+CREATE_RESPONSE_BODY=$(echo "$CREATE_PROJECT_RESPONSE" | sed '/HTTP_STATUS/d')
+
+echo "   HTTP Status: $CREATE_HTTP_STATUS"
+echo "   Response: $CREATE_RESPONSE_BODY"
+
+if [ "$CREATE_HTTP_STATUS" = "201" ] || [ "$CREATE_HTTP_STATUS" = "200" ]; then
+  echo -e "${GREEN}   ✅ PASSED: Project created successfully${NC}"
+  PROJECT_ID=$(echo "$CREATE_RESPONSE_BODY" | grep -o '"projectId":"[^"]*' | head -1 | cut -d'"' -f4)
+  echo -e "   Project ID: ${PROJECT_ID}"
+else
+  echo -e "${RED}   ❌ FAILED: Expected 201/200, got ${CREATE_HTTP_STATUS}${NC}"
+  PROJECT_ID=""
+fi
+echo ""
+
+# Test 3: GET /api/projects/{projectId} (if project was created)
+if [ -n "$PROJECT_ID" ]; then
+  echo -e "${YELLOW}Test 3: GET /api/projects/${PROJECT_ID}${NC}"
+  GET_PROJECT_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+    "${BOARD_API_URL}/api/projects/${PROJECT_ID}" \
+    -H "Authorization: Bearer ${TEST_TOKEN}")
+
+  GET_HTTP_STATUS=$(echo "$GET_PROJECT_RESPONSE" | grep "HTTP_STATUS" | cut -d':' -f2)
+  GET_RESPONSE_BODY=$(echo "$GET_PROJECT_RESPONSE" | sed '/HTTP_STATUS/d')
+
+  echo "   HTTP Status: $GET_HTTP_STATUS"
+  echo "   Response: $GET_RESPONSE_BODY"
+
+  if [ "$GET_HTTP_STATUS" = "200" ]; then
+    echo -e "${GREEN}   ✅ PASSED: Retrieved project successfully${NC}"
+  else
+    echo -e "${RED}   ❌ FAILED: Expected 200, got ${GET_HTTP_STATUS}${NC}"
+  fi
+  echo ""
+fi
+
+# Test 4: GET /api/projects/{projectId}/boards (if project was created)
+if [ -n "$PROJECT_ID" ]; then
+  echo -e "${YELLOW}Test 4: GET /api/projects/${PROJECT_ID}/boards${NC}"
+  BOARDS_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+    "${BOARD_API_URL}/api/projects/${PROJECT_ID}/boards" \
+    -H "Authorization: Bearer ${TEST_TOKEN}")
+
+  BOARDS_HTTP_STATUS=$(echo "$BOARDS_RESPONSE" | grep "HTTP_STATUS" | cut -d':' -f2)
+  BOARDS_RESPONSE_BODY=$(echo "$BOARDS_RESPONSE" | sed '/HTTP_STATUS/d')
+
+  echo "   HTTP Status: $BOARDS_HTTP_STATUS"
+  echo "   Response: $BOARDS_RESPONSE_BODY"
+
+  if [ "$BOARDS_HTTP_STATUS" = "200" ]; then
+    echo -e "${GREEN}   ✅ PASSED: Retrieved boards successfully${NC}"
+  else
+    echo -e "${RED}   ❌ FAILED: Expected 200, got ${BOARDS_HTTP_STATUS}${NC}"
+  fi
+  echo ""
+fi
+
+# Test 5: Test user-service connectivity from board-service
+echo -e "${YELLOW}Test 5: Verify user-service connectivity${NC}"
+echo -e "   Testing if board-service can reach user-service..."
+
+# This will trigger board-service to call user-service
+VERIFY_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+  "${BOARD_API_URL}/api/projects?workspaceId=${WORKSPACE_ID}" \
+  -H "Authorization: Bearer ${TEST_TOKEN}")
+
+VERIFY_HTTP_STATUS=$(echo "$VERIFY_RESPONSE" | grep "HTTP_STATUS" | cut -d':' -f2)
+
+if [ "$VERIFY_HTTP_STATUS" = "200" ]; then
+  echo -e "${GREEN}   ✅ PASSED: board-service can communicate with user-service${NC}"
+else
+  echo -e "${RED}   ❌ FAILED: Communication issue detected${NC}"
+  echo -e "${YELLOW}   💡 Check docker network configuration${NC}"
+  echo -e "${YELLOW}   💡 Run: docker network inspect wealist-network${NC}"
+fi
+echo ""
+
+# =============================================================================
+# Summary
+# =============================================================================
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}Test Summary${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
+echo -e "${CYAN}Test User Information:${NC}"
+echo -e "  Email:        ${TEST_USER_EMAIL}"
+echo -e "  User ID:      ${USER_ID}"
+echo -e "  Workspace ID: ${WORKSPACE_ID}"
+if [ -n "$PROJECT_ID" ]; then
+  echo -e "  Project ID:   ${PROJECT_ID}"
+fi
+echo ""
+echo -e "${CYAN}Useful Commands:${NC}"
+echo -e "  View board-service logs:"
+echo -e "    ${YELLOW}docker logs board-service -f${NC}"
+echo ""
+echo -e "  View user-service logs:"
+echo -e "    ${YELLOW}docker logs user-service -f${NC}"
+echo ""
+echo -e "  Check network connectivity:"
+echo -e "    ${YELLOW}docker exec board-service ping user-service${NC}"
+echo ""
+echo -e "  Test user-service directly:"
+echo -e "    ${YELLOW}curl ${USER_API_URL}/api/users/${USER_ID}${NC}"
+echo ""
+echo -e "${GREEN}✅ Integration test completed!${NC}"

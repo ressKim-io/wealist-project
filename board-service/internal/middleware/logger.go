@@ -4,12 +4,20 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
-// LoggerMiddleware logs HTTP request/response information
-func LoggerMiddleware(logger *zap.Logger) gin.HandlerFunc {
+const RequestIDKey = "request_id"
+
+// Logger returns a middleware that logs HTTP requests
+func Logger(logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Generate request ID
+		requestID := uuid.New().String()
+		c.Set(RequestIDKey, requestID)
+
+		// Start timer
 		start := time.Now()
 		path := c.Request.URL.Path
 		query := c.Request.URL.RawQuery
@@ -17,45 +25,41 @@ func LoggerMiddleware(logger *zap.Logger) gin.HandlerFunc {
 		// Process request
 		c.Next()
 
-		// Calculate latency
-		latency := time.Since(start)
+		// Calculate duration
+		duration := time.Since(start)
 
-		// Get request ID and user ID from context
-		requestID, _ := c.Get("request_id")
-		userID, _ := c.Get("user_id")
+		// Get status code
+		statusCode := c.Writer.Status()
 
 		// Build log fields
 		fields := []zap.Field{
+			zap.String("request_id", requestID),
 			zap.String("method", c.Request.Method),
 			zap.String("path", path),
 			zap.String("query", query),
-			zap.Int("status", c.Writer.Status()),
-			zap.Duration("latency", latency),
-			zap.String("ip", c.ClientIP()),
+			zap.Int("status", statusCode),
+			zap.Duration("duration", duration),
+			zap.String("client_ip", c.ClientIP()),
 			zap.String("user_agent", c.Request.UserAgent()),
 		}
 
-		// Add optional fields
-		if requestID != nil {
-			fields = append(fields, zap.String("request_id", requestID.(string)))
-		}
-		if userID != nil {
-			fields = append(fields, zap.String("user_id", userID.(string)))
+		// Add user ID if available (from auth middleware)
+		if userID, exists := c.Get("user_id"); exists {
+			fields = append(fields, zap.Any("user_id", userID))
 		}
 
-		// Add error if present
+		// Add error if exists
 		if len(c.Errors) > 0 {
 			fields = append(fields, zap.String("error", c.Errors.String()))
 		}
 
 		// Log based on status code
-		status := c.Writer.Status()
-		if status >= 500 {
-			logger.Error("HTTP request", fields...)
-		} else if status >= 400 {
-			logger.Warn("HTTP request", fields...)
+		if statusCode >= 500 {
+			logger.Error("Server error", fields...)
+		} else if statusCode >= 400 {
+			logger.Warn("Client error", fields...)
 		} else {
-			logger.Info("HTTP request", fields...)
+			logger.Info("Request completed", fields...)
 		}
 	}
 }

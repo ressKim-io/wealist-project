@@ -5,23 +5,23 @@ import (
 	"github.com/google/uuid"
 )
 
-// RequestIDMiddleware adds a unique request ID to each request
-func RequestIDMiddleware() gin.HandlerFunc {
+// RequestID middleware adds a unique request ID to each request
+func RequestID() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Check if request ID is already present in headers
+		// Check if request ID is provided in header
 		requestID := c.GetHeader("X-Request-ID")
-
-		// Generate new UUID if not present
+		
+		// Generate new request ID if not provided
 		if requestID == "" {
 			requestID = uuid.New().String()
 		}
-
-		// Store in context for later use
-		c.Set("request_id", requestID)
-
-		// Add to response headers
-		c.Writer.Header().Set("X-Request-ID", requestID)
-
+		
+		// Set request ID in context
+		c.Set("requestId", requestID)
+		
+		// Set request ID in response header
+		c.Header("X-Request-ID", requestID)
+		
 		c.Next()
 	}
 }

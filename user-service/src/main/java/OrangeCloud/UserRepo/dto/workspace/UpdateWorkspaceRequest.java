@@ -8,6 +8,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdateWorkspaceRequest {
-    private String name;
+    private String workspaceName;
     private String workspaceDescription;
 }

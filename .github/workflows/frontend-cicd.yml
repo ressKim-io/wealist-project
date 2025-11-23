@@ -1,0 +1,116 @@
+name: Frontend CI/CD to S3/CloudFront
+
+on:
+  push:
+    branches:
+      - deploy-dev
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-cicd.yml"
+  workflow_dispatch:
+
+# env section removed - values loaded from Parameter Store in steps
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
+
+      # ============================================
+      # 1. AWS Credentials 설정 (백엔드 공유 키 사용)
+      # ============================================
+      - name: 🔐 Configure AWS Credentials (for all tasks)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.WEALIST_DEV_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.WEALIST_DEV_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      # ============================================
+      # 2. Parameter Store에서 설정 로드
+      # ============================================
+      - name: 📥 Load Configuration from Parameter Store
+        id: config
+        run: |
+          echo "📥 Loading configuration from Parameter Store..."
+
+          AWS_REGION=$(aws ssm get-parameter \
+            --name "/wealist/dev/ci/aws_region" \
+            --query 'Parameter.Value' \
+            --output text)
+
+          echo "aws-region=${AWS_REGION}" >> $GITHUB_OUTPUT
+
+          echo "✅ Configuration loaded successfully"
+          echo "  - AWS Region: ${AWS_REGION}"
+
+      - name: ⚙️ Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8.15.0
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: "frontend/pnpm-lock.yaml"
+
+      # ============================================
+      # 2. SSM Parameter Store에서 ALB 도메인 조회
+      # ============================================
+      - name: 🌍 Fetch ALB Domain from SSM
+        id: fetch_secrets
+        run: |
+          echo "🌐 Fetching ALB domain from SSM Parameter Store..."
+
+          # ALB 도메인 조회
+          ALB_DOMAIN=$(aws ssm get-parameter --name "/wealist/dev/alb/domain" --query "Parameter.Value" --output text)
+
+          # GITHUB_ENV에 주입 (Vite 빌드에 사용)
+          echo "VITE_API_BASE_URL=https://$ALB_DOMAIN" >> $GITHUB_ENV
+
+          echo "✅ Fetched ALB Domain: $ALB_DOMAIN"
+          echo "✅ API Base URL: https://$ALB_DOMAIN"
+
+      - name: 📦 Install Dependencies
+        run: |
+          cd frontend
+          pnpm install --frozen-lockfile
+
+      # ============================================
+      # 3. Build with Vite (SSM에서 가져온 URL 자동 사용)
+      # ============================================
+      - name: 🔨 Build with Vite
+        run: |
+          cd frontend
+          pnpm run build
+
+      - name: ⬆️ Deploy to S3 (Optimized Cache Control Applied)
+        run: |
+          # 1. 해시된 정적 파일: 1년 캐시 + immutable 설정 (브라우저가 변경 확인을 시도하지 않음)
+          # index.html을 제외한 모든 파일에 캐시 만료 기간(max-age)을 1년으로 설정합니다.
+          aws s3 sync ./frontend/dist s3://${{ secrets.FRONTEND_S3_BUCKET_NAME }}/ \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html"
+            
+          # 2. index.html: 캐시 비활성화 (no-store, must-revalidate)
+          # 사용자가 항상 최신 index.html (새로운 JS 파일명 포함)을 받도록 캐시를 명시적으로 막습니다.
+          aws s3 cp ./frontend/dist/index.html s3://${{ secrets.FRONTEND_S3_BUCKET_NAME }}/index.html \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --content-type "text/html"
+
+      - name: 🌐 Invalidate CloudFront Cache (Only for index.html)
+        run: |
+          # CloudFront 캐시 무효화 요청을 index.html에만 적용합니다.
+          # 해시된 정적 파일은 파일명이 바뀌었기 때문에 무효화할 필요가 없습니다.
+          # 이는 불필요한 무효화 수수료 발생을 막아줍니다.
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.FRONTEND_CLOUDFRONT_ID }} \
+            --paths "/index.html"
+
+      - name: ✅ Deployment Complete
+        run: echo "✅ Frontend deployed successfully!"

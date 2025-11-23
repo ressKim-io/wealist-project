@@ -27,53 +27,7 @@ public class AuthService {
     private final UserProfileRepository userProfileRepository;
     private final JwtTokenProvider tokenProvider;
     private final RedisTemplate<String, Object> redisTemplate;
-
-    // ============================================================================
-    // 테스트용 로그인
-    // ============================================================================
-
-    /**
-     * 테스트용 Google OAuth 사용자 생성 및 로그인
-     */
-    public AuthResponse TestLogin() {
-        log.debug("Creating test Google OAuth user");
-
-        String testEmail = "test_" + System.currentTimeMillis() + "@gmail.com";
-        String testGoogleId = "test_google_id_" + System.currentTimeMillis();
-        String testName = "Test User " + System.currentTimeMillis();
-
-        // User 생성
-        User testUser = User.builder()
-                .email(testEmail)
-                .googleId(testGoogleId)
-                .provider("google")
-                .isActive(true)
-                .build();
-
-        User savedUser = userRepository.save(testUser);
-        log.debug("Created test Google user with ID: {}", savedUser.getUserId());
-
-        // UserProfile 생성
-        UserProfile profile = UserProfile.builder()
-                .userId(savedUser.getUserId())
-                .nickName(testName)
-                .build();
-
-        userProfileRepository.save(profile);
-        log.debug("Created profile for test user: {}", savedUser.getUserId());
-
-        // JWT 토큰 생성
-        String accessToken = tokenProvider.generateToken(savedUser.getUserId());
-        String refreshToken = tokenProvider.generateRefreshToken(savedUser.getUserId());
-
-        return new AuthResponse(
-                accessToken,
-                refreshToken,
-                savedUser.getUserId(),
-                testName,
-                savedUser.getEmail()
-        );
-    }
+    // private final WorkspaceService workspaceService;
 
     // ============================================================================
     // 로그아웃
@@ -113,8 +67,7 @@ public class AuthService {
         if (isTokenBlacklisted(refreshToken)) {
             log.warn("Refresh token is blacklisted");
             throw new OrangeCloud.UserRepo.exception.CustomJwtException(
-                    OrangeCloud.UserRepo.exception.ErrorCode.TOKEN_BLACKLISTED
-            );
+                    OrangeCloud.UserRepo.exception.ErrorCode.TOKEN_BLACKLISTED);
         }
 
         UUID userId = tokenProvider.getUserIdFromToken(refreshToken);
@@ -149,8 +102,35 @@ public class AuthService {
                 newRefreshToken,
                 user.getUserId(),
                 profile.getNickName(),
-                user.getEmail()
-        );
+                user.getEmail());
+    }
+
+    // ============================================================================
+    // 토큰 유효성 검증 (외부 서비스용)
+    // ============================================================================
+
+    /**
+     * Access Token의 유효성을 검증하고 사용자 ID를 반환합니다.
+     */
+    public UUID validateTokenAndGetUserId(String token) {
+        log.debug("Validating token for external service use.");
+
+        // 1. 토큰 유효성 검사 (서명, 만료 시간 확인)
+        // 토큰이 유효하지 않으면 이 시점에서 CustomJwtException이 throw됩니다.
+        tokenProvider.validateToken(token);
+
+        // 2. 토큰이 블랙리스트에 있는지 확인 (로그아웃된 토큰인지 확인)
+        if (isTokenBlacklisted(token)) {
+            log.warn("Attempted to use a blacklisted token.");
+            throw new OrangeCloud.UserRepo.exception.CustomJwtException(
+                    OrangeCloud.UserRepo.exception.ErrorCode.TOKEN_BLACKLISTED);
+        }
+
+        // 3. 토큰에서 User ID 추출
+        UUID userId = tokenProvider.getUserIdFromToken(token);
+        log.info("Token validated successfully, user ID: {}", userId);
+
+        return userId;
     }
 
     // ============================================================================

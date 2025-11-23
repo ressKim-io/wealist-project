@@ -27,11 +27,13 @@ const OAuthRedirectPage: React.FC = () => {
     const refreshToken = params.get('refreshToken');
     const nickName = params.get('nickName');
     const email = params.get('email'); // (필요하다면)
+    const userId = params.get('userId'); // (필요하다면)
 
     if (accessToken && refreshToken) {
       // 2. 토큰과 유저 ID를 localStorage에 저장
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
+      if (userId) localStorage.setItem('userId', userId);
       if (nickName) localStorage.setItem('nickName', nickName);
       if (email) localStorage.setItem('userEmail', email); // 이메일도 저장
 
@@ -40,6 +42,7 @@ const OAuthRedirectPage: React.FC = () => {
         refreshToken: refreshToken.substring(0, 10) + '...',
         nickName,
         email,
+        userId,
       });
 
       // 3. 워크스페이스 선택 페이지로 이동 (Protected Route 통과)

@@ -1,6 +1,7 @@
 package OrangeCloud.UserRepo.repository;
 
 import OrangeCloud.UserRepo.entity.Workspace;
+import org.hibernate.jdbc.Work;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -15,6 +16,7 @@ import java.util.UUID;
 @Repository
 public interface WorkspaceRepository extends JpaRepository<Workspace, UUID> {
 
+    List<Workspace> findByOwnerId(UUID ownerId);
     // ============================================================================
     // 소프트 삭제/복구
     // ============================================================================
@@ -64,7 +66,7 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, UUID> {
     List<Workspace> findActiveByOwnerId(@Param("ownerId") UUID ownerId);
 
     /**
-     * Public Workspace 조회
+     * 모든 Public Workspace 조회
      */
     @Query("SELECT w FROM Workspace w WHERE w.isPublic = true AND w.isActive = true ORDER BY w.createdAt DESC")
     List<Workspace> findAllPublicWorkspaces();
@@ -100,4 +102,19 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, UUID> {
      */
     @Query("SELECT w FROM Workspace w WHERE w.isActive = false ORDER BY w.deletedAt DESC")
     List<Workspace> findInactiveWorkspaces();
+
+    @Query("SELECT w FROM Workspace w WHERE w.isPublic = true AND w.workspaceName LIKE %:name%")
+    List<Workspace> findPublicWorkspacesByNameContaining(@Param("name") String name);
+    @Query("SELECT w FROM Workspace w " +
+            "WHERE w.isPublic = true " +
+            "AND LOWER(w.workspaceName) LIKE LOWER(CONCAT('%', :query, '%'))")
+    List<Workspace> findAllPublicWorkspacesByNameContaining(@Param("query") String query);
+    // 특정 유저가 만든 워크스페이스 중 이름 검색
+    List<Workspace> findByOwnerIdAndWorkspaceNameContainingIgnoreCase(UUID ownerId, String workspaceName);
+
+
+
+
+
+
 }

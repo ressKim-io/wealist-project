@@ -1,1059 +1,929 @@
 package service
 
 import (
-	"board-service/internal/apperrors"
-	"board-service/internal/cache"
-	"board-service/internal/client"
-	"board-service/internal/domain"
-	"board-service/internal/dto"
-	"board-service/internal/repository"
 	"context"
 	"errors"
+	"io"
 	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+
+	"project-board-api/internal/client"
+	"project-board-api/internal/domain"
+	"project-board-api/internal/dto"
+	"project-board-api/internal/metrics"
+	"project-board-api/internal/repository"
+	"project-board-api/internal/response"
 )
 
+// 💡 [추가] S3Client 인터페이스 정의: project_service.go가 이 타입을 사용하므로 정의가 필요합니다.
+// 이는 client.S3ClientInterface가 구현하는 메서드들을 포함해야 합니다.
+type S3Client interface {
+	GenerateFileKey(entityType, workspaceID, fileExt string) (string, error)
+	GeneratePresignedURL(ctx context.Context, entityType, workspaceID, fileName, contentType string) (string, string, error)
+	UploadFile(ctx context.Context, key string, file io.Reader, contentType string) (string, error)
+	DeleteFile(ctx context.Context, key string) error
+	GetFileURL(key string) string // 🚨 [핵심 수정] 이 메서드가 누락되어 오류가 발생했습니다.
+}
+
+// ProjectService defines the interface for project business logic
 type ProjectService interface {
-	CreateProject(userID string, token string, req *dto.CreateProjectRequest) (*dto.ProjectResponse, error)
-	GetProject(projectID, userID string) (*dto.ProjectResponse, error)
-	GetProjectsByWorkspaceID(workspaceID, userID string, token string) ([]dto.ProjectResponse, error)
-	UpdateProject(projectID, userID string, req *dto.UpdateProjectRequest) (*dto.ProjectResponse, error)
-	DeleteProject(projectID, userID string) error
-	SearchProjects(userID string, token string, req *dto.SearchProjectsRequest) (*dto.PaginatedProjectsResponse, error)
-
-	// Join Request
-	CreateJoinRequest(userID string, token string, req *dto.CreateProjectJoinRequestRequest) (*dto.ProjectJoinRequestResponse, error)
-	GetJoinRequests(projectID, userID string, status string) ([]dto.ProjectJoinRequestResponse, error)
-	UpdateJoinRequest(requestID, userID string, req *dto.UpdateProjectJoinRequestRequest) (*dto.ProjectJoinRequestResponse, error)
-
-	// Member
-	GetProjectMembers(projectID, userID string) ([]dto.ProjectMemberResponse, error)
-	UpdateMemberRole(projectID, memberID, requestUserID string, req *dto.UpdateProjectMemberRoleRequest) (*dto.ProjectMemberResponse, error)
-	RemoveMember(projectID, memberID, requestUserID string) error
+	CreateProject(ctx context.Context, req *dto.CreateProjectRequest, userID uuid.UUID, token string) (*dto.ProjectResponse, error)
+	GetProjectsByWorkspace(ctx context.Context, workspaceID, userID uuid.UUID, token string) ([]*dto.ProjectResponse, error)
+	GetDefaultProject(ctx context.Context, workspaceID, userID uuid.UUID, token string) (*dto.ProjectResponse, error)
+	GetProject(ctx context.Context, projectID, userID uuid.UUID, token string) (*dto.ProjectResponse, error)
+	UpdateProject(ctx context.Context, projectID, userID uuid.UUID, req *dto.UpdateProjectRequest) (*dto.ProjectResponse, error)
+	DeleteProject(ctx context.Context, projectID, userID uuid.UUID) error
+	SearchProjects(ctx context.Context, workspaceID, userID uuid.UUID, query string, page, limit int, token string) (*dto.PaginatedProjectsResponse, error)
+	GetProjectInitSettings(ctx context.Context, projectID, userID uuid.UUID, token string) (*dto.ProjectInitSettingsResponse, error)
 }
 
-type projectService struct {
-	repo           repository.ProjectRepository
-	roleRepo       repository.RoleRepository
-	fieldRepo      repository.FieldRepository
-	userClient     client.UserClient
-	workspaceCache cache.WorkspaceCache
-	userInfoCache  cache.UserInfoCache
-	logger         *zap.Logger
-	db             *gorm.DB
+// projectServiceImpl is the implementation of ProjectService
+type projectServiceImpl struct {
+	projectRepo     repository.ProjectRepository
+	fieldOptionRepo repository.FieldOptionRepository
+	attachmentRepo  repository.AttachmentRepository
+	s3Client        S3Client // 이 타입 정의가 상단에 추가되었습니다.
+	userClient      client.UserClient
+	metrics         *metrics.Metrics
+	logger          *zap.Logger
 }
 
-func NewProjectService(
-	repo repository.ProjectRepository,
-	roleRepo repository.RoleRepository,
-	fieldRepo repository.FieldRepository,
-	userClient client.UserClient,
-	workspaceCache cache.WorkspaceCache,
-	userInfoCache cache.UserInfoCache,
-	logger *zap.Logger,
-	db *gorm.DB,
-) ProjectService {
-	return &projectService{
-		repo:           repo,
-		roleRepo:       roleRepo,
-		fieldRepo:      fieldRepo,
-		userClient:     userClient,
-		workspaceCache: workspaceCache,
-		userInfoCache:  userInfoCache,
-		logger:         logger,
-		db:             db,
+// NewProjectService creates a new instance of ProjectService
+func NewProjectService(projectRepo repository.ProjectRepository, fieldOptionRepo repository.FieldOptionRepository, attachmentRepo repository.AttachmentRepository, s3Client S3Client, userClient client.UserClient, m *metrics.Metrics, logger *zap.Logger) ProjectService {
+	return &projectServiceImpl{
+		projectRepo:     projectRepo,
+		fieldOptionRepo: fieldOptionRepo,
+		attachmentRepo:  attachmentRepo,
+		s3Client:        s3Client,
+		userClient:      userClient,
+		metrics:         m,
+		logger:          logger,
 	}
 }
 
 // CreateProject creates a new project
-func (s *projectService) CreateProject(userID string, token string, req *dto.CreateProjectRequest) (*dto.ProjectResponse, error) {
-	userUUID, err := uuid.Parse(userID)
+func (s *projectServiceImpl) CreateProject(ctx context.Context, req *dto.CreateProjectRequest, userID uuid.UUID, token string) (*dto.ProjectResponse, error) {
+	// Validate workspace membership
+	isValid, err := s.userClient.ValidateWorkspaceMember(ctx, req.WorkspaceID, userID, token)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
+		// Log error but continue with graceful degradation
+		// Return forbidden error if validation explicitly fails
+		return nil, response.NewAppError(response.ErrCodeForbidden, "You are not a member of this workspace", "")
+	}
+	if !isValid {
+		return nil, response.NewAppError(response.ErrCodeForbidden, "You are not a member of this workspace", "")
 	}
 
-	workspaceUUID, err := uuid.Parse(req.WorkspaceID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 워크스페이스 ID", 400)
-	}
-
-	// Check workspace membership with caching
-	ctx := context.Background()
-	if err := s.validateWorkspaceMembership(ctx, req.WorkspaceID, userID, token); err != nil {
+	// Validate date range
+	if err := validateProjectDateRange(req.StartDate, req.DueDate); err != nil {
 		return nil, err
 	}
 
-	// Get OWNER role
-	ownerRole, err := s.roleRepo.FindByName("OWNER")
-	if err != nil {
-		s.logger.Error("Failed to find OWNER role", zap.Error(err))
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "권한 조회 실패", 500)
+	// Validate and confirm attachments if provided
+	if len(req.AttachmentIDs) > 0 {
+		if err := s.validateAndConfirmAttachments(ctx, req.AttachmentIDs, domain.EntityTypeProject); err != nil {
+			return nil, err
+		}
 	}
 
-	// Create project and member in transaction
-	var project *domain.Project
-	err = s.db.Transaction(func(tx *gorm.DB) error {
-		// Create project
-		project = &domain.Project{
-			WorkspaceID: workspaceUUID,
-			Name:        req.Name,
-			Description: req.Description,
-			OwnerID:     userUUID,
-		}
-		if err := s.repo.Create(project); err != nil {
-			return err
-		}
-
-		// Create owner member
-		member := &domain.ProjectMember{
-			ProjectID: project.ID,
-			UserID:    userUUID,
-			RoleID:    ownerRole.ID,
-			JoinedAt:  time.Now(),
-		}
-		if err := s.repo.CreateMember(member); err != nil {
-			return err
-		}
-
-		// Create default custom fields (stage, role, importance)
-		if err := s.initializeDefaultFields(project.ID); err != nil {
-			s.logger.Error("Failed to initialize default fields", zap.Error(err))
-			return err
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		s.logger.Error("Failed to create project", zap.Error(err))
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "프로젝트 생성 실패", 500)
+	// Create domain model from request
+	project := &domain.Project{
+		WorkspaceID: req.WorkspaceID,
+		OwnerID:     userID,
+		Name:        req.Name,
+		Description: req.Description,
+		StartDate:   req.StartDate,
+		DueDate:     req.DueDate,
+		IsDefault:   false, // Default to false, can be changed later
+		IsPublic:    false, // Default to private
 	}
 
-	// Fetch user info
-	return s.toProjectResponse(project)
+	// Save to repository
+	if err := s.projectRepo.Create(ctx, project); err != nil {
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to create project", err.Error())
+	}
+
+	// ✅ 수정: Confirm attachments after project creation
+	var createdAttachments []*domain.Attachment
+	if len(req.AttachmentIDs) > 0 {
+		// ✅ 에러 발생 시 프로젝트도 롤백
+		if err := s.attachmentRepo.ConfirmAttachments(ctx, req.AttachmentIDs, project.ID); err != nil {
+			s.logger.Error("Failed to confirm attachments, rolling back project creation",
+				zap.String("project_id", project.ID.String()),
+				zap.Strings("attachment_ids", func() []string {
+					ids := make([]string, len(req.AttachmentIDs))
+					for i, id := range req.AttachmentIDs {
+						ids[i] = id.String()
+					}
+					return ids
+				}()),
+				zap.Error(err))
+
+			// ✅ 프로젝트 삭제 (롤백)
+			if deleteErr := s.projectRepo.Delete(ctx, project.ID); deleteErr != nil {
+				s.logger.Error("Failed to rollback project after attachment confirmation failure",
+					zap.String("project_id", project.ID.String()),
+					zap.Error(deleteErr))
+			}
+
+			// ✅ 에러 반환
+			return nil, response.NewAppError(response.ErrCodeInternal,
+				"Failed to confirm attachments: "+err.Error(),
+				"Please ensure all attachment IDs are valid and not already used")
+		}
+
+		// 💡 [수정] Confirm 후 Attachments 메타데이터를 조회하여 project 객체에 할당
+		// FindByIDs는 []*domain.Attachment를 반환한다고 가정합니다.
+		attachments, err := s.attachmentRepo.FindByIDs(ctx, req.AttachmentIDs)
+		if err != nil {
+			s.logger.Warn("Failed to fetch confirmed attachments for response", zap.Error(err))
+		} else {
+			createdAttachments = attachments
+		}
+	}
+
+	// Add creator as OWNER member
+	member := &domain.ProjectMember{
+		ProjectID: project.ID,
+		UserID:    userID,
+		RoleName:  domain.ProjectRoleOwner,
+	}
+	if err := s.projectRepo.AddMember(ctx, member); err != nil {
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to add project owner", err.Error())
+	}
+
+	// Create default field options for the project
+	if err := s.createDefaultFieldOptions(ctx, project.ID); err != nil {
+		// Rollback project creation if field options fail
+		s.projectRepo.Delete(ctx, project.ID)
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to create default field options", err.Error())
+	}
+
+	// Increment project creation metric
+	if s.metrics != nil {
+		s.metrics.IncrementProjectCreated()
+	}
+
+	// Convert to response DTO
+	// 💡 [수정] 생성된 Attachments를 Project 객체에 임시 할당 (타입 변환 적용)
+	project.Attachments = toDomainAttachments(createdAttachments)
+	return s.toProjectResponse(project), nil
 }
 
-// GetProject retrieves a project by ID
-func (s *projectService) GetProject(projectID, userID string) (*dto.ProjectResponse, error) {
-	projUUID, err := uuid.Parse(projectID)
+// GetProjectsByWorkspace retrieves all projects for a workspace
+func (s *projectServiceImpl) GetProjectsByWorkspace(ctx context.Context, workspaceID, userID uuid.UUID, token string) ([]*dto.ProjectResponse, error) {
+	// Validate workspace membership
+	isValid, err := s.userClient.ValidateWorkspaceMember(ctx, workspaceID, userID, token)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 프로젝트 ID", 400)
+		// Log error but continue with graceful degradation
+		// Return forbidden error if validation explicitly fails
+		return nil, response.NewAppError(response.ErrCodeForbidden, "You are not a member of this workspace", "")
+	}
+	if !isValid {
+		return nil, response.NewAppError(response.ErrCodeForbidden, "You are not a member of this workspace", "")
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	// Fetch projects from repository
+	projects, err := s.projectRepo.FindByWorkspaceID(ctx, workspaceID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to fetch projects", err.Error())
 	}
 
-	// Check if user is project member
-	_, err = s.repo.FindMemberByUserAndProject(userUUID, projUUID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "프로젝트 멤버가 아닙니다", 403)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
+	// 빈 배열 명시적 처리 - nil이거나 길이가 0이면 빈 배열 반환
+	if projects == nil || len(projects) == 0 {
+		return []*dto.ProjectResponse{}, nil
 	}
 
-	project, err := s.repo.FindByID(projUUID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, "프로젝트를 찾을 수 없습니다", 404)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "프로젝트 조회 실패", 500)
-	}
-
-	return s.toProjectResponse(project)
-}
-
-// GetProjectsByWorkspaceID retrieves all projects in a workspace
-func (s *projectService) GetProjectsByWorkspaceID(workspaceID, userID string, token string) ([]dto.ProjectResponse, error) {
-	workspaceUUID, err := uuid.Parse(workspaceID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 워크스페이스 ID", 400)
-	}
-
-	// Check workspace membership with caching
-	ctx := context.Background()
-	if err := s.validateWorkspaceMembership(ctx, workspaceID, userID, token); err != nil {
-		return nil, err
-	}
-
-	projects, err := s.repo.FindByWorkspaceID(workspaceUUID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "프로젝트 조회 실패", 500)
-	}
-
-	// Batch fetch owner info
-	ownerIDs := make([]string, 0, len(projects))
-	for _, proj := range projects {
-		ownerIDs = append(ownerIDs, proj.OwnerID.String())
-	}
-	userMap := s.getUserInfoBatch(ctx, ownerIDs)
-
-	// Convert to responses
-	responses := make([]dto.ProjectResponse, 0, len(projects))
-	for _, proj := range projects {
-		response := &dto.ProjectResponse{
-			ID:          proj.ID.String(),
-			WorkspaceID: proj.WorkspaceID.String(),
-			Name:        proj.Name,
-			Description: proj.Description,
-			OwnerID:     proj.OwnerID.String(),
-			CreatedAt:   proj.CreatedAt,
-			UpdatedAt:   proj.UpdatedAt,
+	// Convert to response DTOs with owner profile information
+	// 동적으로 append하여 개별 프로젝트 변환 실패 시 전체 실패 방지
+	responses := make([]*dto.ProjectResponse, 0, len(projects))
+	for i, project := range projects {
+		// nil 프로젝트 스킵
+		if project == nil {
+			continue
 		}
 
-		// Add owner info from batch result
-		if userInfo, ok := userMap[proj.OwnerID.String()]; ok {
-			response.OwnerName = userInfo.Name
-			response.OwnerEmail = userInfo.Email
+		// 💡 [추가] Project 목록 조회 시 Attachments 로드 (효율을 위해 bulk load 고려 가능)
+		attachments, err := s.attachmentRepo.FindByEntityID(ctx, domain.EntityTypeProject, project.ID)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			s.logger.Error("Failed to fetch attachments for project list", zap.String("project_id", project.ID.String()), zap.Error(err))
 		}
+		project.Attachments = toDomainAttachments(attachments) // 🚨 타입 변환 적용
 
-		responses = append(responses, *response)
+		// 개별 변환 실패 시 해당 프로젝트만 스킵
+		projectResp := s.toProjectResponseWithProfile(ctx, project, token)
+		if projectResp != nil {
+			responses = append(responses, projectResp)
+		} else {
+			// Log when a project response is nil to help debugging
+			_ = i // Avoid unused variable warning
+		}
 	}
 
 	return responses, nil
 }
 
-// UpdateProject updates project information
-func (s *projectService) UpdateProject(projectID, userID string, req *dto.UpdateProjectRequest) (*dto.ProjectResponse, error) {
-	projUUID, err := uuid.Parse(projectID)
+// GetDefaultProject retrieves the default project for a workspace
+func (s *projectServiceImpl) GetDefaultProject(ctx context.Context, workspaceID, userID uuid.UUID, token string) (*dto.ProjectResponse, error) {
+	// Validate workspace membership
+	isValid, err := s.userClient.ValidateWorkspaceMember(ctx, workspaceID, userID, token)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 프로젝트 ID", 400)
+		// Log error but continue with graceful degradation
+		// Return forbidden error if validation explicitly fails
+		return nil, response.NewAppError(response.ErrCodeForbidden, "You are not a member of this workspace", "")
+	}
+	if !isValid {
+		return nil, response.NewAppError(response.ErrCodeForbidden, "You are not a member of this workspace", "")
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	// Fetch default project from repository
+	project, err := s.projectRepo.FindDefaultByWorkspaceID(ctx, workspaceID)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, response.NewNotFoundError("Default project not found", "")
+		}
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to fetch default project", err.Error())
 	}
 
-	// Check if user is project OWNER
-	if err := s.checkProjectOwnerPermission(userUUID, projUUID); err != nil {
+	// 💡 [추가] Attachments 로드 (타입 변환 적용)
+	attachments, err := s.attachmentRepo.FindByEntityID(ctx, domain.EntityTypeProject, project.ID)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		s.logger.Error("Failed to fetch attachments for default project", zap.String("project_id", project.ID.String()), zap.Error(err))
+	}
+	project.Attachments = toDomainAttachments(attachments) // 🚨 타입 변환 적용
+
+	// Convert to response DTO with owner profile information
+	return s.toProjectResponseWithProfile(ctx, project, token), nil
+}
+
+// toProjectResponse converts domain.Project to dto.ProjectResponse
+func (s *projectServiceImpl) toProjectResponse(project *domain.Project) *dto.ProjectResponse {
+	// Convert attachments to response DTOs
+	attachments := make([]dto.AttachmentResponse, 0, len(project.Attachments))
+	for _, a := range project.Attachments {
+
+		// 💡 [수정] s3Client.GetFileURL을 사용하여 FileURL 필드 채우기 (DB의 FileURL은 S3 Key)
+		fileURL := s.s3Client.GetFileURL(a.FileURL)
+
+		attachments = append(attachments, dto.AttachmentResponse{
+			ID:       a.ID,
+			FileName: a.FileName,
+			// 💡 FileURL 필드 채우기: S3 Key를 통해 다운로드 URL 생성
+			FileURL:     fileURL,
+			FileSize:    a.FileSize,
+			ContentType: a.ContentType,
+			UploadedBy:  a.UploadedBy,
+			UploadedAt:  a.CreatedAt,
+		})
+	}
+
+	return &dto.ProjectResponse{
+		ID:          project.ID,
+		WorkspaceID: project.WorkspaceID,
+		OwnerID:     project.OwnerID,
+		Name:        project.Name,
+		Description: project.Description,
+		StartDate:   project.StartDate,
+		DueDate:     project.DueDate,
+		IsPublic:    project.IsPublic,
+		Attachments: attachments,
+		CreatedAt:   project.CreatedAt,
+		UpdatedAt:   project.UpdatedAt,
+	}
+}
+
+// toProjectResponseWithProfile converts domain.Project to dto.ProjectResponse with owner profile
+func (s *projectServiceImpl) toProjectResponseWithProfile(ctx context.Context, project *domain.Project, token string) *dto.ProjectResponse {
+	// nil 체크 - project가 nil이면 nil 반환
+	if project == nil {
+		return nil
+	}
+
+	response := s.toProjectResponse(project)
+	// response가 nil이면 nil 반환
+	if response == nil {
+		return nil
+	}
+
+	// Fetch workspace profile for owner - graceful degradation
+	profile, err := s.userClient.GetWorkspaceProfile(ctx, project.WorkspaceID, project.OwnerID, token)
+	if err != nil {
+		// 에러 발생 시 owner 정보 없이 반환 (graceful degradation)
+		return response
+	}
+
+	// profile이 nil이 아닐 때만 정보 추가
+	if profile != nil {
+		response.OwnerEmail = profile.Email
+		response.OwnerName = profile.NickName
+	}
+
+	return response
+}
+
+// GetProject retrieves a project by ID with membership validation
+func (s *projectServiceImpl) GetProject(ctx context.Context, projectID, userID uuid.UUID, token string) (*dto.ProjectResponse, error) {
+	// Fetch project from repository
+	project, err := s.projectRepo.FindByID(ctx, projectID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, response.NewNotFoundError("Project not found", "")
+		}
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to fetch project", err.Error())
+	}
+
+	// Check if user is a project member
+	isMember, err := s.projectRepo.IsProjectMember(ctx, projectID, userID)
+	if err != nil {
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to check membership", err.Error())
+	}
+
+	// If not a project member, check workspace membership
+	// TODO: 향후 프로젝트별 권한 관리 기능 구현 시 수정 필요
+	if !isMember {
+		s.logger.Debug("User is not a project member, checking workspace membership",
+			zap.String("project_id", projectID.String()),
+			zap.String("workspace_id", project.WorkspaceID.String()),
+			zap.String("user_id", userID.String()),
+		)
+
+		isWorkspaceMember, err := s.userClient.ValidateWorkspaceMember(ctx, project.WorkspaceID, userID, token)
+		if err != nil {
+			s.logger.Error("Failed to validate workspace membership",
+				zap.Error(err),
+				zap.String("project_id", projectID.String()),
+				zap.String("workspace_id", project.WorkspaceID.String()),
+				zap.String("user_id", userID.String()),
+			)
+			return nil, response.NewForbiddenError("You are not a member of this project or workspace", "")
+		}
+
+		if !isWorkspaceMember {
+			s.logger.Warn("Access denied: user is neither project member nor workspace member",
+				zap.String("project_id", projectID.String()),
+				zap.String("workspace_id", project.WorkspaceID.String()),
+				zap.String("user_id", userID.String()),
+			)
+			return nil, response.NewForbiddenError("You are not a member of this project or workspace", "")
+		}
+
+		// Workspace member access granted - log for future audit and permission management
+		// Note: This allows workspace members to access all projects in their workspace
+		// until project-level permission management is implemented
+		s.logger.Info("Access granted via workspace membership",
+			zap.String("access_type", "workspace_member"),
+			zap.String("project_id", projectID.String()),
+			zap.String("workspace_id", project.WorkspaceID.String()),
+			zap.String("user_id", userID.String()),
+			zap.String("project_name", project.Name),
+			zap.String("note", "Project-level permissions not yet implemented"),
+		)
+	} else {
+		s.logger.Debug("Access granted via project membership",
+			zap.String("access_type", "project_member"),
+			zap.String("project_id", projectID.String()),
+			zap.String("user_id", userID.String()),
+		)
+	}
+
+	// 💡 [추가] Attachments 로드 (타입 변환 적용)
+	attachments, err := s.attachmentRepo.FindByEntityID(ctx, domain.EntityTypeProject, project.ID)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		s.logger.Error("Failed to fetch attachments for project", zap.String("project_id", project.ID.String()), zap.Error(err))
+		// Continue with graceful degradation
+	}
+	project.Attachments = toDomainAttachments(attachments) // 🚨 타입 변환 적용
+
+	// Convert to response DTO with owner profile information
+	return s.toProjectResponseWithProfile(ctx, project, token), nil
+}
+
+// UpdateProject updates a project (OWNER only)
+func (s *projectServiceImpl) UpdateProject(ctx context.Context, projectID, userID uuid.UUID, req *dto.UpdateProjectRequest) (*dto.ProjectResponse, error) {
+	// Fetch project from repository
+	project, err := s.projectRepo.FindByID(ctx, projectID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, response.NewNotFoundError("Project not found", "")
+		}
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to fetch project", err.Error())
+	}
+
+	// Check if user is the project owner
+	member, err := s.projectRepo.FindMemberByProjectAndUser(ctx, projectID, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, response.NewForbiddenError("You are not a member of this project", "")
+		}
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to check membership", err.Error())
+	}
+	if member.RoleName != domain.ProjectRoleOwner {
+		return nil, response.NewForbiddenError("Only project owner can update project", "")
+	}
+
+	// Determine the effective start and due dates for validation
+	effectiveStartDate := project.StartDate
+	effectiveDueDate := project.DueDate
+
+	if req.StartDate != nil {
+		effectiveStartDate = req.StartDate
+	}
+	if req.DueDate != nil {
+		effectiveDueDate = req.DueDate
+	}
+
+	// Validate date range with effective dates
+	if err := validateProjectDateRange(effectiveStartDate, effectiveDueDate); err != nil {
 		return nil, err
 	}
 
-	project, err := s.repo.FindByID(projUUID)
+	// Validate and confirm attachments if provided
+	if len(req.AttachmentIDs) > 0 {
+		if err := s.validateAndConfirmAttachments(ctx, req.AttachmentIDs, domain.EntityTypeProject); err != nil {
+			return nil, err
+		}
+	}
+
+	// Update fields if provided
+	if req.Name != nil {
+		project.Name = *req.Name
+	}
+	if req.Description != nil {
+		project.Description = *req.Description
+	}
+	if req.StartDate != nil {
+		project.StartDate = req.StartDate
+	}
+	if req.DueDate != nil {
+		project.DueDate = req.DueDate
+	}
+
+	// Save to repository
+	if err := s.projectRepo.Update(ctx, project); err != nil {
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to update project", err.Error())
+	}
+
+	// ✅ 수정: Attachments 처리 로직 개선 및 Confirm
+	if len(req.AttachmentIDs) > 0 {
+		// ✅ 에러 발생 시 업데이트 실패 처리
+		if err := s.attachmentRepo.ConfirmAttachments(ctx, req.AttachmentIDs, project.ID); err != nil {
+			s.logger.Error("Failed to confirm attachments during project update",
+				zap.String("project_id", project.ID.String()),
+				zap.Strings("attachment_ids", func() []string {
+					ids := make([]string, len(req.AttachmentIDs))
+					for i, id := range req.AttachmentIDs {
+						ids[i] = id.String()
+					}
+					return ids
+				}()),
+				zap.Error(err))
+
+			// ✅ 에러 반환
+			return nil, response.NewAppError(response.ErrCodeInternal,
+				"Failed to confirm attachments: "+err.Error(),
+				"Please ensure all attachment IDs are valid and not already used")
+		}
+	}
+
+	// 💡 [핵심] 프로젝트와 연결된 모든 Attachments를 다시 조회합니다. (타입 변환 적용)
+	allAttachments, err := s.attachmentRepo.FindByEntityID(ctx, domain.EntityTypeProject, project.ID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, "프로젝트를 찾을 수 없습니다", 404)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "프로젝트 조회 실패", 500)
+		s.logger.Warn("Failed to fetch all confirmed attachments after update", zap.Error(err))
+		// 치명적인 오류가 아니므로 계속 진행
+	} else {
+		// DB에서 최신 Attachments 목록을 로드하여 project 객체에 할당
+		project.Attachments = toDomainAttachments(allAttachments) // 🚨 타입 변환 적용
 	}
 
-	// Update fields using Domain methods (Rich Domain Model)
-	if req.Name != "" {
-		// Domain 메서드 사용: 검증 로직이 Domain에 포함됨
-		if err := project.UpdateName(req.Name); err != nil {
-			// Domain 에러를 Infrastructure 에러로 변환
-			return nil, apperrors.FromDomainError(err)
-		}
-	}
-	if req.Description != "" {
-		// Domain 메서드 사용: 비즈니스 로직이 Domain에 캡슐화됨
-		project.UpdateDescription(req.Description)
-	}
-
-	if err := s.repo.Update(project); err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "프로젝트 수정 실패", 500)
-	}
-
-	return s.toProjectResponse(project)
+	// Convert to response DTO
+	return s.toProjectResponse(project), nil
 }
 
-// DeleteProject soft deletes a project
-func (s *projectService) DeleteProject(projectID, userID string) error {
-	projUUID, err := uuid.Parse(projectID)
+// DeleteProject soft deletes a project and its associated attachments (OWNER only)
+func (s *projectServiceImpl) DeleteProject(ctx context.Context, projectID, userID uuid.UUID) error {
+	// Fetch project from repository
+	project, err := s.projectRepo.FindByID(ctx, projectID)
 	if err != nil {
-		return apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 프로젝트 ID", 400)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return response.NewNotFoundError("Project not found", "")
+		}
+		return response.NewAppError(response.ErrCodeInternal, "Failed to fetch project", err.Error())
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	// Check if user is the project owner
+	member, err := s.projectRepo.FindMemberByProjectAndUser(ctx, projectID, userID)
 	if err != nil {
-		return apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return response.NewForbiddenError("You are not a member of this project", "")
+		}
+		return response.NewAppError(response.ErrCodeInternal, "Failed to check membership", err.Error())
+	}
+	if member.RoleName != domain.ProjectRoleOwner {
+		return response.NewForbiddenError("Only project owner can delete project", "")
 	}
 
-	// Check if user is project OWNER
-	if err := s.checkProjectOwnerPermission(userUUID, projUUID); err != nil {
-		return err
+	// Find all attachments associated with this project
+	attachments, err := s.attachmentRepo.FindByEntityID(ctx, domain.EntityTypeProject, projectID)
+	if err != nil {
+		s.logger.Warn("Failed to fetch attachments for project deletion",
+			zap.String("project_id", projectID.String()),
+			zap.Error(err))
+		// Continue with project deletion even if attachment fetch fails
 	}
 
-	if err := s.repo.Delete(projUUID); err != nil {
-		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "프로젝트 삭제 실패", 500)
+	// Delete attachments from S3 and database
+	if len(attachments) > 0 {
+		s.deleteAttachmentsWithS3(ctx, attachments)
+	}
+
+	// Delete from repository
+	if err := s.projectRepo.Delete(ctx, project.ID); err != nil {
+		return response.NewAppError(response.ErrCodeInternal, "Failed to delete project", err.Error())
 	}
 
 	return nil
 }
 
-// SearchProjects searches projects in a workspace
-func (s *projectService) SearchProjects(userID string, token string, req *dto.SearchProjectsRequest) (*dto.PaginatedProjectsResponse, error) {
-	workspaceUUID, err := uuid.Parse(req.WorkspaceID)
+// SearchProjects searches projects by name or description with workspace membership validation
+func (s *projectServiceImpl) SearchProjects(ctx context.Context, workspaceID, userID uuid.UUID, query string, page, limit int, token string) (*dto.PaginatedProjectsResponse, error) {
+	// Validate workspace membership
+	isValid, err := s.userClient.ValidateWorkspaceMember(ctx, workspaceID, userID, token)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 워크스페이스 ID", 400)
+		return nil, response.NewAppError(response.ErrCodeForbidden, "You are not a member of this workspace", "")
+	}
+	if !isValid {
+		return nil, response.NewAppError(response.ErrCodeForbidden, "You are not a member of this workspace", "")
 	}
 
-	// Check workspace membership with caching
-	ctx := context.Background()
-	if err := s.validateWorkspaceMembership(ctx, req.WorkspaceID, userID, token); err != nil {
-		return nil, err
+	// Validate query parameter
+	if query == "" {
+		return nil, response.NewValidationError("Search query cannot be empty", "")
 	}
 
-	// Default values
-	if req.Page < 1 {
-		req.Page = 1
+	// Set default pagination values
+	if page < 1 {
+		page = 1
 	}
-	if req.Limit < 1 {
-		req.Limit = 10
+	if limit < 1 || limit > 100 {
+		limit = 10
 	}
 
-	projects, total, err := s.repo.Search(workspaceUUID, req.Query, req.Page, req.Limit)
+	// Search projects from repository
+	projects, total, err := s.projectRepo.Search(ctx, workspaceID, query, page, limit)
 	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "프로젝트 검색 실패", 500)
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to search projects", err.Error())
 	}
 
-	// Batch fetch owner info
-	ownerIDs := make([]string, 0, len(projects))
-	for _, proj := range projects {
-		ownerIDs = append(ownerIDs, proj.OwnerID.String())
-	}
-	userMap := s.getUserInfoBatch(ctx, ownerIDs)
+	// Convert to response DTOs with owner profile information
+	responses := make([]dto.ProjectResponse, len(projects))
+	for i, project := range projects {
 
-	// Convert to response DTOs
-	responses := make([]dto.ProjectResponse, 0, len(projects))
-	for _, proj := range projects {
-		response := &dto.ProjectResponse{
-			ID:          proj.ID.String(),
-			WorkspaceID: proj.WorkspaceID.String(),
-			Name:        proj.Name,
-			Description: proj.Description,
-			OwnerID:     proj.OwnerID.String(),
-			CreatedAt:   proj.CreatedAt,
-			UpdatedAt:   proj.UpdatedAt,
+		// 💡 [추가] 검색 목록 조회 시 Attachments 로드 (타입 변환 적용)
+		attachments, err := s.attachmentRepo.FindByEntityID(ctx, domain.EntityTypeProject, project.ID)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			s.logger.Error("Failed to fetch attachments for project list", zap.String("project_id", project.ID.String()), zap.Error(err))
 		}
+		project.Attachments = toDomainAttachments(attachments) // 🚨 타입 변환 적용
 
-		// Add owner info from batch result
-		if userInfo, ok := userMap[proj.OwnerID.String()]; ok {
-			response.OwnerName = userInfo.Name
-			response.OwnerEmail = userInfo.Email
-		}
-
-		responses = append(responses, *response)
+		responses[i] = *s.toProjectResponseWithProfile(ctx, project, token)
 	}
 
 	return &dto.PaginatedProjectsResponse{
 		Projects: responses,
 		Total:    total,
-		Page:     req.Page,
-		Limit:    req.Limit,
+		Page:     page,
+		Limit:    limit,
 	}, nil
 }
 
-// CreateJoinRequest creates a join request
-func (s *projectService) CreateJoinRequest(userID string, token string, req *dto.CreateProjectJoinRequestRequest) (*dto.ProjectJoinRequestResponse, error) {
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
-	}
+// createDefaultFieldOptions creates default field options for a new project
+// using hardcoded default values
+func (s *projectServiceImpl) createDefaultFieldOptions(ctx context.Context, projectID uuid.UUID) error {
+	// Get hardcoded default options
+	templates := getDefaultFieldOptions()
 
-	projUUID, err := uuid.Parse(req.ProjectID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 프로젝트 ID", 400)
-	}
-
-	// Check if project exists
-	project, err := s.repo.FindByID(projUUID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, "프로젝트를 찾을 수 없습니다", 404)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "프로젝트 조회 실패", 500)
-	}
-
-	// Check workspace membership with caching
-	ctx := context.Background()
-	if err := s.validateWorkspaceMembership(ctx, project.WorkspaceID.String(), userID, token); err != nil {
-		return nil, err
-	}
-
-	// Check if already a member
-	_, err = s.repo.FindMemberByUserAndProject(userUUID, projUUID)
-	if err == nil {
-		return nil, apperrors.New(apperrors.ErrCodeConflict, "이미 프로젝트 멤버입니다", 409)
-	}
-
-	// Check if request already exists
-	existingReq, err := s.repo.FindJoinRequestByUserAndProject(userUUID, projUUID)
-	if err == nil && existingReq.Status == domain.ProjectJoinRequestPending {
-		return nil, apperrors.New(apperrors.ErrCodeConflict, "이미 참여 신청이 있습니다", 409)
-	}
-
-	// Create join request
-	joinReq := &domain.ProjectJoinRequest{
-		ProjectID:   projUUID,
-		UserID:      userUUID,
-		Status:      domain.ProjectJoinRequestPending,
-		RequestedAt: time.Now(),
-	}
-
-	if err := s.repo.CreateJoinRequest(joinReq); err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "참여 신청 실패", 500)
-	}
-
-	return s.toJoinRequestResponse(joinReq)
-}
-
-// GetJoinRequests retrieves join requests for a project
-func (s *projectService) GetJoinRequests(projectID, userID string, status string) ([]dto.ProjectJoinRequestResponse, error) {
-	projUUID, err := uuid.Parse(projectID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 프로젝트 ID", 400)
-	}
-
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
-	}
-
-	// Check if user is project OWNER or ADMIN
-	if err := s.checkProjectAdminPermission(userUUID, projUUID); err != nil {
-		return nil, err
-	}
-
-	requests, err := s.repo.FindJoinRequestsByProject(projUUID, status)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "참여 신청 조회 실패", 500)
-	}
-
-	// Batch fetch user info
-	ctx := context.Background()
-	userIDs := make([]string, 0, len(requests))
-	for _, req := range requests {
-		userIDs = append(userIDs, req.UserID.String())
-	}
-	userMap := s.getUserInfoBatch(ctx, userIDs)
-
-	// Convert to responses
-	responses := make([]dto.ProjectJoinRequestResponse, 0, len(requests))
-	for _, req := range requests {
-		response := &dto.ProjectJoinRequestResponse{
-			ID:          req.ID.String(),
-			ProjectID:   req.ProjectID.String(),
-			UserID:      req.UserID.String(),
-			Status:      string(req.Status),
-			RequestedAt: req.RequestedAt,
-			UpdatedAt:   req.UpdatedAt,
-		}
-
-		// Add user info from batch result
-		if userInfo, ok := userMap[req.UserID.String()]; ok {
-			response.UserName = userInfo.Name
-			response.UserEmail = userInfo.Email
-		}
-
-		responses = append(responses, *response)
-	}
-
-	return responses, nil
-}
-
-// UpdateJoinRequest approves or rejects a join request
-func (s *projectService) UpdateJoinRequest(requestID, userID string, req *dto.UpdateProjectJoinRequestRequest) (*dto.ProjectJoinRequestResponse, error) {
-	reqUUID, err := uuid.Parse(requestID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 요청 ID", 400)
-	}
-
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
-	}
-
-	joinReq, err := s.repo.FindJoinRequestByID(reqUUID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, "참여 신청을 찾을 수 없습니다", 404)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "참여 신청 조회 실패", 500)
-	}
-
-	// Check if user is project OWNER or ADMIN
-	if err := s.checkProjectAdminPermission(userUUID, joinReq.ProjectID); err != nil {
-		return nil, err
-	}
-
-	// Update status
-	joinReq.Status = domain.ProjectJoinRequestStatus(req.Status)
-
-	// If approved, create member
-	if req.Status == "APPROVED" {
-		memberRole, err := s.roleRepo.FindByName("MEMBER")
-		if err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "권한 조회 실패", 500)
-		}
-
-		member := &domain.ProjectMember{
-			ProjectID: joinReq.ProjectID,
-			UserID:    joinReq.UserID,
-			RoleID:    memberRole.ID,
-			JoinedAt:  time.Now(),
-		}
-
-		if err := s.repo.CreateMember(member); err != nil {
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 생성 실패", 500)
+	// Create project-specific options from templates
+	projectOptions := make([]*domain.FieldOption, len(templates))
+	for i, template := range templates {
+		projectOptions[i] = &domain.FieldOption{
+			ProjectID:       &projectID,
+			FieldType:       template.FieldType,
+			Value:           template.Value,
+			Label:           template.Label,
+			Color:           template.Color,
+			DisplayOrder:    template.DisplayOrder,
+			IsSystemDefault: false,
 		}
 	}
 
-	if err := s.repo.UpdateJoinRequest(joinReq); err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "참여 신청 처리 실패", 500)
-	}
-
-	return s.toJoinRequestResponse(joinReq)
-}
-
-// GetProjectMembers retrieves all members of a project
-func (s *projectService) GetProjectMembers(projectID, userID string) ([]dto.ProjectMemberResponse, error) {
-	projUUID, err := uuid.Parse(projectID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 프로젝트 ID", 400)
-	}
-
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
-	}
-
-	// Check if user is project member
-	_, err = s.repo.FindMemberByUserAndProject(userUUID, projUUID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "프로젝트 멤버가 아닙니다", 403)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
-	}
-
-	members, err := s.repo.FindMembersByProject(projUUID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 조회 실패", 500)
-	}
-
-	// Batch fetch user info
-	ctx := context.Background()
-	userIDs := make([]string, 0, len(members))
-	for _, member := range members {
-		userIDs = append(userIDs, member.UserID.String())
-	}
-	userMap := s.getUserInfoBatch(ctx, userIDs)
-
-	// Convert to responses
-	responses := make([]dto.ProjectMemberResponse, 0, len(members))
-	for _, member := range members {
-		// Get role name
-		role, err := s.roleRepo.FindByID(member.RoleID)
-		if err != nil {
-			s.logger.Warn("Failed to get role", zap.Error(err))
-			continue
-		}
-
-		response := &dto.ProjectMemberResponse{
-			ID:        member.ID.String(),
-			ProjectID: member.ProjectID.String(),
-			UserID:    member.UserID.String(),
-			RoleName:  role.Name,
-			JoinedAt:  member.JoinedAt,
-		}
-
-		// Add user info from batch result
-		if userInfo, ok := userMap[member.UserID.String()]; ok {
-			response.UserName = userInfo.Name
-			response.UserEmail = userInfo.Email
-		}
-
-		responses = append(responses, *response)
-	}
-
-	return responses, nil
-}
-
-// UpdateMemberRole updates a member's role
-func (s *projectService) UpdateMemberRole(projectID, memberID, requestUserID string, req *dto.UpdateProjectMemberRoleRequest) (*dto.ProjectMemberResponse, error) {
-	projUUID, err := uuid.Parse(projectID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 프로젝트 ID", 400)
-	}
-
-	memberUUID, err := uuid.Parse(memberID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 멤버 ID", 400)
-	}
-
-	reqUserUUID, err := uuid.Parse(requestUserID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
-	}
-
-	// Check if requestUser is project OWNER
-	if err := s.checkProjectOwnerPermission(reqUserUUID, projUUID); err != nil {
-		return nil, err
-	}
-
-	member, err := s.repo.FindMemberByID(memberUUID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, "멤버를 찾을 수 없습니다", 404)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 조회 실패", 500)
-	}
-
-	// Cannot change own role
-	if member.UserID == reqUserUUID {
-		return nil, apperrors.New(apperrors.ErrCodeBadRequest, "자신의 권한은 변경할 수 없습니다", 400)
-	}
-
-	// Get new role
-	newRole, err := s.roleRepo.FindByName(req.RoleName)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "권한 조회 실패", 500)
-	}
-
-	member.RoleID = newRole.ID
-	if err := s.repo.UpdateMember(member); err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 권한 수정 실패", 500)
-	}
-
-	return s.toMemberResponse(member)
-}
-
-// RemoveMember removes a member from project
-func (s *projectService) RemoveMember(projectID, memberID, requestUserID string) error {
-	projUUID, err := uuid.Parse(projectID)
-	if err != nil {
-		return apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 프로젝트 ID", 400)
-	}
-
-	memberUUID, err := uuid.Parse(memberID)
-	if err != nil {
-		return apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 멤버 ID", 400)
-	}
-
-	reqUserUUID, err := uuid.Parse(requestUserID)
-	if err != nil {
-		return apperrors.Wrap(err, apperrors.ErrCodeBadRequest, "잘못된 사용자 ID", 400)
-	}
-
-	// Check if requestUser is project OWNER or ADMIN
-	if err := s.checkProjectAdminPermission(reqUserUUID, projUUID); err != nil {
+	// Batch create all project options
+	if err := s.fieldOptionRepo.CreateBatch(ctx, projectOptions); err != nil {
 		return err
-	}
-
-	member, err := s.repo.FindMemberByID(memberUUID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return apperrors.New(apperrors.ErrCodeNotFound, "멤버를 찾을 수 없습니다", 404)
-		}
-		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 조회 실패", 500)
-	}
-
-	// Cannot remove self
-	if member.UserID == reqUserUUID {
-		return apperrors.New(apperrors.ErrCodeBadRequest, "자신을 삭제할 수 없습니다", 400)
-	}
-
-	// Cannot remove OWNER
-	role, err := s.roleRepo.FindByID(member.RoleID)
-	if err == nil && role.Name == "OWNER" {
-		return apperrors.New(apperrors.ErrCodeBadRequest, "OWNER는 삭제할 수 없습니다", 400)
-	}
-
-	if err := s.repo.DeleteMember(memberUUID); err != nil {
-		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 삭제 실패", 500)
 	}
 
 	return nil
 }
 
-// Helper methods
-
-// validateWorkspaceMembership checks workspace membership with caching
-func (s *projectService) validateWorkspaceMembership(ctx context.Context, workspaceID, userID, token string) error {
-	// Try cache first
-	cacheExists, isMember, err := s.workspaceCache.GetMembership(ctx, workspaceID, userID)
+// GetProjectInitSettings retrieves initial settings for a project including field definitions
+func (s *projectServiceImpl) GetProjectInitSettings(ctx context.Context, projectID, userID uuid.UUID, token string) (*dto.ProjectInitSettingsResponse, error) {
+	// Fetch project from repository
+	project, err := s.projectRepo.FindByID(ctx, projectID)
 	if err != nil {
-		s.logger.Warn("Failed to get workspace membership from cache", zap.Error(err))
-		// Continue to User Service call on cache error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, response.NewNotFoundError("Project not found", "")
+		}
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to fetch project", err.Error())
 	}
 
-	if cacheExists {
-		// Cache hit
-		if !isMember {
-			return apperrors.New(apperrors.ErrCodeWorkspaceAccessDenied, "워크스페이스 멤버가 아닙니다", 403)
+	// Check if user is a project member
+	isMember, err := s.projectRepo.IsProjectMember(ctx, projectID, userID)
+	if err != nil {
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to check membership", err.Error())
+	}
+
+	// If not a project member, check workspace membership
+	// TODO: 향후 프로젝트별 권한 관리 기능 구현 시 수정 필요
+	if !isMember {
+		s.logger.Debug("User is not a project member, checking workspace membership for init settings",
+			zap.String("project_id", projectID.String()),
+			zap.String("workspace_id", project.WorkspaceID.String()),
+			zap.String("user_id", userID.String()),
+		)
+
+		isWorkspaceMember, err := s.userClient.ValidateWorkspaceMember(ctx, project.WorkspaceID, userID, token)
+		if err != nil {
+			s.logger.Error("Failed to validate workspace membership for init settings",
+				zap.Error(err),
+				zap.String("project_id", projectID.String()),
+				zap.String("workspace_id", project.WorkspaceID.String()),
+				zap.String("user_id", userID.String()),
+			)
+			return nil, response.NewForbiddenError("You are not a member of this project or workspace", "")
 		}
+
+		if !isWorkspaceMember {
+			s.logger.Warn("Access denied to init settings: user is neither project member nor workspace member",
+				zap.String("project_id", projectID.String()),
+				zap.String("workspace_id", project.WorkspaceID.String()),
+				zap.String("user_id", userID.String()),
+			)
+			return nil, response.NewForbiddenError("You are not a member of this project or workspace", "")
+		}
+
+		// Workspace member access granted - log for future audit and permission management
+		// Note: This allows workspace members to access all projects in their workspace
+		// until project-level permission management is implemented
+		s.logger.Info("Access granted to init settings via workspace membership",
+			zap.String("access_type", "workspace_member"),
+			zap.String("project_id", projectID.String()),
+			zap.String("workspace_id", project.WorkspaceID.String()),
+			zap.String("user_id", userID.String()),
+			zap.String("project_name", project.Name),
+			zap.String("note", "Project-level permissions not yet implemented"),
+		)
+	} else {
+		s.logger.Debug("Access granted to init settings via project membership",
+			zap.String("access_type", "project_member"),
+			zap.String("project_id", projectID.String()),
+			zap.String("user_id", userID.String()),
+		)
+	}
+
+	// Fetch workspace information
+	workspace, err := s.userClient.GetWorkspace(ctx, project.WorkspaceID, token)
+	if err != nil {
+		// Log error but continue with graceful degradation
+		workspace = &client.Workspace{
+			ID:   project.WorkspaceID,
+			Name: "",
+		}
+	}
+
+	// Fetch owner profile information
+	ownerProfile, err := s.userClient.GetWorkspaceProfile(ctx, project.WorkspaceID, project.OwnerID, token)
+	if err != nil {
+		// Log error but continue with graceful degradation
+		s.logger.Warn("Failed to fetch owner profile for project init settings",
+			zap.Error(err),
+			zap.String("project_id", projectID.String()),
+			zap.String("owner_id", project.OwnerID.String()),
+		)
+	}
+
+	// Build project basic info with workspace and owner details
+	projectInfo := dto.ProjectBasicInfo{
+		ProjectID:      project.ID,
+		WorkspaceID:    project.WorkspaceID,
+		WorkspaceName:  workspace.Name,
+		WorkspaceEmail: workspace.OwnerEmail,
+		Name:           project.Name,
+		Description:    project.Description,
+		OwnerID:        project.OwnerID,
+		IsPublic:       project.IsPublic,
+		StartDate:      project.StartDate,
+		DueDate:        project.DueDate,
+		CreatedAt:      project.CreatedAt,
+		UpdatedAt:      project.UpdatedAt,
+	}
+
+	// Add owner profile information if available
+	if ownerProfile != nil {
+		projectInfo.OwnerEmail = ownerProfile.Email
+		projectInfo.OwnerName = ownerProfile.NickName
+	}
+
+	// Fetch project-specific field options from database
+	stageOptions, err := s.fieldOptionRepo.FindByProjectAndFieldType(ctx, projectID, domain.FieldTypeStage)
+	if err != nil {
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to fetch stage options", err.Error())
+	}
+
+	roleOptions, err := s.fieldOptionRepo.FindByProjectAndFieldType(ctx, projectID, domain.FieldTypeRole)
+	if err != nil {
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to fetch role options", err.Error())
+	}
+
+	importanceOptions, err := s.fieldOptionRepo.FindByProjectAndFieldType(ctx, projectID, domain.FieldTypeImportance)
+	if err != nil {
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to fetch importance options", err.Error())
+	}
+
+	// Convert field options to DTO format
+	stageFieldOptions := make([]dto.FieldOption, len(stageOptions))
+	for i, opt := range stageOptions {
+		stageFieldOptions[i] = dto.FieldOption{
+			OptionID:     opt.ID.String(),
+			OptionLabel:  opt.Label,
+			OptionValue:  opt.Value,
+			Color:        opt.Color,
+			DisplayOrder: opt.DisplayOrder,
+			FieldID:      "stage",
+		}
+	}
+
+	roleFieldOptions := make([]dto.FieldOption, len(roleOptions))
+	for i, opt := range roleOptions {
+		roleFieldOptions[i] = dto.FieldOption{
+			OptionID:     opt.ID.String(),
+			OptionLabel:  opt.Label,
+			OptionValue:  opt.Value,
+			Color:        opt.Color,
+			DisplayOrder: opt.DisplayOrder,
+			FieldID:      "role",
+		}
+	}
+
+	importanceFieldOptions := make([]dto.FieldOption, len(importanceOptions))
+	for i, opt := range importanceOptions {
+		importanceFieldOptions[i] = dto.FieldOption{
+			OptionID:     opt.ID.String(),
+			OptionLabel:  opt.Label,
+			OptionValue:  opt.Value,
+			Color:        opt.Color,
+			DisplayOrder: opt.DisplayOrder,
+			FieldID:      "importance",
+		}
+	}
+
+	// Define field definitions with options from database
+	fields := []dto.FieldWithOptionsResponse{
+		{
+			FieldID:     "stage",
+			FieldName:   "Stage",
+			FieldType:   "select",
+			IsRequired:  true,
+			Description: "Current stage of the board",
+			Options:     stageFieldOptions,
+		},
+		{
+			FieldID:     "importance",
+			FieldName:   "Importance",
+			FieldType:   "select",
+			IsRequired:  true,
+			Description: "Priority level of the board",
+			Options:     importanceFieldOptions,
+		},
+		{
+			FieldID:     "role",
+			FieldName:   "Role",
+			FieldType:   "select",
+			IsRequired:  true,
+			Description: "Role responsible for the board",
+			Options:     roleFieldOptions,
+		},
+	}
+
+	// Define field types
+	fieldTypes := []dto.FieldTypeInfo{
+		{
+			TypeID:      "select",
+			TypeName:    "Select",
+			Description: "Single selection from predefined options",
+		},
+		{
+			TypeID:      "text",
+			TypeName:    "Text",
+			Description: "Free text input",
+		},
+		{
+			TypeID:      "date",
+			TypeName:    "Date",
+			Description: "Date selection",
+		},
+		{
+			TypeID:      "user",
+			TypeName:    "User",
+			Description: "User selection",
+		},
+	}
+
+	return &dto.ProjectInitSettingsResponse{
+		Project:       projectInfo,
+		Fields:        fields,
+		FieldTypes:    fieldTypes,
+		DefaultViewID: nil, // Can be extended later to support custom views
+	}, nil
+}
+
+// validateProjectDateRange validates that startDate is not after dueDate
+func validateProjectDateRange(startDate, dueDate *time.Time) error {
+	if startDate != nil && dueDate != nil {
+		if startDate.After(*dueDate) {
+			return response.NewAppError(response.ErrCodeValidation, "Start date cannot be after due date", "")
+		}
+	}
+	return nil
+}
+
+// validateAndConfirmAttachments validates that attachments exist and are in TEMP status
+func (s *projectServiceImpl) validateAndConfirmAttachments(ctx context.Context, attachmentIDs []uuid.UUID, entityType domain.EntityType) error {
+	if len(attachmentIDs) == 0 {
 		return nil
 	}
 
-	// Cache miss - validate via User Service
-	// First check if workspace exists
-	workspaceExists, err := s.userClient.CheckWorkspaceExists(ctx, workspaceID, token)
+	// Fetch attachments by IDs
+	attachments, err := s.attachmentRepo.FindByIDs(ctx, attachmentIDs)
 	if err != nil {
-		s.logger.Error("Failed to check workspace existence", zap.Error(err), zap.String("workspace_id", workspaceID))
-		return apperrors.Wrap(err, apperrors.ErrCodeWorkspaceValidationFailed, "워크스페이스 확인 실패", 500)
-	}
-	if !workspaceExists {
-		return apperrors.New(apperrors.ErrCodeWorkspaceNotFound, "워크스페이스를 찾을 수 없습니다", 404)
+		return response.NewAppError(response.ErrCodeInternal, "Failed to fetch attachments", err.Error())
 	}
 
-	// Check membership
-	isMember, err = s.userClient.ValidateWorkspaceMembership(ctx, workspaceID, userID, token)
-	if err != nil {
-		s.logger.Error("Failed to validate workspace membership", zap.Error(err), zap.String("workspace_id", workspaceID), zap.String("user_id", userID))
-		return apperrors.Wrap(err, apperrors.ErrCodeWorkspaceValidationFailed, "워크스페이스 멤버십 확인 실패", 500)
+	// Check if all attachments exist
+	if len(attachments) != len(attachmentIDs) {
+		return response.NewAppError(response.ErrCodeValidation, "One or more attachments not found", "")
 	}
 
-	// Cache the result
-	if cacheErr := s.workspaceCache.SetMembership(ctx, workspaceID, userID, isMember); cacheErr != nil {
-		s.logger.Warn("Failed to cache workspace membership", zap.Error(cacheErr))
-		// Don't fail the request on cache write error
-	}
-
-	if !isMember {
-		return apperrors.New(apperrors.ErrCodeWorkspaceAccessDenied, "워크스페이스 멤버가 아닙니다", 403)
-	}
-
-	return nil
-}
-
-// getUserInfoWithCache retrieves user info with caching
-func (s *projectService) getUserInfoWithCache(ctx context.Context, userID string) (*dto.UserInfo, error) {
-	// Try cache first
-	cacheExists, cachedUser, err := s.userInfoCache.GetUserInfo(ctx, userID)
-	if err != nil {
-		s.logger.Warn("Failed to get user info from cache", zap.Error(err))
-	}
-
-	if cacheExists && cachedUser != nil {
-		// Cache hit - convert to dto.UserInfo
-		return &dto.UserInfo{
-			UserID: cachedUser.UserID,
-			Name:   cachedUser.Name,
-			Email:  cachedUser.Email,
-		}, nil
-	}
-
-	// Cache miss - fetch from User Service
-	userInfo, err := s.userClient.GetUser(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Cache the result
-	cacheUser := &cache.UserInfo{
-		UserID:   userInfo.UserID,
-		Name:     userInfo.Name,
-		Email:    userInfo.Email,
-		IsActive: userInfo.IsActive,
-	}
-	if cacheErr := s.userInfoCache.SetUserInfo(ctx, cacheUser); cacheErr != nil {
-		s.logger.Warn("Failed to cache user info", zap.Error(cacheErr))
-	}
-
-	return &dto.UserInfo{
-		UserID: userInfo.UserID,
-		Name:   userInfo.Name,
-		Email:  userInfo.Email,
-	}, nil
-}
-
-// getUserInfoBatch retrieves multiple user infos with caching
-func (s *projectService) getUserInfoBatch(ctx context.Context, userIDs []string) map[string]*dto.UserInfo {
-	if len(userIDs) == 0 {
-		return make(map[string]*dto.UserInfo)
-	}
-
-	// Try cache first
-	cachedUsers, err := s.userInfoCache.GetSimpleUsersBatch(ctx, userIDs)
-	if err != nil {
-		s.logger.Warn("Failed to get users from cache", zap.Error(err))
-		cachedUsers = make(map[string]*cache.SimpleUser)
-	}
-
-	// Find missing user IDs
-	missingUserIDs := []string{}
-	for _, userID := range userIDs {
-		if _, exists := cachedUsers[userID]; !exists {
-			missingUserIDs = append(missingUserIDs, userID)
+	// Validate each attachment
+	for _, attachment := range attachments {
+		// Check if attachment is in TEMP status
+		if attachment.Status != domain.AttachmentStatusTemp {
+			return response.NewAppError(response.ErrCodeValidation, "Attachment is not in temporary status and cannot be reused", "")
 		}
-	}
 
-	// Build result map
-	userMap := make(map[string]*dto.UserInfo)
-
-	// Fetch missing users from User Service
-	if len(missingUserIDs) > 0 {
-		users, err := s.userClient.GetUsersBatch(ctx, missingUserIDs)
-		if err != nil {
-			s.logger.Warn("Failed to fetch users from User Service", zap.Error(err))
-		} else {
-			// Cache the fetched users
-			simpleUsers := make([]cache.SimpleUser, 0, len(users))
-			for _, user := range users {
-				userMap[user.UserID] = &dto.UserInfo{
-					UserID: user.UserID,
-					Name:   user.Name,
-					Email:  user.Email,
-				}
-				simpleUsers = append(simpleUsers, cache.SimpleUser{
-					ID:        user.UserID,
-					Name:      user.Name,
-					AvatarURL: "",
-				})
-			}
-			if cacheErr := s.userInfoCache.SetSimpleUsersBatch(ctx, simpleUsers); cacheErr != nil {
-				s.logger.Warn("Failed to cache users", zap.Error(cacheErr))
-			}
-		}
-	}
-
-	// Add cached users to result
-	for userID, cachedUser := range cachedUsers {
-		if _, exists := userMap[userID]; !exists {
-			userMap[userID] = &dto.UserInfo{
-				UserID: cachedUser.ID,
-				Name:   cachedUser.Name,
-				Email:  "", // SimpleUser doesn't have email
-			}
-		}
-	}
-
-	return userMap
-}
-
-func (s *projectService) checkProjectOwnerPermission(userID, projectID uuid.UUID) error {
-	member, err := s.repo.FindMemberByUserAndProject(userID, projectID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return apperrors.New(apperrors.ErrCodeForbidden, "프로젝트 멤버가 아닙니다", 403)
-		}
-		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
-	}
-
-	role, err := s.roleRepo.FindByID(member.RoleID)
-	if err != nil || role.Name != "OWNER" {
-		return apperrors.New(apperrors.ErrCodeForbidden, "OWNER 권한이 필요합니다", 403)
-	}
-
-	return nil
-}
-
-func (s *projectService) checkProjectAdminPermission(userID, projectID uuid.UUID) error {
-	member, err := s.repo.FindMemberByUserAndProject(userID, projectID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return apperrors.New(apperrors.ErrCodeForbidden, "프로젝트 멤버가 아닙니다", 403)
-		}
-		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
-	}
-
-	role, err := s.roleRepo.FindByID(member.RoleID)
-	if err != nil {
-		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "권한 조회 실패", 500)
-	}
-
-	if role.Name != "OWNER" && role.Name != "ADMIN" {
-		return apperrors.New(apperrors.ErrCodeForbidden, "OWNER 또는 ADMIN 권한이 필요합니다", 403)
-	}
-
-	return nil
-}
-
-func (s *projectService) toProjectResponse(project *domain.Project) (*dto.ProjectResponse, error) {
-	response := &dto.ProjectResponse{
-		ID:          project.ID.String(),
-		WorkspaceID: project.WorkspaceID.String(),
-		Name:        project.Name,
-		Description: project.Description,
-		OwnerID:     project.OwnerID.String(),
-		CreatedAt:   project.CreatedAt,
-		UpdatedAt:   project.UpdatedAt,
-	}
-
-	// Fetch user info with caching
-	ctx := context.Background()
-	userInfo, err := s.getUserInfoWithCache(ctx, project.OwnerID.String())
-	if err != nil {
-		s.logger.Warn("Failed to fetch user info", zap.Error(err), zap.String("user_id", project.OwnerID.String()))
-		// Continue without user info
-	} else {
-		response.OwnerName = userInfo.Name
-		response.OwnerEmail = userInfo.Email
-	}
-
-	return response, nil
-}
-
-func (s *projectService) toMemberResponse(member *domain.ProjectMember) (*dto.ProjectMemberResponse, error) {
-	// Get role name
-	role, err := s.roleRepo.FindByID(member.RoleID)
-	if err != nil {
-		return nil, err
-	}
-
-	response := &dto.ProjectMemberResponse{
-		ID:        member.ID.String(),
-		ProjectID: member.ProjectID.String(),
-		UserID:    member.UserID.String(),
-		RoleName:  role.Name,
-		JoinedAt:  member.JoinedAt,
-	}
-
-	// Fetch user info with caching
-	ctx := context.Background()
-	userInfo, err := s.getUserInfoWithCache(ctx, member.UserID.String())
-	if err != nil {
-		s.logger.Warn("Failed to fetch user info", zap.Error(err), zap.String("user_id", member.UserID.String()))
-	} else {
-		response.UserName = userInfo.Name
-		response.UserEmail = userInfo.Email
-	}
-
-	return response, nil
-}
-
-func (s *projectService) toJoinRequestResponse(req *domain.ProjectJoinRequest) (*dto.ProjectJoinRequestResponse, error) {
-	response := &dto.ProjectJoinRequestResponse{
-		ID:          req.ID.String(),
-		ProjectID:   req.ProjectID.String(),
-		UserID:      req.UserID.String(),
-		Status:      string(req.Status),
-		RequestedAt: req.RequestedAt,
-		UpdatedAt:   req.UpdatedAt,
-	}
-
-	// Fetch user info with caching
-	ctx := context.Background()
-	userInfo, err := s.getUserInfoWithCache(ctx, req.UserID.String())
-	if err != nil {
-		s.logger.Warn("Failed to fetch user info", zap.Error(err), zap.String("user_id", req.UserID.String()))
-	} else {
-		response.UserName = userInfo.Name
-		response.UserEmail = userInfo.Email
-	}
-
-	return response, nil
-}
-
-// initializeDefaultFields creates default custom fields for a new project
-func (s *projectService) initializeDefaultFields(projectID uuid.UUID) error {
-	// 1. Create Stage field
-	stageField := &domain.ProjectField{
-		ProjectID:       projectID,
-		Name:            "Stage",
-		FieldType:       domain.FieldTypeSingleSelect,
-		Description:     "작업 진행 단계",
-		DisplayOrder:    0,
-		IsRequired:      true,
-		IsSystemDefault: true,
-		Config:          "{}",
-	}
-	if err := s.fieldRepo.CreateField(stageField); err != nil {
-		return err
-	}
-
-	// Create Stage options
-	stageOptions := []struct {
-		label string
-		color string
-		order int
-	}{
-		{"대기", "#F59E0B", 0},
-		{"진행중", "#3B82F6", 1},
-		{"완료", "#10B981", 2},
-	}
-	for _, opt := range stageOptions {
-		option := &domain.FieldOption{
-			FieldID:      stageField.ID,
-			Label:        opt.label,
-			Color:        opt.color,
-			DisplayOrder: opt.order,
-		}
-		if err := s.fieldRepo.CreateOption(option); err != nil {
-			return err
-		}
-	}
-
-	// 2. Create Role field
-	roleField := &domain.ProjectField{
-		ProjectID:       projectID,
-		Name:            "Role",
-		FieldType:       domain.FieldTypeSingleSelect,
-		Description:     "담당 역할",
-		DisplayOrder:    1,
-		IsRequired:      false,
-		IsSystemDefault: true,
-		Config:          "{}",
-	}
-	if err := s.fieldRepo.CreateField(roleField); err != nil {
-		return err
-	}
-
-	// Create Role options
-	roleOptions := []struct {
-		label string
-		color string
-		order int
-	}{
-		{"프론트엔드", "#EC4899", 0},
-		{"백엔드", "#8B5CF6", 1},
-		{"디자인", "#F97316", 2},
-	}
-	for _, opt := range roleOptions {
-		option := &domain.FieldOption{
-			FieldID:      roleField.ID,
-			Label:        opt.label,
-			Color:        opt.color,
-			DisplayOrder: opt.order,
-		}
-		if err := s.fieldRepo.CreateOption(option); err != nil {
-			return err
-		}
-	}
-
-	// 3. Create Importance field
-	importanceField := &domain.ProjectField{
-		ProjectID:       projectID,
-		Name:            "Importance",
-		FieldType:       domain.FieldTypeSingleSelect,
-		Description:     "작업 중요도",
-		DisplayOrder:    2,
-		IsRequired:      false,
-		IsSystemDefault: true,
-		Config:          "{}",
-	}
-	if err := s.fieldRepo.CreateField(importanceField); err != nil {
-		return err
-	}
-
-	// Create Importance options
-	importanceOptions := []struct {
-		label string
-		color string
-		order int
-	}{
-		{"낮음", "#94A3B8", 0},
-		{"보통", "#FBBF24", 1},
-		{"높음", "#EF4444", 2},
-	}
-	for _, opt := range importanceOptions {
-		option := &domain.FieldOption{
-			FieldID:      importanceField.ID,
-			Label:        opt.label,
-			Color:        opt.color,
-			DisplayOrder: opt.order,
-		}
-		if err := s.fieldRepo.CreateOption(option); err != nil {
-			return err
+		// Check if attachment entity type matches
+		if attachment.EntityType != entityType {
+			return response.NewAppError(response.ErrCodeValidation, "Attachment entity type does not match", "")
 		}
 	}
 
 	return nil
+}
+
+// deleteAttachmentsWithS3 deletes attachments from both S3 and database
+func (s *projectServiceImpl) deleteAttachmentsWithS3(ctx context.Context, attachments []*domain.Attachment) {
+	attachmentIDs := make([]uuid.UUID, 0, len(attachments))
+
+	// Delete files from S3
+	for _, attachment := range attachments {
+		// Extract S3 key from FileURL
+		fileKey := extractS3KeyFromURL(attachment.FileURL)
+		if fileKey == "" {
+			s.logger.Warn("Failed to extract S3 key from URL",
+				zap.String("attachment_id", attachment.ID.String()),
+				zap.String("file_url", attachment.FileURL))
+			continue
+		}
+
+		// Delete from S3
+		if err := s.s3Client.DeleteFile(ctx, fileKey); err != nil {
+			s.logger.Warn("Failed to delete file from S3",
+				zap.String("attachment_id", attachment.ID.String()),
+				zap.String("file_key", fileKey),
+				zap.Error(err))
+			// Continue even if S3 deletion fails
+		}
+
+		attachmentIDs = append(attachmentIDs, attachment.ID)
+	}
+
+	// Delete from database
+	if len(attachmentIDs) > 0 {
+		if err := s.attachmentRepo.DeleteBatch(ctx, attachmentIDs); err != nil {
+			s.logger.Warn("Failed to delete attachments from database",
+				zap.Int("count", len(attachmentIDs)),
+				zap.Error(err))
+		}
+	}
 }

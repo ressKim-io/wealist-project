@@ -1,10 +1,20 @@
 # Environments
 .env
 .env.local
+.env.dev
+.env.prod
+
+docker/env/*
 
 # Docker
 postgres-data/
 redis-data/
+minio-data/
+
+# File uploads (local development)
+uploads/
+storage/
+files/
 
 # Java / Gradle
 .gradle
@@ -26,7 +36,6 @@ htmlcov/
 
 # Virtual Environments
 .venv/
-env/
 venv/
 
 # IDEs
@@ -43,11 +52,17 @@ Thumbs.db
 # Log files
 *.log
 
+# Backup files
+*.bak
+
 
 # Claude Code
 .claude/
 .claudeignore
 CLAUDE.md
+
+# ai
+.kiro/
 
 # Grafana
 grafana/volume/
@@ -58,21 +73,22 @@ grafana/volume/plugins/
 grafana/volume/log/
 grafana/volume/png/
 prometheus/volume/
-prometheus/data/ 
-prometheus/volume/ 
+prometheus/data/
+prometheus/volume/
 
 
 node_modules
 
-# 모놀리식 프론트엔드 
+# 모놀리식 프론트엔드
 frontend/dist/
 frontend/node_modules/
 frontend/.pnp
 frontend/.pnp.js
-frontend/.env
 frontend/docker-compose.yml
 frontend/Dockerfile.local
 docker-compose.base.yml
 docker-compose.local.yml
-node_modules/.pnpm/node_modules/scheduler
-.backup/
+
+
+
+terraform/dev/*

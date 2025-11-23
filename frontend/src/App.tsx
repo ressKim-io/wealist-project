@@ -6,8 +6,8 @@ import { Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
 
 // Lazy load 페이지들 (이름 일관성 유지)
 const AuthPage = lazy(() => import('./pages/Authpage'));
-const SelectWorkspacePage = lazy(() => import('./components/SelectWorkspacePage'));
-const MainDashboard = lazy(() => import('./pages/Dashboard'));
+const SelectWorkspacePage = lazy(() => import('./pages/SelectWorkspacePage'));
+const MainDashboard = lazy(() => import('./pages/MainDashboard'));
 const OAuthRedirectPage = lazy(() => import('./pages/OAuthRedirectPage'));
 
 const LoadingScreen = ({ msg = '로딩 중..' }) => (
@@ -37,10 +37,10 @@ const App: React.FC = () => {
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
-    localStorage.removeItem('userId');
+    localStorage.removeItem('nickName');
     localStorage.removeItem('userEmail');
     // 로그아웃 후 로그인 페이지로 이동
-    navigate('/');
+    navigate('/', { replace: true });
   };
 
   // 5. renderContent 함수 대신 Routes를 사용합니다.
@@ -57,14 +57,10 @@ const App: React.FC = () => {
 
             {/* 3. 보호되는 라우트 (인증 필요) */}
             <Route element={<ProtectedRoute />}>
-              {/* SelectWorkspacePage는 이제 props가 필요 없습니다.
-                (ts(2739) 오류는 SelectWorkspacePage.tsx 파일 내부를 수정해야 해결됩니다.)
-              */}
+              {/* SelectWorkspacePage는 이제 props가 필요 없습니다. */}
               <Route path="/workspaces" element={<SelectWorkspacePage />} />
 
-              {/* MainDashboard는 onLogout prop이 필요합니다.
-                (ts(2741) 오류 해결)
-              */}
+              {/* MainDashboard는 onLogout prop이 필요합니다. */}
               <Route
                 path="/workspace/:workspaceId"
                 element={<MainDashboard onLogout={handleLogout} />}

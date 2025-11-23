@@ -23,7 +23,11 @@
     /* 🚨 추가/수정 필요 부분 🚨 */
     "rootDir": "./src",
     "outDir": "./dist",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    //
+
+    "types": [],
+    "typeRoots": []
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]

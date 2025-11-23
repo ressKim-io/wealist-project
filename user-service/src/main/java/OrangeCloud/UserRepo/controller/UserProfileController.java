@@ -1,11 +1,11 @@
 package OrangeCloud.UserRepo.controller;
 
+import OrangeCloud.UserRepo.dto.userprofile.CreateProfileRequest;
 import OrangeCloud.UserRepo.dto.userprofile.UpdateProfileRequest;
-import OrangeCloud.UserRepo.dto.userprofile.UpdateProfileImageRequest;
-import OrangeCloud.UserRepo.dto.userprofile.UserProfileResponse; // 💡 DTO 경로 수정 완료
-import OrangeCloud.UserRepo.entity.UserProfile; 
+import OrangeCloud.UserRepo.dto.userprofile.UserProfileResponse;
 import OrangeCloud.UserRepo.service.UserProfileService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -25,7 +26,7 @@ import java.util.UUID;
 public class UserProfileController {
 
     private final UserProfileService userProfileService;
-    // 💡 인증 객체에서 userId (UUID String) 추출
+
     private UUID extractUserId(Principal principal) {
         if (principal instanceof Authentication authentication) {
             return UUID.fromString(authentication.getName());
@@ -33,62 +34,108 @@ public class UserProfileController {
         throw new IllegalStateException("인증된 사용자 정보를 찾을 수 없습니다.");
     }
 
-    /**
-     * 내 프로필 조회
-     * GET /api/profiles/me
-     */
-   @GetMapping("/me")
+    @PostMapping
+    @Operation(summary = "프로필 생성", description = "새로운 프로필을 생성합니다.")
+    public ResponseEntity<UserProfileResponse> createProfile(
+            Principal principal,
+            @Valid @RequestBody CreateProfileRequest request) {
+        UUID userId = extractUserId(principal);
+        log.info("Creating profile for user: {}", userId);
+        UserProfileResponse response = userProfileService.createProfile(request, userId);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "내 프로필 조회", description = "내 프로필을 조회합니다.")
     public ResponseEntity<UserProfileResponse> getMyProfile(Principal principal) {
         UUID userId = extractUserId(principal);
-        // 💡 Service가 DTO를 반환하도록 변경했으므로, 여기서 변환 과정이 필요 없습니다.
         UserProfileResponse response = userProfileService.getProfile(userId);
-        return ResponseEntity.ok(response); 
+        return ResponseEntity.ok(response);
     }
 
-    /**
-     * 프로필 사진 업데이트 (기존 엔드포인트 유지)
-     * PUT /api/profiles/me/image
-     */
-    @PutMapping("/me/image")
-    @Operation(summary = "프로필 사진 업데이트", description = "프로필 사진 URL을 업데이트합니다.")
-    public ResponseEntity<UserProfileResponse> updateProfileImage( // 💡 반환 타입을 DTO로 통일
+    @GetMapping("/workspace/{workspaceId}")
+    @Operation(summary = "내 조직별 프로필 조회", description = "내 조직별 프로필을 조회합니다.")
+    public ResponseEntity<UserProfileResponse> getMyWorkspaceIdProfile(
+            @PathVariable UUID workspaceId,
             Principal principal,
-            @Valid @RequestBody UpdateProfileImageRequest request) {
-        UUID userId = extractUserId(principal);
-        
-        // ✅ [문제 해결]: updateProfileImageUrl 대신 통합 서비스 메서드 updateProfile 호출
-        // 닉네임, 이메일은 null로 전달하여 변경하지 않도록 합니다.
-        UserProfile updatedProfile = userProfileService.updateProfile(
-            userId,
-            null, // 닉네임은 변경하지 않음
-            null, // 이메일은 변경하지 않음
-            request.profileImageUrl() // 이미지 URL만 업데이트
-        );
+            jakarta.servlet.http.HttpServletRequest request) {
+        // Enhanced logging: Log incoming request details
+        log.info("=== RECEIVED REQUEST: Get Workspace Profile ===");
+        log.info("Request Method: {}", request.getMethod());
+        log.info("Request URI: {}", request.getRequestURI());
+        log.info("Request URL: {}", request.getRequestURL());
+        log.info("Path Variable - workspaceId: {}", workspaceId);
+        log.info("Remote Address: {}", request.getRemoteAddr());
+        log.info("Authorization Header Present: {}", request.getHeader("Authorization") != null);
 
-        return ResponseEntity.ok(UserProfileResponse.from(updatedProfile));
+        UUID userId = extractUserId(principal);
+        log.info("Authenticated userId: {}", userId);
+
+        UserProfileResponse response = userProfileService.workSpaceIdGetProfile(workspaceId, userId);
+
+        log.info("Workspace profile retrieved successfully: workspaceId={}, userId={}, profileId={}",
+                workspaceId, userId, response.getProfileId());
+        log.info("=== END REQUEST: Get Workspace Profile ===");
+
+        return ResponseEntity.ok(response);
     }
-    
-    /**
-     * 인증된 사용자의 프로필 (이름 또는 이미지 URL)을 통합 업데이트합니다.
-     * PUT /api/profiles/me
-     */
-    @Operation(summary = "내 프로필 정보 통합 업데이트", description = "인증된 사용자의 이름 또는 프로필 이미지 URL을 업데이트합니다.")
+
+    @GetMapping("/workspace/{workspaceId}/user/{userId}")
+    @Operation(
+        summary = "특정 사용자의 워크스페이스 프로필 조회", 
+        description = "워크스페이스 내 특정 사용자의 프로필을 조회합니다. 요청자는 해당 워크스페이스의 멤버여야 합니다."
+    )
+    public ResponseEntity<UserProfileResponse> getWorkspaceProfileByUserId(
+            @Parameter(description = "워크스페이스 ID") @PathVariable UUID workspaceId,
+            @Parameter(description = "조회할 사용자 ID") @PathVariable UUID userId,
+            Principal principal) {
+        UUID requestingUserId = extractUserId(principal);
+        log.info("Fetching workspace profile: workspaceId={}, targetUserId={}, requestingUserId={}", 
+                workspaceId, userId, requestingUserId);
+        
+        UserProfileResponse response = userProfileService.getWorkspaceProfileByUserId(
+                workspaceId, userId, requestingUserId);
+        
+        log.info("Workspace profile retrieved successfully: workspaceId={}, userId={}, profileId={}", 
+                workspaceId, userId, response.getProfileId());
+        
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/all/me")
+    @Operation(summary = "내 모든 프로필 조회", description = "내 모든 프로필을 조회합니다.")
+    public ResponseEntity<List<UserProfileResponse>> getAllMyProfile(Principal principal) {
+        UUID userId = extractUserId(principal);
+        List<UserProfileResponse> response = userProfileService.getAllProfiles(userId);
+        return ResponseEntity.ok(response);
+    }
+
     @PutMapping("/me")
+    @Operation(summary = "내 프로필 정보 통합 업데이트", description = "인증된 사용자의 이름 또는 프로필 이미지 URL을 업데이트합니다.")
     public ResponseEntity<UserProfileResponse> updateMyProfile(
             Principal principal,
-            @Valid @RequestBody UpdateProfileRequest request
-    ) {
+            @Valid @RequestBody UpdateProfileRequest request) {
         UUID userId = extractUserId(principal);
         log.info("Received integrated profile update request for user: {}", userId);
 
-        // ✅ 통합 서비스 메서드 호출
-        UserProfile updatedProfile = userProfileService.updateProfile(
-                userId,
-                request.nickName(),
-                request.email(),
-                request.profileImageUrl()
-        );
+        // Ensure the userId in the request matches the authenticated user
+        if (!request.userId().equals(userId)) {
+            throw new IllegalArgumentException("User ID in request does not match authenticated user.");
+        }
 
-        return ResponseEntity.ok(UserProfileResponse.from(updatedProfile));
+        UserProfileResponse updatedProfile = userProfileService.updateProfile(request);
+        return ResponseEntity.ok(updatedProfile);
     }
+
+    @DeleteMapping("/{workspaceId}")
+    @Operation(summary = "프로필 삭제", description = "특정 워크스페이스의 프로필을 삭제합니다.")
+    public ResponseEntity<Void> deleteProfile(
+            Principal principal,
+            @PathVariable UUID workspaceId) {
+        UUID userId = extractUserId(principal);
+        log.info("Deleting profile for user: {} in workspace: {}", userId, workspaceId);
+        userProfileService.deleteProfile(userId, workspaceId);
+        return ResponseEntity.noContent().build();
+    }
+
 }

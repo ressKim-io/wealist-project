@@ -44,22 +44,32 @@ COMPOSE_FILES="-f docker/compose/docker-compose.yml -f docker/compose/docker-com
 # 환경변수 파일을 명시적으로 지정 (compose 파일 내 변수 치환용)
 ENV_FILE_OPTION="--env-file $ENV_FILE"
 
+# =============================================================================
+# [⭐️ 핵심 변경 사항]: 로컬 환경 API Base URL 강제 오버라이드
+# 
+# 프론트엔드 컨테이너의 환경 변수 VITE_API_BASE_URL을 
+# .env 파일 내용과 관계없이 localhost로 강제 설정합니다.
+# 이 쉘 변수는 docker compose 실행 시 .env 내용을 덮어씁니다.
+# =============================================================================
+export VITE_API_BASE_URL="http://localhost"
+echo -e "${BLUE}⚙️  로컬 개발 환경 설정: VITE_API_BASE_URL=${VITE_API_BASE_URL}${NC}"
+
 # 커맨드 처리
 COMMAND=${1:-up}
 
 case $COMMAND in
     up)
         echo -e "${BLUE}🚀 개발 환경을 백그라운드로 시작합니다...${NC}"
-        docker compose $ENV_FILE_OPTION $COMPOSE_FILES up -d
+        docker compose $ENV_FILE_OPTION $COMPOSE_FILES up -d --build
         echo -e "${GREEN}✅ 개발 환경이 시작되었습니다.${NC}"
         echo -e "${BLUE}📊 서비스 접속 정보:${NC}"
-        echo -e "   - Frontend:    http://localhost:3000"
-        echo -e "   - User API:    http://localhost:8080"
-        echo -e "   - Board API:   http://localhost:8000"
-        echo -e "   - PostgreSQL:  localhost:5432"
-        echo -e "   - Redis:       localhost:6379"
-        echo -e "   - User API swagger:    http://localhost:8080/swagger-ui/index.html"
-        echo -e "   - Board API swagger:   http://localhost:8000/swagger/index.html"
+        echo "   - Frontend:    http://localhost:3000"
+        echo "   - User API:    http://localhost:8080"
+        echo "   - Board API:   http://localhost:8000"
+        echo "   - PostgreSQL:  localhost:5432"
+        echo "   - Redis:       localhost:6379"
+        echo "   - User API swagger:    http://localhost:8080/swagger-ui/index.html"
+        echo "   - Board API swagger:   http://localhost:8000/swagger/index.html"
         echo -e ""
         echo -e "${BLUE}💡 로그 확인: ./docker/scripts/dev.sh logs${NC}"
         ;;

@@ -1,284 +1,346 @@
 package service
 
 import (
-	"board-service/internal/apperrors"
-	"board-service/internal/cache"
-	"board-service/internal/client"
-	"board-service/internal/domain"
-	"board-service/internal/dto"
-	"board-service/internal/repository"
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+
+	"project-board-api/internal/domain"
+	"project-board-api/internal/dto"
+	"project-board-api/internal/repository"
+	"project-board-api/internal/response"
 )
 
-// CommentService defines the interface for comment business logic.
+// CommentService defines the interface for comment business logic
 type CommentService interface {
-	CreateComment(ctx context.Context, req dto.CreateCommentRequest, userID uuid.UUID) (*dto.CommentResponse, error)
-	GetCommentsByBoardID(ctx context.Context, boardID uuid.UUID, userID uuid.UUID) ([]dto.CommentResponse, error)
-	UpdateComment(ctx context.Context, commentID uuid.UUID, req dto.UpdateCommentRequest, userID uuid.UUID) (*dto.CommentResponse, error)
-	DeleteComment(ctx context.Context, commentID uuid.UUID, userID uuid.UUID) error
+	CreateComment(ctx context.Context, userID uuid.UUID, req *dto.CreateCommentRequest) (*dto.CommentResponse, error)
+	GetComments(ctx context.Context, boardID uuid.UUID) ([]*dto.CommentResponse, error)
+	UpdateComment(ctx context.Context, commentID uuid.UUID, req *dto.UpdateCommentRequest) (*dto.CommentResponse, error)
+	DeleteComment(ctx context.Context, commentID uuid.UUID) error
 }
 
-type commentService struct {
-	commentRepo   repository.CommentRepository
-	boardRepo     repository.BoardRepository
-	projectRepo   repository.ProjectRepository
-	userClient    client.UserClient
-	userInfoCache cache.UserInfoCache
-	logger        *zap.Logger
-	db            *gorm.DB
+// commentServiceImpl is the implementation of CommentService
+type commentServiceImpl struct {
+	commentRepo    repository.CommentRepository
+	boardRepo      repository.BoardRepository
+	attachmentRepo repository.AttachmentRepository
+	s3Client       S3Client
+	logger         *zap.Logger
 }
 
-// NewCommentService creates a new instance of CommentService.
-func NewCommentService(cr repository.CommentRepository, kr repository.BoardRepository, pr repository.ProjectRepository, uc client.UserClient, uic cache.UserInfoCache, l *zap.Logger, db *gorm.DB) CommentService {
-	return &commentService{
-		commentRepo:   cr,
-		boardRepo:     kr,
-		projectRepo:   pr,
-		userClient:    uc,
-		userInfoCache: uic,
-		logger:        l,
-		db:            db,
+// NewCommentService creates a new instance of CommentService
+func NewCommentService(commentRepo repository.CommentRepository, boardRepo repository.BoardRepository, attachmentRepo repository.AttachmentRepository, s3Client S3Client, logger *zap.Logger) CommentService {
+	return &commentServiceImpl{
+		commentRepo:    commentRepo,
+		boardRepo:      boardRepo,
+		attachmentRepo: attachmentRepo,
+		s3Client:       s3Client,
+		logger:         logger,
 	}
 }
 
-// CreateComment creates a new comment on a board.
-func (s *commentService) CreateComment(ctx context.Context, req dto.CreateCommentRequest, userID uuid.UUID) (*dto.CommentResponse, error) {
-	board, err := s.boardRepo.FindByID(req.BoardID)
+// CreateComment creates a new comment on a board
+func (s *commentServiceImpl) CreateComment(ctx context.Context, userID uuid.UUID, req *dto.CreateCommentRequest) (*dto.CommentResponse, error) {
+	// Verify board exists
+	_, err := s.boardRepo.FindByID(ctx, req.BoardID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, fmt.Sprintf("board with id %s not found", req.BoardID), 404)
+			return nil, response.NewAppError(response.ErrCodeNotFound, "Board not found", "")
 		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "failed to find board", 500)
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to verify board", err.Error())
 	}
 
-	_, err = s.projectRepo.FindMemberByUserAndProject(userID, board.ProjectID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "user is not a member of the project", 403)
+	// Validate and confirm attachments if provided
+	if len(req.AttachmentIDs) > 0 {
+		if err := s.validateAndConfirmAttachments(ctx, req.AttachmentIDs, domain.EntityTypeComment); err != nil {
+			return nil, err
 		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "failed to check project membership", 500)
 	}
 
+	// Create domain model from request
 	comment := &domain.Comment{
 		BoardID: req.BoardID,
-		UserID:   userID,
-		Content:  req.Content,
+		UserID:  userID,
+		Content: req.Content,
 	}
 
-	if err := s.commentRepo.Create(comment); err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "failed to create comment", 500)
+	// Save to repository
+	if err := s.commentRepo.Create(ctx, comment); err != nil {
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to create comment", err.Error())
 	}
 
-	user := s.getSimpleUserWithCache(ctx, userID.String())
+	// Confirm attachments after comment creation
+	var createdAttachments []*domain.Attachment
+	if len(req.AttachmentIDs) > 0 {
+		// 에러 발생 시 comment도 롤백
+		if err := s.attachmentRepo.ConfirmAttachments(ctx, req.AttachmentIDs, comment.ID); err != nil {
+			s.logger.Error("Failed to confirm attachments, rolling back comment creation",
+				zap.String("comment_id", comment.ID.String()),
+				zap.Strings("attachment_ids", func() []string {
+					ids := make([]string, len(req.AttachmentIDs))
+					for i, id := range req.AttachmentIDs {
+						ids[i] = id.String()
+					}
+					return ids
+				}()),
+				zap.Error(err))
 
-	return &dto.CommentResponse{
-		ID:         comment.ID,
-		UserID:     comment.UserID,
-		UserName:   user.Name,
-		UserAvatar: user.AvatarURL,
-		Content:    comment.Content,
-		CreatedAt:  comment.CreatedAt,
-		UpdatedAt:  comment.UpdatedAt,
-	}, nil
+			// comment 삭제 (롤백)
+			if deleteErr := s.commentRepo.Delete(ctx, comment.ID); deleteErr != nil {
+				s.logger.Error("Failed to rollback comment after attachment confirmation failure",
+					zap.String("comment_id", comment.ID.String()),
+					zap.Error(deleteErr))
+			}
+
+			return nil, response.NewAppError(response.ErrCodeInternal,
+				"Failed to confirm attachments: "+err.Error(),
+				"Please ensure all attachment IDs are valid and not already used")
+		}
+
+		// Confirm 후 Attachments 메타데이터를 조회하여 comment 객체에 할당
+		attachments, err := s.attachmentRepo.FindByIDs(ctx, req.AttachmentIDs)
+		if err != nil {
+			s.logger.Warn("Failed to fetch confirmed attachments for response", zap.Error(err))
+		} else {
+			createdAttachments = attachments
+		}
+	}
+
+	// 생성된 Attachments를 Comment 객체에 할당 (타입 변환 적용)
+	comment.Attachments = toDomainAttachments(createdAttachments)
+
+	// Convert to response DTO
+	return s.toCommentResponse(comment), nil
 }
 
-// GetCommentsByBoardID retrieves all comments for a given board.
-func (s *commentService) GetCommentsByBoardID(ctx context.Context, boardID uuid.UUID, userID uuid.UUID) ([]dto.CommentResponse, error) {
-	board, err := s.boardRepo.FindByID(boardID)
+// GetComments retrieves all comments for a board
+func (s *commentServiceImpl) GetComments(ctx context.Context, boardID uuid.UUID) ([]*dto.CommentResponse, error) {
+	// Verify board exists
+	_, err := s.boardRepo.FindByID(ctx, boardID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, fmt.Sprintf("board with id %s not found", boardID), 404)
+			return nil, response.NewAppError(response.ErrCodeNotFound, "Board not found", "")
 		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "failed to find board", 500)
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to verify board", err.Error())
 	}
 
-	_, err = s.projectRepo.FindMemberByUserAndProject(userID, board.ProjectID)
+	// Fetch comments from repository
+	comments, err := s.commentRepo.FindByBoardID(ctx, boardID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "user is not a member of the project", 403)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "failed to check project membership", 500)
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to fetch comments", err.Error())
 	}
 
-	comments, err := s.commentRepo.FindByBoardID(boardID)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "failed to get comments", 500)
+	// Comment 목록 조회 시 Attachments 로드 (각 comment별로 로드)
+	for _, comment := range comments {
+		attachments, err := s.attachmentRepo.FindByEntityID(ctx, domain.EntityTypeComment, comment.ID)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			s.logger.Error("Failed to fetch attachments for comment list", zap.String("comment_id", comment.ID.String()), zap.Error(err))
+		}
+		comment.Attachments = toDomainAttachments(attachments)
 	}
 
-	// Batch fetch user info with caching
-	userIDs := make([]string, 0, len(comments))
-	for _, c := range comments {
-		userIDs = append(userIDs, c.UserID.String())
-	}
-
-	userMap := s.getSimpleUsersBatch(ctx, userIDs)
-
-	responses := make([]dto.CommentResponse, len(comments))
-	for i, c := range comments {
-		user, ok := userMap[c.UserID.String()]
-		if !ok {
-			user = cache.SimpleUser{Name: "Unknown User", AvatarURL: ""}
-		}
-		responses[i] = dto.CommentResponse{
-			ID:         c.ID,
-			UserID:     c.UserID,
-			UserName:   user.Name,
-			UserAvatar: user.AvatarURL,
-			Content:    c.Content,
-			CreatedAt:  c.CreatedAt,
-			UpdatedAt:  c.UpdatedAt,
-		}
+	// Convert to response DTOs
+	responses := make([]*dto.CommentResponse, len(comments))
+	for i, comment := range comments {
+		responses[i] = s.toCommentResponse(comment)
 	}
 
 	return responses, nil
 }
 
-// UpdateComment updates an existing comment.
-func (s *commentService) UpdateComment(ctx context.Context, commentID uuid.UUID, req dto.UpdateCommentRequest, userID uuid.UUID) (*dto.CommentResponse, error) {
-	comment, err := s.commentRepo.FindByID(commentID)
+// UpdateComment updates a comment's content
+func (s *commentServiceImpl) UpdateComment(ctx context.Context, commentID uuid.UUID, req *dto.UpdateCommentRequest) (*dto.CommentResponse, error) {
+	// Fetch existing comment
+	comment, err := s.commentRepo.FindByID(ctx, commentID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, fmt.Sprintf("comment with id %s not found", commentID), 404)
+			return nil, response.NewAppError(response.ErrCodeNotFound, "Comment not found", "")
 		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "failed to find comment", 500)
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to fetch comment", err.Error())
 	}
 
-	if comment.UserID != userID {
-		return nil, apperrors.New(apperrors.ErrCodeForbidden, "user does not have permission to update this comment", 403)
+	// Validate and confirm attachments if provided
+	if len(req.AttachmentIDs) > 0 {
+		if err := s.validateAndConfirmAttachments(ctx, req.AttachmentIDs, domain.EntityTypeComment); err != nil {
+			return nil, err
+		}
 	}
 
-	// Domain 메서드 사용: 검증 로직이 Domain에 포함됨
-	if err := comment.UpdateContent(req.Content); err != nil {
-		// Domain 에러를 Infrastructure 에러로 변환
-		return nil, apperrors.FromDomainError(err)
+	// Update content
+	comment.Content = req.Content
+
+	// Save updated comment
+	if err := s.commentRepo.Update(ctx, comment); err != nil {
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to update comment", err.Error())
 	}
 
-	if err := s.commentRepo.Update(comment); err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "failed to update comment", 500)
+	// Attachments 처리 로직 개선 및 Confirm
+	if len(req.AttachmentIDs) > 0 {
+		// 에러 발생 시 업데이트 실패 처리
+		if err := s.attachmentRepo.ConfirmAttachments(ctx, req.AttachmentIDs, comment.ID); err != nil {
+			s.logger.Error("Failed to confirm attachments during comment update",
+				zap.String("comment_id", comment.ID.String()),
+				zap.Strings("attachment_ids", func() []string {
+					ids := make([]string, len(req.AttachmentIDs))
+					for i, id := range req.AttachmentIDs {
+						ids[i] = id.String()
+					}
+					return ids
+				}()),
+				zap.Error(err))
+
+			return nil, response.NewAppError(response.ErrCodeInternal,
+				"Failed to confirm attachments: "+err.Error(),
+				"Please ensure all attachment IDs are valid and not already used")
+		}
 	}
 
-	user := s.getSimpleUserWithCache(ctx, userID.String())
+	// comment와 연결된 모든 Attachments를 다시 조회합니다. (타입 변환 적용)
+	allAttachments, err := s.attachmentRepo.FindByEntityID(ctx, domain.EntityTypeComment, comment.ID)
+	if err != nil {
+		s.logger.Warn("Failed to fetch all confirmed attachments after update", zap.Error(err))
+		// 치명적인 오류가 아니므로 계속 진행
+	} else {
+		// DB에서 최신 Attachments 목록을 로드하여 comment 객체에 할당
+		comment.Attachments = toDomainAttachments(allAttachments)
+	}
+
+	// Convert to response DTO
+	return s.toCommentResponse(comment), nil
+}
+
+// DeleteComment soft deletes a comment and its associated attachments
+func (s *commentServiceImpl) DeleteComment(ctx context.Context, commentID uuid.UUID) error {
+	// Verify comment exists
+	_, err := s.commentRepo.FindByID(ctx, commentID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return response.NewAppError(response.ErrCodeNotFound, "Comment not found", "")
+		}
+		return response.NewAppError(response.ErrCodeInternal, "Failed to verify comment", err.Error())
+	}
+
+	// Find all attachments associated with this comment
+	attachments, err := s.attachmentRepo.FindByEntityID(ctx, domain.EntityTypeComment, commentID)
+	if err != nil {
+		s.logger.Warn("Failed to fetch attachments for comment deletion",
+			zap.String("comment_id", commentID.String()),
+			zap.Error(err))
+		// Continue with comment deletion even if attachment fetch fails
+	}
+
+	// Delete attachments from S3 and database
+	if len(attachments) > 0 {
+		s.deleteAttachmentsWithS3(ctx, attachments)
+	}
+
+	// Delete comment
+	if err := s.commentRepo.Delete(ctx, commentID); err != nil {
+		return response.NewAppError(response.ErrCodeInternal, "Failed to delete comment", err.Error())
+	}
+
+	return nil
+}
+
+// toCommentResponse converts domain.Comment to dto.CommentResponse
+func (s *commentServiceImpl) toCommentResponse(comment *domain.Comment) *dto.CommentResponse {
+	// Convert attachments to response DTOs with s3Client.GetFileURL
+	attachments := make([]dto.AttachmentResponse, 0, len(comment.Attachments))
+	for _, a := range comment.Attachments {
+		// s3Client.GetFileURL을 사용하여 FileURL 필드 채우기 (DB의 FileURL은 S3 Key)
+		fileURL := s.s3Client.GetFileURL(a.FileURL)
+
+		attachments = append(attachments, dto.AttachmentResponse{
+			ID:          a.ID,
+			FileName:    a.FileName,
+			FileURL:     fileURL, // full URL 반환
+			FileSize:    a.FileSize,
+			ContentType: a.ContentType,
+			UploadedBy:  a.UploadedBy,
+			UploadedAt:  a.CreatedAt,
+		})
+	}
 
 	return &dto.CommentResponse{
-		ID:         comment.ID,
-		UserID:     comment.UserID,
-		UserName:   user.Name,
-		UserAvatar: user.AvatarURL,
-		Content:    comment.Content,
-		CreatedAt:  comment.CreatedAt,
-		UpdatedAt:  comment.UpdatedAt,
-	}, nil
+		CommentID:   comment.ID,
+		BoardID:     comment.BoardID,
+		UserID:      comment.UserID,
+		Content:     comment.Content,
+		Attachments: attachments,
+		CreatedAt:   comment.CreatedAt,
+		UpdatedAt:   comment.UpdatedAt,
+	}
 }
 
-// DeleteComment deletes a comment.
-func (s *commentService) DeleteComment(ctx context.Context, commentID uuid.UUID, userID uuid.UUID) error {
-	comment, err := s.commentRepo.FindByID(commentID)
+// validateAndConfirmAttachments validates that attachments exist and are in TEMP status
+func (s *commentServiceImpl) validateAndConfirmAttachments(ctx context.Context, attachmentIDs []uuid.UUID, entityType domain.EntityType) error {
+	if len(attachmentIDs) == 0 {
+		return nil
+	}
+
+	// Fetch attachments by IDs
+	attachments, err := s.attachmentRepo.FindByIDs(ctx, attachmentIDs)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return apperrors.New(apperrors.ErrCodeNotFound, fmt.Sprintf("comment with id %s not found", commentID), 404)
+		return response.NewAppError(response.ErrCodeInternal, "Failed to fetch attachments", err.Error())
+	}
+
+	// Check if all attachments exist
+	if len(attachments) != len(attachmentIDs) {
+		return response.NewAppError(response.ErrCodeValidation, "One or more attachments not found", "")
+	}
+
+	// Validate each attachment
+	for _, attachment := range attachments {
+		// Check if attachment is in TEMP status
+		if attachment.Status != domain.AttachmentStatusTemp {
+			return response.NewAppError(response.ErrCodeValidation, "Attachment is not in temporary status and cannot be reused", "")
 		}
-		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "failed to find comment", 500)
+
+		// Check if attachment entity type matches
+		if attachment.EntityType != entityType {
+			return response.NewAppError(response.ErrCodeValidation, "Attachment entity type does not match", "")
+		}
 	}
 
-	if comment.UserID != userID {
-		// Also allow project owner/admin to delete?
-		// For now, only the author can delete.
-		return apperrors.New(apperrors.ErrCodeForbidden, "user does not have permission to delete this comment", 403)
-	}
-
-	return s.commentRepo.Delete(comment.ID)
+	return nil
 }
 
-// getSimpleUserWithCache retrieves simple user info with caching
-func (s *commentService) getSimpleUserWithCache(ctx context.Context, userID string) cache.SimpleUser {
-	// Try cache first
-	cacheExists, cachedUser, err := s.userInfoCache.GetSimpleUser(ctx, userID)
-	if err != nil {
-		s.logger.Warn("Failed to get simple user from cache", zap.Error(err))
+// deleteAttachmentsWithS3 deletes attachments from both S3 and database
+func (s *commentServiceImpl) deleteAttachmentsWithS3(ctx context.Context, attachments []*domain.Attachment) {
+	attachmentIDs := make([]uuid.UUID, 0, len(attachments))
+
+	// Delete files from S3
+	for _, attachment := range attachments {
+		// Extract S3 key from FileURL
+		fileKey := extractS3KeyFromURL(attachment.FileURL)
+		if fileKey == "" {
+			s.logger.Warn("Failed to extract S3 key from URL",
+				zap.String("attachment_id", attachment.ID.String()),
+				zap.String("file_url", attachment.FileURL))
+			continue
+		}
+
+		// Delete from S3
+		if err := s.s3Client.DeleteFile(ctx, fileKey); err != nil {
+			s.logger.Warn("Failed to delete file from S3",
+				zap.String("attachment_id", attachment.ID.String()),
+				zap.String("file_key", fileKey),
+				zap.Error(err))
+			// Continue even if S3 deletion fails
+		}
+
+		attachmentIDs = append(attachmentIDs, attachment.ID)
 	}
 
-	if cacheExists && cachedUser != nil {
-		return *cachedUser
-	}
-
-	// Cache miss - fetch from User Service
-	user, err := s.userClient.GetSimpleUser(userID)
-	if err != nil {
-		s.logger.Error("Failed to get user info for comment", zap.Error(err), zap.String("userID", userID))
-		return cache.SimpleUser{Name: "Unknown User", AvatarURL: ""}
-	}
-
-	// Cache the result
-	cacheUser := &cache.SimpleUser{
-		ID:        user.ID,
-		Name:      user.Name,
-		AvatarURL: user.AvatarURL,
-	}
-	if cacheErr := s.userInfoCache.SetSimpleUser(ctx, cacheUser); cacheErr != nil {
-		s.logger.Warn("Failed to cache simple user", zap.Error(cacheErr))
-	}
-
-	return *cacheUser
-}
-
-// getSimpleUsersBatch retrieves simple user info for multiple users with caching
-func (s *commentService) getSimpleUsersBatch(ctx context.Context, userIDs []string) map[string]cache.SimpleUser {
-	if len(userIDs) == 0 {
-		return make(map[string]cache.SimpleUser)
-	}
-
-	// Try to get from cache first
-	cachedUsers, err := s.userInfoCache.GetSimpleUsersBatch(ctx, userIDs)
-	if err != nil {
-		s.logger.Warn("Failed to get users from cache", zap.Error(err))
-		cachedUsers = make(map[string]*cache.SimpleUser)
-	}
-
-	// Find missing user IDs (not in cache)
-	missingUserIDs := []string{}
-	for _, userID := range userIDs {
-		if _, exists := cachedUsers[userID]; !exists {
-			missingUserIDs = append(missingUserIDs, userID)
+	// Delete from database
+	if len(attachmentIDs) > 0 {
+		if err := s.attachmentRepo.DeleteBatch(ctx, attachmentIDs); err != nil {
+			s.logger.Warn("Failed to delete attachments from database",
+				zap.Int("count", len(attachmentIDs)),
+				zap.Error(err))
 		}
 	}
-
-	// Fetch missing users from User Service
-	userMap := make(map[string]cache.SimpleUser)
-
-	if len(missingUserIDs) > 0 {
-		users, err := s.userClient.GetSimpleUsers(missingUserIDs)
-		if err != nil {
-			s.logger.Warn("Failed to fetch users from User Service", zap.Error(err))
-		} else {
-			// Cache the fetched users
-			simpleUsers := make([]cache.SimpleUser, 0, len(users))
-			for _, user := range users {
-				cacheUser := cache.SimpleUser{
-					ID:        user.ID,
-					Name:      user.Name,
-					AvatarURL: user.AvatarURL,
-				}
-				userMap[user.ID] = cacheUser
-				simpleUsers = append(simpleUsers, cacheUser)
-			}
-			if cacheErr := s.userInfoCache.SetSimpleUsersBatch(ctx, simpleUsers); cacheErr != nil {
-				s.logger.Warn("Failed to cache users", zap.Error(cacheErr))
-			}
-		}
-	}
-
-	// Add cached users to result
-	for userID, cachedUser := range cachedUsers {
-		if _, exists := userMap[userID]; !exists {
-			userMap[userID] = *cachedUser
-		}
-	}
-
-	return userMap
 }

@@ -1,693 +1,660 @@
 package service
 
 import (
-	"board-service/internal/apperrors"
-	"board-service/internal/cache"
-	"board-service/internal/client"
-	"board-service/internal/common/auth"
-	"board-service/internal/common/pagination"
-	"board-service/internal/common/parser"
-	"board-service/internal/common/validator"
-	"board-service/internal/domain"
-	"board-service/internal/dto"
-	"board-service/internal/metrics"
-	"board-service/internal/repository"
-	"board-service/internal/uow"
-	"board-service/internal/util"
 	"context"
 	"errors"
-	"time"
+	"strings"
 
 	"go.uber.org/zap"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
+
+	"project-board-api/internal/domain"
+	"project-board-api/internal/dto"
+	"project-board-api/internal/metrics"
+	"project-board-api/internal/repository"
+	"project-board-api/internal/response"
 )
 
+// BoardService defines the interface for board business logic
 type BoardService interface {
-	CreateBoard(userID string, req *dto.CreateBoardRequest) (*dto.BoardResponse, error)
-	GetBoard(boardID, userID string) (*dto.BoardResponse, error)
-	GetBoards(userID string, req *dto.GetBoardsRequest) (*dto.PaginatedBoardsResponse, error)
-	UpdateBoard(boardID, userID string, req *dto.UpdateBoardRequest) (*dto.BoardResponse, error)
-	DeleteBoard(boardID, userID string) error
-	MoveBoard(userID, boardID string, req *dto.MoveBoardRequest) (*dto.MoveBoardResponse, error)
+	CreateBoard(ctx context.Context, req *dto.CreateBoardRequest) (*dto.BoardResponse, error)
+	GetBoard(ctx context.Context, boardID uuid.UUID) (*dto.BoardDetailResponse, error)
+	GetBoardsByProject(ctx context.Context, projectID uuid.UUID, filters *dto.BoardFilters) ([]*dto.BoardResponse, error)
+	UpdateBoard(ctx context.Context, boardID uuid.UUID, req *dto.UpdateBoardRequest) (*dto.BoardResponse, error)
+	DeleteBoard(ctx context.Context, boardID uuid.UUID) error
 }
 
-type boardService struct {
-	repo          repository.BoardRepository
-	projectRepo   repository.ProjectRepository
-	roleRepo      repository.RoleRepository
-	fieldRepo     repository.FieldRepository       // For custom fields system
-	commentRepo   repository.CommentRepository     // For UnitOfWork operations
-	authorizer    auth.ProjectAuthorizer           // Centralized authorization
-	userClient    client.UserClient
-	userInfoCache cache.UserInfoCache
-	logger        *zap.Logger
-	db            *gorm.DB
-	uow           uow.UnitOfWork                   // Unit of Work for transaction management
-	mapper        *dto.BoardMapper                 // DTO Mapper for reducing duplication
+// boardServiceImpl is the implementation of BoardService
+type boardServiceImpl struct {
+	boardRepo            repository.BoardRepository
+	projectRepo          repository.ProjectRepository
+	fieldOptionRepo      repository.FieldOptionRepository
+	participantRepo      repository.ParticipantRepository
+	attachmentRepo       repository.AttachmentRepository
+	s3Client             S3Client
+	fieldOptionConverter FieldOptionConverter
+	metrics              *metrics.Metrics
+	logger               *zap.Logger
 }
 
+// FieldOptionConverter handles conversion between field option values and IDs
+type FieldOptionConverter interface {
+	ConvertValuesToIDs(ctx context.Context, projectID uuid.UUID, customFields map[string]interface{}) (map[string]interface{}, error)
+	ConvertIDsToValues(ctx context.Context, customFields map[string]interface{}) (map[string]interface{}, error)
+	ConvertIDsToValuesBatch(ctx context.Context, boards []*domain.Board) error
+}
+
+// NewBoardService creates a new instance of BoardService
 func NewBoardService(
-	repo repository.BoardRepository,
+	boardRepo repository.BoardRepository,
 	projectRepo repository.ProjectRepository,
-	roleRepo repository.RoleRepository,
-	fieldRepo repository.FieldRepository,
-	commentRepo repository.CommentRepository,
-	userClient client.UserClient,
-	userInfoCache cache.UserInfoCache,
+	fieldOptionRepo repository.FieldOptionRepository,
+	participantRepo repository.ParticipantRepository,
+	attachmentRepo repository.AttachmentRepository,
+	s3Client S3Client,
+	fieldOptionConverter FieldOptionConverter,
+	m *metrics.Metrics,
 	logger *zap.Logger,
-	db *gorm.DB,
 ) BoardService {
-	// Create authorizer
-	authorizer := auth.NewProjectAuthorizer(projectRepo, roleRepo)
-
-	// Create Unit of Work
-	unitOfWork := uow.NewUnitOfWork(db)
-
-	// Create DTO Mapper
-	boardMapper := dto.NewBoardMapper(logger)
-
-	return &boardService{
-		repo:          repo,
-		projectRepo:   projectRepo,
-		roleRepo:      roleRepo,
-		fieldRepo:     fieldRepo,
-		commentRepo:   commentRepo,
-		authorizer:    authorizer,
-		userClient:    userClient,
-		userInfoCache: userInfoCache,
-		logger:        logger,
-		db:            db,
-		uow:           unitOfWork,
-		mapper:        boardMapper,
+	return &boardServiceImpl{
+		boardRepo:            boardRepo,
+		projectRepo:          projectRepo,
+		fieldOptionRepo:      fieldOptionRepo,
+		participantRepo:      participantRepo,
+		attachmentRepo:       attachmentRepo,
+		s3Client:             s3Client,
+		fieldOptionConverter: fieldOptionConverter,
+		metrics:              m,
+		logger:               logger,
 	}
 }
 
-// ==================== Create Board ====================
+// CreateBoard creates a new board
+func (s *boardServiceImpl) CreateBoard(ctx context.Context, req *dto.CreateBoardRequest) (*dto.BoardResponse, error) {
+	// Extract user_id from context (set by auth middleware as uuid.UUID)
+	authorID, exists := ctx.Value("user_id").(uuid.UUID)
+	if !exists {
+		return nil, response.NewAppError(response.ErrCodeUnauthorized, "User ID not found in context", "")
+	}
 
-func (s *boardService) CreateBoard(userID string, req *dto.CreateBoardRequest) (*dto.BoardResponse, error) {
-	// Metrics: Start timer
-	start := time.Now()
-
-	// Parse and validate UUIDs using common parser
-	userUUID, err := parser.ParseUserID(userID)
-	if err != nil {
+	// Validate date range
+	if err := validateDateRange(req.StartDate, req.DueDate); err != nil {
 		return nil, err
 	}
 
-	projectUUID, err := parser.ParseProjectID(req.ProjectID)
-	if err != nil {
-		return nil, err
-	}
-
-	// 1. Check if user is project member
-	_, err = s.projectRepo.FindMemberByUserAndProject(userUUID, projectUUID)
+	// Verify project exists
+	_, err := s.projectRepo.FindByID(ctx, req.ProjectID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "프로젝트 멤버가 아닙니다", 403)
+			return nil, response.NewAppError(response.ErrCodeNotFound, "Project not found", "")
 		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to verify project", err.Error())
 	}
 
-	// 2. Validate Assignee (optional) using common parser
-	assigneeUUID, err := parser.ParseOptionalUUID(req.AssigneeID, "담당자")
-	if err != nil {
-		return nil, err
-	}
-
-	if assigneeUUID != nil {
-		_, err = s.projectRepo.FindMemberByUserAndProject(*assigneeUUID, projectUUID)
+	// Convert CustomFields from values to IDs, then to datatypes.JSON
+	var customFieldsJSON datatypes.JSON
+	if req.CustomFields != nil {
+		// Convert values to IDs
+		convertedFields, err := s.fieldOptionConverter.ConvertValuesToIDs(ctx, req.ProjectID, req.CustomFields)
 		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, apperrors.New(apperrors.ErrCodeNotFound, "담당자가 프로젝트 멤버가 아닙니다", 404)
-			}
-			return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "담당자 확인 실패", 500)
+			return nil, response.NewAppError(response.ErrCodeValidation, "Invalid custom field values", err.Error())
 		}
+
+		jsonBytes, err := json.Marshal(convertedFields)
+		if err != nil {
+			return nil, response.NewAppError(response.ErrCodeInternal, "Failed to marshal custom fields", err.Error())
+		}
+		customFieldsJSON = jsonBytes
 	}
 
-	// 3. Parse DueDate (optional) using common validator
-	var dueDate *time.Time
-	if req.DueDate != nil {
-		parsed, err := validator.ValidateDateFormat(*req.DueDate, "마감일")
-		if err != nil {
+	// Set assigneeID: use provided value, or default to authorID if not provided
+	assigneeID := req.AssigneeID
+	if assigneeID == nil {
+		assigneeID = &authorID
+	}
+
+	// Validate and confirm attachments if provided
+	if len(req.AttachmentIDs) > 0 {
+		if err := s.validateAndConfirmAttachments(ctx, req.AttachmentIDs, domain.EntityTypeBoard, uuid.Nil); err != nil {
 			return nil, err
 		}
-		dueDate = parsed
 	}
 
-	// 4. Create Board
+	// Create domain model from request with AuthorID
 	board := &domain.Board{
-		ProjectID:         projectUUID,
-		Title:             req.Title,
-		Description:       req.Content,
-		AssigneeID:        assigneeUUID,
-		CreatedBy:         userUUID,
-		DueDate:           dueDate,
-		CustomFieldsCache: "{}",  // Initialize empty, use FieldValueService to set values
+		ProjectID:    req.ProjectID,
+		AuthorID:     authorID,
+		Title:        req.Title,
+		Content:      req.Content,
+		CustomFields: customFieldsJSON,
+		AssigneeID:   assigneeID,
+		StartDate:    req.StartDate,
+		DueDate:      req.DueDate,
 	}
 
-	err = s.repo.Create(board)
-	if err != nil {
-		s.logger.Error("Failed to create board", zap.Error(err))
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "칸반 생성 실패", 500)
+	// Save to repository
+	if err := s.boardRepo.Create(ctx, board); err != nil {
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to create board", err.Error())
 	}
 
-	// Metrics: Record success
-	projectIDStr := projectUUID.String()
-	metrics.BoardCreatedTotal.WithLabelValues(projectIDStr).Inc()
-	metrics.RecordDuration(start, metrics.BoardOperationDuration, "create", projectIDStr)
+	// Confirm attachments after board creation
+	var createdAttachments []*domain.Attachment
+	if len(req.AttachmentIDs) > 0 {
+		// 에러 발생 시 board도 롤백
+		if err := s.attachmentRepo.ConfirmAttachments(ctx, req.AttachmentIDs, board.ID); err != nil {
+			s.logger.Error("Failed to confirm attachments, rolling back board creation",
+				zap.String("board_id", board.ID.String()),
+				zap.Strings("attachment_ids", func() []string {
+					ids := make([]string, len(req.AttachmentIDs))
+					for i, id := range req.AttachmentIDs {
+						ids[i] = id.String()
+					}
+					return ids
+				}()),
+				zap.Error(err))
 
-	// Note: Custom field values (stage, role, importance) should be set via FieldValueService
-	// after board creation using /field-values API
-
-	// 5. Build response
-	return s.buildBoardResponse(board)
-}
-
-// ==================== Get Single Board ====================
-
-func (s *boardService) GetBoard(boardID, userID string) (*dto.BoardResponse, error) {
-	// Parse UUIDs using common parser
-	boardUUID, err := parser.ParseBoardID(boardID)
-	if err != nil {
-		return nil, err
-	}
-
-	userUUID, err := parser.ParseUserID(userID)
-	if err != nil {
-		return nil, err
-	}
-
-	// 1. Find board
-	board, err := s.repo.FindByID(boardUUID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, "보드을 찾을 수 없습니다", 404)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 조회 실패", 500)
-	}
-
-	// 2. Check if user is project member (using authorizer)
-	_, err = s.authorizer.RequireMember(userUUID, board.ProjectID)
-	if err != nil {
-		return nil, err
-	}
-
-	// 3. Build response
-	// Note: Custom field values are now in custom_fields_cache (JSONB)
-	// Frontend should fetch field definitions and parse custom_fields_cache
-	return s.buildBoardResponse(board)
-}
-
-// ==================== Get Boards (List with Filters) ====================
-
-func (s *boardService) GetBoards(userID string, req *dto.GetBoardsRequest) (*dto.PaginatedBoardsResponse, error) {
-	// Parse UUIDs using common parser
-	projectUUID, err := parser.ParseProjectID(req.ProjectID)
-	if err != nil {
-		return nil, err
-	}
-
-	userUUID, err := parser.ParseUserID(userID)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx := context.Background()
-
-	// 1. Check if user is project member
-	_, err = s.projectRepo.FindMemberByUserAndProject(userUUID, projectUUID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "프로젝트 멤버가 아닙니다", 403)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
-	}
-
-	// 2. Build filters
-	filters := repository.BoardFilters{}
-	if req.AssigneeID != "" {
-		assigneeUUID, err := parser.ParseUUID(req.AssigneeID, "담당자")
-		if err == nil {
-			filters.AssigneeID = assigneeUUID
-		}
-	}
-	if req.AuthorID != "" {
-		authorUUID, err := parser.ParseUUID(req.AuthorID, "작성자")
-		if err == nil {
-			filters.AuthorID = authorUUID
-		}
-	}
-
-	// 3. Validate pagination using common pagination utility
-	page, limit := pagination.ValidatePaginationParams(req.Page, req.Limit)
-
-	// 4. Fetch boards
-	boards, total, err := s.repo.FindByProject(projectUUID, filters, page, limit)
-	if err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 조회 실패", 500)
-	}
-
-	if len(boards) == 0 {
-		return &dto.PaginatedBoardsResponse{
-			Boards: []dto.BoardResponse{},
-			Total:  total,
-			Page:   page,
-			Limit:  limit,
-		}, nil
-	}
-
-	// 5. Collect user IDs for batch queries
-	userIDs := make([]string, 0, len(boards)*2)
-	for _, board := range boards {
-		userIDs = append(userIDs, board.CreatedBy.String())
-		if board.AssigneeID != nil {
-			userIDs = append(userIDs, board.AssigneeID.String())
-		}
-	}
-
-	// 6. Batch fetch users
-	userMap := s.getUserInfoBatch(ctx, userIDs)
-
-	// 7. Build responses
-	// Note: Custom field values are now in custom_fields_cache (JSONB)
-	responses := make([]dto.BoardResponse, 0, len(boards))
-	for _, board := range boards {
-		response, err := s.buildBoardResponseOptimized(&board, userMap)
-		if err == nil && response != nil {
-			responses = append(responses, *response)
-		}
-	}
-
-	return &dto.PaginatedBoardsResponse{
-		Boards: responses,
-		Total:  total,
-		Page:   page,
-		Limit:  limit,
-	}, nil
-}
-
-// ==================== Update Board ====================
-
-func (s *boardService) UpdateBoard(boardID, userID string, req *dto.UpdateBoardRequest) (*dto.BoardResponse, error) {
-	// Metrics: Start timer
-	start := time.Now()
-
-	// Parse UUIDs using common parser
-	boardUUID, err := parser.ParseBoardID(boardID)
-	if err != nil {
-		return nil, err
-	}
-
-	userUUID, err := parser.ParseUserID(userID)
-	if err != nil {
-		return nil, err
-	}
-
-	// 1. Find board
-	board, err := s.repo.FindByID(boardUUID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, "보드을 찾을 수 없습니다", 404)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 조회 실패", 500)
-	}
-
-	// 2. Check permission (author or ADMIN+) using authorizer
-	canEdit, err := s.authorizer.CanEdit(userUUID, board.ProjectID, board.CreatedBy)
-	if err != nil {
-		return nil, err
-	}
-	if !canEdit {
-		return nil, apperrors.New(apperrors.ErrCodeForbidden, "수정 권한이 없습니다", 403)
-	}
-
-	// 3. Update fields using Domain methods (Rich Domain Model)
-	if req.Title != "" {
-		// Domain 메서드 사용: 검증 로직이 Domain에 포함됨
-		if err := board.UpdateTitle(req.Title); err != nil {
-			// Domain 에러를 Infrastructure 에러로 변환
-			return nil, apperrors.FromDomainError(err)
-		}
-	}
-	if req.Content != "" {
-		// Domain 메서드 사용: 비즈니스 로직이 Domain에 캡슐화됨
-		board.UpdateDescription(req.Content)
-	}
-
-	// Note: Stage, Importance, and Role updates should now be done via FieldValueService
-	// using /field-values API endpoints
-
-	if req.AssigneeID != nil {
-		assigneeUUID, err := parser.ParseOptionalUUID(req.AssigneeID, "담당자")
-		if err != nil {
-			return nil, err
-		}
-
-		if assigneeUUID != nil {
-			_, err = s.projectRepo.FindMemberByUserAndProject(*assigneeUUID, board.ProjectID)
-			if err != nil {
-				return nil, apperrors.New(apperrors.ErrCodeNotFound, "담당자가 프로젝트 멤버가 아닙니다", 404)
+			// board 삭제 (롤백)
+			if deleteErr := s.boardRepo.Delete(ctx, board.ID); deleteErr != nil {
+				s.logger.Error("Failed to rollback board after attachment confirmation failure",
+					zap.String("board_id", board.ID.String()),
+					zap.Error(deleteErr))
 			}
-			// Domain 메서드 사용: 할당 로직이 Domain에 캡슐화됨
-			board.Assign(*assigneeUUID)
+
+			return nil, response.NewAppError(response.ErrCodeInternal,
+				"Failed to confirm attachments: "+err.Error(),
+				"Please ensure all attachment IDs are valid and not already used")
+		}
+
+		// Confirm 후 Attachments 메타데이터를 조회하여 board 객체에 할당
+		attachments, err := s.attachmentRepo.FindByIDs(ctx, req.AttachmentIDs)
+		if err != nil {
+			s.logger.Warn("Failed to fetch confirmed attachments for response", zap.Error(err))
 		} else {
-			// Domain 메서드 사용: 할당 해제 로직이 Domain에 캡슐화됨
-			board.Unassign()
+			createdAttachments = attachments
 		}
 	}
 
-	if req.DueDate != nil {
-		dueDate, err := validator.ValidateDateFormat(*req.DueDate, "마감일")
+	// Increment board creation metric
+	if s.metrics != nil {
+		s.metrics.IncrementBoardCreated()
+	}
+
+	// Add participants if provided
+	if len(req.Participants) > 0 {
+		successCount, err := s.addParticipantsInternal(ctx, board.ID, req.Participants)
 		if err != nil {
-			return nil, err
+			s.logger.Warn("Error occurred while adding participants during board creation",
+				zap.String("board_id", board.ID.String()),
+				zap.Int("success_count", successCount),
+				zap.Error(err))
 		}
-		// Domain 메서드 사용: 마감일 설정 로직이 Domain에 캡슐화됨
-		board.SetDueDate(*dueDate)
+
+		// Reload board with participants to include them in response
+		reloadedBoard, err := s.boardRepo.FindByID(ctx, board.ID)
+		if err != nil {
+			s.logger.Warn("Failed to reload board with participants",
+				zap.String("board_id", board.ID.String()),
+				zap.Error(err))
+			// Continue with original board if reload fails
+		} else {
+			board = reloadedBoard
+		}
 	}
 
-	// 4. Save board
-	if err := s.repo.Update(board); err != nil {
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 수정 실패", 500)
-	}
+	// 생성된 Attachments를 Board 객체에 할당 (타입 변환 적용)
+	board.Attachments = toDomainAttachments(createdAttachments)
 
-	// Metrics: Record success
-	projectIDStr := board.ProjectID.String()
-	metrics.BoardUpdatedTotal.WithLabelValues(projectIDStr).Inc()
-	metrics.RecordDuration(start, metrics.BoardOperationDuration, "update", projectIDStr)
-
-	// 5. Return updated board
-	return s.GetBoard(board.ID.String(), userID)
+	// Convert to response DTO
+	return s.toBoardResponse(board), nil
 }
 
-// ==================== Delete Board (Soft) ====================
-// UnitOfWork 패턴을 사용하여 보드와 관련 댓글을 트랜잭션으로 삭제합니다
-
-func (s *boardService) DeleteBoard(boardID, userID string) error {
-	// Metrics: Start timer
-	start := time.Now()
-
-	// Parse UUIDs using common parser
-	boardUUID, err := parser.ParseBoardID(boardID)
-	if err != nil {
-		return err
-	}
-
-	userUUID, err := parser.ParseUserID(userID)
-	if err != nil {
-		return err
-	}
-
-	// 1. Find board (권한 체크는 트랜잭션 밖에서)
-	board, err := s.repo.FindByID(boardUUID)
+// GetBoard retrieves a board by ID with participants and comments
+func (s *boardServiceImpl) GetBoard(ctx context.Context, boardID uuid.UUID) (*dto.BoardDetailResponse, error) {
+	// Fetch board from repository
+	board, err := s.boardRepo.FindByID(ctx, boardID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return apperrors.New(apperrors.ErrCodeNotFound, "보드를 찾을 수 없습니다", 404)
+			return nil, response.NewAppError(response.ErrCodeNotFound, "Board not found", "")
 		}
-		return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 조회 실패", 500)
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to fetch board", err.Error())
 	}
 
-	// 2. Check permission (author or ADMIN+) using authorizer
-	canDelete, err := s.authorizer.CanDelete(userUUID, board.ProjectID, board.CreatedBy)
+	// Attachments 로드 (타입 변환 적용)
+	attachments, err := s.attachmentRepo.FindByEntityID(ctx, domain.EntityTypeBoard, board.ID)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		s.logger.Error("Failed to fetch attachments for board", zap.String("board_id", board.ID.String()), zap.Error(err))
+		// Continue with graceful degradation
+	}
+	board.Attachments = toDomainAttachments(attachments)
+
+	// Convert IDs to values in customFields
+	if err := s.convertBoardCustomFieldsToValues(ctx, board); err != nil {
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to convert custom fields", err.Error())
+	}
+
+	// Convert to detailed response DTO
+	return s.toBoardDetailResponse(board), nil
+}
+
+// GetBoardsByProject retrieves all boards for a project with optional filters
+func (s *boardServiceImpl) GetBoardsByProject(ctx context.Context, projectID uuid.UUID, filters *dto.BoardFilters) ([]*dto.BoardResponse, error) {
+	// Verify project exists
+	_, err := s.projectRepo.FindByID(ctx, projectID)
 	if err != nil {
-		return err
-	}
-	if !canDelete {
-		return apperrors.New(apperrors.ErrCodeForbidden, "삭제 권한이 없습니다", 403)
-	}
-
-	projectIDStr := board.ProjectID.String()
-
-	// 3. UnitOfWork로 보드와 댓글을 트랜잭션으로 삭제
-	err = s.uow.Do(func(repos *uow.Repositories) error {
-		// 3-1. 보드 삭제 (Domain 메서드 사용)
-		board.MarkAsDeleted()
-		if err := repos.Board.Update(board); err != nil {
-			return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 삭제 실패", 500)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, response.NewAppError(response.ErrCodeNotFound, "Project not found", "")
 		}
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to verify project", err.Error())
+	}
 
-		// 3-2. 관련 댓글 모두 조회 및 삭제
-		comments, err := repos.Comment.FindByBoardID(boardUUID)
+	// Prepare filter parameter for repository
+	var filterParam interface{}
+	if filters != nil && filters.CustomFields != nil {
+		filterParam = filters.CustomFields
+	}
+
+	// Fetch boards from repository with filters
+	boards, err := s.boardRepo.FindByProjectID(ctx, projectID, filterParam)
+	if err != nil {
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to fetch boards", err.Error())
+	}
+
+	// Board 목록 조회 시 Attachments 로드 (효율을 위해 각 board별로 로드)
+	for _, board := range boards {
+		attachments, err := s.attachmentRepo.FindByEntityID(ctx, domain.EntityTypeBoard, board.ID)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			s.logger.Error("Failed to fetch attachments for board list", zap.String("board_id", board.ID.String()), zap.Error(err))
+		}
+		board.Attachments = toDomainAttachments(attachments)
+	}
+
+	// Convert IDs to values in batch for all boards
+	if err := s.fieldOptionConverter.ConvertIDsToValuesBatch(ctx, boards); err != nil {
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to convert custom fields", err.Error())
+	}
+
+	// Convert to response DTOs
+	responses := make([]*dto.BoardResponse, len(boards))
+	for i, board := range boards {
+		responses[i] = s.toBoardResponse(board)
+	}
+
+	return responses, nil
+}
+
+// UpdateBoard updates a board's attributes
+func (s *boardServiceImpl) UpdateBoard(ctx context.Context, boardID uuid.UUID, req *dto.UpdateBoardRequest) (*dto.BoardResponse, error) {
+	// Fetch existing board
+	board, err := s.boardRepo.FindByID(ctx, boardID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, response.NewAppError(response.ErrCodeNotFound, "Board not found", "")
+		}
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to fetch board", err.Error())
+	}
+
+	// Determine the effective start and due dates for validation
+	effectiveStartDate := board.StartDate
+	effectiveDueDate := board.DueDate
+
+	if req.StartDate != nil {
+		effectiveStartDate = req.StartDate
+	}
+	if req.DueDate != nil {
+		effectiveDueDate = req.DueDate
+	}
+
+	// Validate date range with effective dates
+	if err := validateDateRange(effectiveStartDate, effectiveDueDate); err != nil {
+		return nil, err
+	}
+
+	// Validate and confirm attachments if provided
+	if len(req.AttachmentIDs) > 0 {
+		if err := s.validateAndConfirmAttachments(ctx, req.AttachmentIDs, domain.EntityTypeBoard, uuid.Nil); err != nil {
+			return nil, err
+		}
+	}
+
+	// Update fields if provided
+	if req.Title != nil {
+		board.Title = *req.Title
+	}
+	if req.Content != nil {
+		board.Content = *req.Content
+	}
+	if req.CustomFields != nil {
+		// Convert values to IDs
+		convertedFields, err := s.fieldOptionConverter.ConvertValuesToIDs(ctx, board.ProjectID, *req.CustomFields)
 		if err != nil {
-			// 댓글이 없을 수도 있으므로 NotFound는 무시
-			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "댓글 조회 실패", 500)
-			}
+			return nil, response.NewAppError(response.ErrCodeValidation, "Invalid custom field values", err.Error())
 		}
 
-		// 댓글 삭제
-		for _, comment := range comments {
-			if err := repos.Comment.Delete(comment.ID); err != nil {
-				return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "댓글 삭제 실패", 500)
-			}
+		// Convert CustomFields to datatypes.JSON
+		jsonBytes, err := json.Marshal(convertedFields)
+		if err != nil {
+			return nil, response.NewAppError(response.ErrCodeInternal, "Failed to marshal custom fields", err.Error())
 		}
+		board.CustomFields = jsonBytes
+	}
+	if req.AssigneeID != nil {
+		board.AssigneeID = req.AssigneeID
+	}
+	if req.StartDate != nil {
+		board.StartDate = req.StartDate
+	}
+	if req.DueDate != nil {
+		board.DueDate = req.DueDate
+	}
 
-		s.logger.Info("보드와 댓글 삭제 완료",
-			zap.String("board_id", boardUUID.String()),
-			zap.Int("comments_deleted", len(comments)),
-		)
+	if err := s.boardRepo.Update(ctx, board); err != nil {
+		return nil, response.NewAppError(response.ErrCodeInternal, "Failed to update board", err.Error())
+	}
 
-		// 모두 성공하거나 모두 실패 (원자성 보장)
-		return nil
-	})
+	// Attachments 처리 로직 개선 및 Confirm
+	if len(req.AttachmentIDs) > 0 {
+		// 에러 발생 시 업데이트 실패 처리
+		if err := s.attachmentRepo.ConfirmAttachments(ctx, req.AttachmentIDs, board.ID); err != nil {
+			s.logger.Error("Failed to confirm attachments during board update",
+				zap.String("board_id", board.ID.String()),
+				zap.Strings("attachment_ids", func() []string {
+					ids := make([]string, len(req.AttachmentIDs))
+					for i, id := range req.AttachmentIDs {
+						ids[i] = id.String()
+					}
+					return ids
+				}()),
+				zap.Error(err))
 
-	// Metrics: Record success if no error
-	if err == nil {
-		metrics.BoardDeletedTotal.WithLabelValues(projectIDStr).Inc()
-		metrics.RecordDuration(start, metrics.BoardOperationDuration, "delete", projectIDStr)
+			return nil, response.NewAppError(response.ErrCodeInternal,
+				"Failed to confirm attachments: "+err.Error(),
+				"Please ensure all attachment IDs are valid and not already used")
+		}
+	}
+
+	// board와 연결된 모든 Attachments를 다시 조회합니다. (타입 변환 적용)
+	allAttachments, err := s.attachmentRepo.FindByEntityID(ctx, domain.EntityTypeBoard, board.ID)
+	if err != nil {
+		s.logger.Warn("Failed to fetch all confirmed attachments after update", zap.Error(err))
+		// 치명적인 오류가 아니므로 계속 진행
+	} else {
+		// DB에서 최신 Attachments 목록을 로드하여 board 객체에 할당
+		board.Attachments = toDomainAttachments(allAttachments)
+	}
+
+	// Convert to response DTO
+	return s.toBoardResponse(board), nil
+}
+
+// DeleteBoard soft deletes a board and its associated attachments
+func (s *boardServiceImpl) DeleteBoard(ctx context.Context, boardID uuid.UUID) error {
+	// Verify board exists
+	_, err := s.boardRepo.FindByID(ctx, boardID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return response.NewAppError(response.ErrCodeNotFound, "Board not found", "")
+		}
+		return response.NewAppError(response.ErrCodeInternal, "Failed to verify board", err.Error())
+	}
+
+	// Find all attachments associated with this board
+	attachments, err := s.attachmentRepo.FindByEntityID(ctx, domain.EntityTypeBoard, boardID)
+	if err != nil {
+		s.logger.Warn("Failed to fetch attachments for board deletion",
+			zap.String("board_id", boardID.String()),
+			zap.Error(err))
+		// Continue with board deletion even if attachment fetch fails
+	}
+
+	// Delete attachments from S3 and database
+	if len(attachments) > 0 {
+		s.deleteAttachmentsWithS3(ctx, attachments)
+	}
+
+	// Delete board
+	if err := s.boardRepo.Delete(ctx, boardID); err != nil {
+		return response.NewAppError(response.ErrCodeInternal, "Failed to delete board", err.Error())
 	}
 
 	return err
 }
 
-// ==================== Helper: Build Board Response ====================
-
-func (s *boardService) buildBoardResponse(board *domain.Board) (*dto.BoardResponse, error) {
-	// Collect user IDs for batch query
-	userIDs := []string{board.CreatedBy.String()}
-	if board.AssigneeID != nil {
-		userIDs = append(userIDs, board.AssigneeID.String())
-	}
-
-	// Fetch users with caching
-	ctx := context.Background()
-	userMap := s.getUserInfoBatch(ctx, userIDs)
-
-	// Use mapper to build response (eliminates duplication)
-	response := s.mapper.ToResponseWithUserMap(board, userMap)
-	return response, nil
-}
-
-// buildBoardResponseOptimized builds a board response using pre-fetched data (batch optimized)
-func (s *boardService) buildBoardResponseOptimized(
-	board *domain.Board,
-	userMap map[string]client.UserInfo,
-) (*dto.BoardResponse, error) {
-	// Use mapper to build response (eliminates duplication)
-	response := s.mapper.ToResponseWithUserMap(board, userMap)
-	return response, nil
-}
-
-// getUserInfoBatch fetches user info for multiple users with caching
-func (s *boardService) getUserInfoBatch(ctx context.Context, userIDs []string) map[string]client.UserInfo {
-	if len(userIDs) == 0 {
-		return make(map[string]client.UserInfo)
-	}
-
-	// Try to get from cache first
-	cachedUsers, err := s.userInfoCache.GetSimpleUsersBatch(ctx, userIDs)
-	if err != nil {
-		s.logger.Warn("Failed to get users from cache", zap.Error(err))
-		cachedUsers = make(map[string]*cache.SimpleUser)
-	}
-
-	// Find missing user IDs (not in cache)
-	missingUserIDs := []string{}
-	for _, userID := range userIDs {
-		if _, exists := cachedUsers[userID]; !exists {
-			missingUserIDs = append(missingUserIDs, userID)
-		}
-	}
-
-	// Fetch missing users from User Service
-	userMap := make(map[string]client.UserInfo)
-
-	if len(missingUserIDs) > 0 {
-		users, err := s.userClient.GetUsersBatch(ctx, missingUserIDs)
-		if err != nil {
-			s.logger.Warn("Failed to fetch users from User Service", zap.Error(err))
-		} else {
-			// Cache the fetched users
-			simpleUsers := make([]cache.SimpleUser, 0, len(users))
-			for _, user := range users {
-				userMap[user.UserID] = user
-				// Note: UserInfo and SimpleUser have different fields
-				// For now, we'll just cache what we got
-				simpleUsers = append(simpleUsers, cache.SimpleUser{
-					ID:        user.UserID,
-					Name:      user.Name,
-					AvatarURL: "", // UserInfo doesn't have avatar URL
-				})
-			}
-			if cacheErr := s.userInfoCache.SetSimpleUsersBatch(ctx, simpleUsers); cacheErr != nil {
-				s.logger.Warn("Failed to cache users", zap.Error(cacheErr))
-			}
-		}
-	}
-
-	// Add cached users to result
-	for userID, cachedUser := range cachedUsers {
-		if _, exists := userMap[userID]; !exists {
-			userMap[userID] = client.UserInfo{
-				UserID:   cachedUser.ID,
-				Name:     cachedUser.Name,
-				Email:    "", // SimpleUser doesn't have email
-				IsActive: true,
-			}
-		}
-	}
-
-	return userMap
-}
-
-// ==================== Move Board (Integrated API) ====================
-
-// MoveBoard moves a board to a different column/group in a view
-// This API combines field value change + position update in a single transaction
-// Uses fractional indexing for O(1) operations - only 1 row updated!
-func (s *boardService) MoveBoard(userID, boardID string, req *dto.MoveBoardRequest) (*dto.MoveBoardResponse, error) {
-	// Parse UUIDs using common parser
-	userUUID, err := parser.ParseUserID(userID)
-	if err != nil {
-		return nil, err
-	}
-
-	boardUUID, err := parser.ParseBoardID(boardID)
-	if err != nil {
-		return nil, err
-	}
-
-	viewUUID, err := parser.ParseUUID(req.ViewID, "뷰")
-	if err != nil {
-		return nil, err
-	}
-
-	fieldUUID, err := parser.ParseFieldID(req.GroupByFieldID)
-	if err != nil {
-		return nil, err
-	}
-
-	newValueUUID, err := parser.ParseUUID(req.NewFieldValue, "필드 값")
-	if err != nil {
-		return nil, err
-	}
-
-	// 1. Fetch board
-	board, err := s.repo.FindByID(boardUUID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, "보드를 찾을 수 없습니다", 404)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 조회 실패", 500)
-	}
-
-	// 2. Check project membership
-	_, err = s.projectRepo.FindMemberByUserAndProject(userUUID, board.ProjectID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeForbidden, "프로젝트 멤버가 아닙니다", 403)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "멤버 확인 실패", 500)
-	}
-
-	// 3. Fetch field to validate
-	field, err := s.fieldRepo.FindFieldByID(fieldUUID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, "필드를 찾을 수 없습니다", 404)
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "필드 조회 실패", 500)
-	}
-
-	// 4. Validate field belongs to board's project
-	if field.ProjectID != board.ProjectID {
-		return nil, apperrors.New(apperrors.ErrCodeBadRequest, "필드가 보드의 프로젝트에 속하지 않습니다", 400)
-	}
-
-	// 5. Validate field type (only single_select and multi_select supported for grouping)
-	if field.FieldType != domain.FieldTypeSingleSelect && field.FieldType != domain.FieldTypeMultiSelect {
-		return nil, apperrors.New(apperrors.ErrCodeBadRequest, "Single-select 또는 Multi-select 필드만 그룹핑에 사용할 수 있습니다", 400)
-	}
-
-	// 6. Validate option exists
-	option, err := s.fieldRepo.FindOptionByID(newValueUUID)
-	if err != nil || option.FieldID != fieldUUID {
-		return nil, apperrors.New(apperrors.ErrCodeBadRequest, "유효하지 않은 옵션입니다", 400)
-	}
-
-	// 7. Generate new position using fractional indexing
-	var beforePos, afterPos string
-	if req.BeforePosition != nil {
-		beforePos = *req.BeforePosition
-	}
-	if req.AfterPosition != nil {
-		afterPos = *req.AfterPosition
-	}
-
-	// Import util package for fractional indexing
-	newPosition := util.GeneratePositionBetween(beforePos, afterPos)
-
-	// 8. Execute in transaction
-	var finalPosition string
-	err = s.db.Transaction(func(tx *gorm.DB) error {
-		// 8-1. Update field value (change column)
-		// Delete old value first
-		if err := s.fieldRepo.BatchDeleteFieldValues(boardUUID, fieldUUID); err != nil {
-			return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "기존 필드 값 삭제 실패", 500)
-		}
-
-		// Set new value
-		newFieldValue := &domain.BoardFieldValue{
-			BoardID:       boardUUID,
-			FieldID:       fieldUUID,
-			ValueOptionID: &newValueUUID,
-			DisplayOrder:  0,
-		}
-		if err := s.fieldRepo.SetFieldValue(newFieldValue); err != nil {
-			return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "필드 값 설정 실패", 500)
-		}
-
-		// 8-2. Update board position (fractional indexing - only 1 row!)
-		boardOrder := domain.UserBoardOrder{
-			ViewID:   viewUUID,
-			UserID:   userUUID,
-			BoardID:  boardUUID,
-			Position: newPosition,
-		}
-		if err := s.fieldRepo.SetBoardOrder(&boardOrder); err != nil {
-			return apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 순서 업데이트 실패", 500)
-		}
-
-		finalPosition = newPosition
-
-		// 8-3. Update JSONB cache
-		if _, err := s.fieldRepo.UpdateBoardFieldCache(boardUUID); err != nil {
-			s.logger.Warn("Failed to update board cache", zap.Error(err))
-		}
-
+// convertBoardCustomFieldsToValues converts a single board's customFields from IDs to values
+func (s *boardServiceImpl) convertBoardCustomFieldsToValues(ctx context.Context, board *domain.Board) error {
+	if board.CustomFields == nil || len(board.CustomFields) == 0 {
 		return nil
-	})
-
-	if err != nil {
-		if appErr, ok := err.(*apperrors.AppError); ok {
-			return nil, appErr
-		}
-		return nil, apperrors.Wrap(err, apperrors.ErrCodeInternalServer, "보드 이동 실패", 500)
 	}
 
-	return &dto.MoveBoardResponse{
-		BoardID:       boardID,
-		NewFieldValue: req.NewFieldValue,
-		NewPosition:   finalPosition,
-		Message:       "보드가 성공적으로 이동되었습니다 (O(1) 연산)",
-	}, nil
+	var customFields map[string]interface{}
+	if err := json.Unmarshal(board.CustomFields, &customFields); err != nil {
+		return err
+	}
+
+	convertedFields, err := s.fieldOptionConverter.ConvertIDsToValues(ctx, customFields)
+	if err != nil {
+		return err
+	}
+
+	jsonBytes, err := json.Marshal(convertedFields)
+	if err != nil {
+		return err
+	}
+
+	board.CustomFields = jsonBytes
+	return nil
+}
+
+// toBoardResponse converts domain.Board to dto.BoardResponse
+func (s *boardServiceImpl) toBoardResponse(board *domain.Board) *dto.BoardResponse {
+	// Convert datatypes.JSON to map[string]interface{}
+	var customFields map[string]interface{}
+	if len(board.CustomFields) > 0 {
+		_ = json.Unmarshal(board.CustomFields, &customFields)
+	}
+
+	// Extract participant IDs from board participants
+	participantIDs := make([]uuid.UUID, 0, len(board.Participants))
+	for _, p := range board.Participants {
+		participantIDs = append(participantIDs, p.UserID)
+	}
+
+	// Convert attachments to response DTOs with s3Client.GetFileURL
+	attachments := make([]dto.AttachmentResponse, 0, len(board.Attachments))
+	for _, a := range board.Attachments {
+		// s3Client.GetFileURL을 사용하여 FileURL 필드 채우기 (DB의 FileURL은 S3 Key)
+		fileURL := s.s3Client.GetFileURL(a.FileURL)
+
+		attachments = append(attachments, dto.AttachmentResponse{
+			ID:          a.ID,
+			FileName:    a.FileName,
+			FileURL:     fileURL, // full URL 반환
+			FileSize:    a.FileSize,
+			ContentType: a.ContentType,
+			UploadedBy:  a.UploadedBy,
+			UploadedAt:  a.CreatedAt,
+		})
+	}
+
+	return &dto.BoardResponse{
+		ID:             board.ID,
+		ProjectID:      board.ProjectID,
+		AuthorID:       board.AuthorID,
+		AssigneeID:     board.AssigneeID,
+		Title:          board.Title,
+		Content:        board.Content,
+		CustomFields:   customFields,
+		StartDate:      board.StartDate,
+		DueDate:        board.DueDate,
+		ParticipantIDs: participantIDs,
+		Attachments:    attachments,
+		CreatedAt:      board.CreatedAt,
+		UpdatedAt:      board.UpdatedAt,
+	}
+}
+
+// toBoardDetailResponse converts domain.Board to dto.BoardDetailResponse
+func (s *boardServiceImpl) toBoardDetailResponse(board *domain.Board) *dto.BoardDetailResponse {
+	// Convert participants
+	participants := make([]dto.ParticipantResponse, len(board.Participants))
+	for i, p := range board.Participants {
+		participants[i] = dto.ParticipantResponse{
+			ID:        p.ID,
+			BoardID:   p.BoardID,
+			UserID:    p.UserID,
+			CreatedAt: p.CreatedAt,
+		}
+	}
+
+	// Convert comments
+	comments := make([]dto.CommentResponse, len(board.Comments))
+	for i, c := range board.Comments {
+		comments[i] = dto.CommentResponse{
+			CommentID: c.ID,
+			BoardID:   c.BoardID,
+			UserID:    c.UserID,
+			Content:   c.Content,
+			CreatedAt: c.CreatedAt,
+			UpdatedAt: c.UpdatedAt,
+		}
+	}
+
+	return &dto.BoardDetailResponse{
+		BoardResponse: *s.toBoardResponse(board),
+		Participants:  participants,
+		Comments:      comments,
+	}
+}
+
+// addParticipantsInternal is an internal helper to add participants during board creation
+// It does not verify board existence (assumes board was just created)
+// Returns the number of successfully added participants and any errors
+func (s *boardServiceImpl) addParticipantsInternal(ctx context.Context, boardID uuid.UUID, userIDs []uuid.UUID) (int, error) {
+	// Remove duplicates from the user IDs
+	uniqueUserIDs := removeDuplicateUUIDs(userIDs)
+
+	successCount := 0
+	var failedUserIDs []uuid.UUID
+
+	// Process each participant individually
+	for _, userID := range uniqueUserIDs {
+		// Check if participant already exists
+		existing, err := s.participantRepo.FindByBoardAndUser(ctx, boardID, userID)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			s.logger.Warn("Failed to check existing participant",
+				zap.String("board_id", boardID.String()),
+				zap.String("user_id", userID.String()),
+				zap.Error(err))
+			failedUserIDs = append(failedUserIDs, userID)
+			continue
+		}
+		if existing != nil {
+			// Participant already exists, skip
+			continue
+		}
+
+		// Create domain model
+		participant := &domain.Participant{
+			BoardID: boardID,
+			UserID:  userID,
+		}
+
+		// Save to repository
+		if err := s.participantRepo.Create(ctx, participant); err != nil {
+			// Check for unique constraint violation
+			if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
+				// Participant already exists, skip
+				continue
+			}
+			s.logger.Warn("Failed to add participant",
+				zap.String("board_id", boardID.String()),
+				zap.String("user_id", userID.String()),
+				zap.Error(err))
+			failedUserIDs = append(failedUserIDs, userID)
+			continue
+		}
+
+		successCount++
+	}
+
+	// Log summary if there were failures
+	if len(failedUserIDs) > 0 {
+		s.logger.Warn("Some participants failed to be added during board creation",
+			zap.String("board_id", boardID.String()),
+			zap.Int("success_count", successCount),
+			zap.Int("failed_count", len(failedUserIDs)),
+			zap.Any("failed_user_ids", failedUserIDs))
+	}
+
+	return successCount, nil
+}
+
+// validateAndConfirmAttachments validates that attachments exist and are in TEMP status
+func (s *boardServiceImpl) validateAndConfirmAttachments(ctx context.Context, attachmentIDs []uuid.UUID, entityType domain.EntityType, entityID uuid.UUID) error {
+	if len(attachmentIDs) == 0 {
+		return nil
+	}
+
+	// Fetch attachments by IDs
+	attachments, err := s.attachmentRepo.FindByIDs(ctx, attachmentIDs)
+	if err != nil {
+		return response.NewAppError(response.ErrCodeInternal, "Failed to fetch attachments", err.Error())
+	}
+
+	// Check if all attachments exist
+	if len(attachments) != len(attachmentIDs) {
+		return response.NewAppError(response.ErrCodeValidation, "One or more attachments not found", "")
+	}
+
+	// Validate each attachment
+	for _, attachment := range attachments {
+		// Check if attachment is in TEMP status
+		if attachment.Status != domain.AttachmentStatusTemp {
+			return response.NewAppError(response.ErrCodeValidation, "Attachment is not in temporary status and cannot be reused", "")
+		}
+
+		// Check if attachment entity type matches
+		if attachment.EntityType != entityType {
+			return response.NewAppError(response.ErrCodeValidation, "Attachment entity type does not match", "")
+		}
+	}
+
+	return nil
+}
+
+// deleteAttachmentsWithS3 deletes attachments from both S3 and database
+func (s *boardServiceImpl) deleteAttachmentsWithS3(ctx context.Context, attachments []*domain.Attachment) {
+	attachmentIDs := make([]uuid.UUID, 0, len(attachments))
+
+	// Delete files from S3
+	for _, attachment := range attachments {
+		// Extract S3 key from FileURL
+		fileKey := extractS3KeyFromURL(attachment.FileURL)
+		if fileKey == "" {
+			s.logger.Warn("Failed to extract S3 key from URL",
+				zap.String("attachment_id", attachment.ID.String()),
+				zap.String("file_url", attachment.FileURL))
+			continue
+		}
+
+		// Delete from S3
+		if err := s.s3Client.DeleteFile(ctx, fileKey); err != nil {
+			s.logger.Warn("Failed to delete file from S3",
+				zap.String("attachment_id", attachment.ID.String()),
+				zap.String("file_key", fileKey),
+				zap.Error(err))
+			// Continue even if S3 deletion fails
+		}
+
+		attachmentIDs = append(attachmentIDs, attachment.ID)
+	}
+
+	// Delete from database
+	if len(attachmentIDs) > 0 {
+		if err := s.attachmentRepo.DeleteBatch(ctx, attachmentIDs); err != nil {
+			s.logger.Warn("Failed to delete attachments from database",
+				zap.Int("count", len(attachmentIDs)),
+				zap.Error(err))
+		}
+	}
 }

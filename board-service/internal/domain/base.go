@@ -4,23 +4,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
-// BaseModel contains common fields for all domain models
+// BaseModel contains common fields for all domain entities
 type BaseModel struct {
-	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
-	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
-	IsDeleted bool      `gorm:"default:false;index" json:"is_deleted"`
-}
-
-// BeforeCreate is a GORM hook that generates UUID before creating a record
-func (b *BaseModel) BeforeCreate(tx *gorm.DB) error {
-	if b.ID == uuid.Nil {
-		b.ID = uuid.New()
-	}
-	return nil
+	ID        uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	CreatedAt time.Time  `gorm:"not null" json:"created_at"`
+	UpdatedAt time.Time  `gorm:"not null" json:"updated_at"`
+	DeletedAt *time.Time `gorm:"index" json:"deleted_at,omitempty"` // Soft delete
 }
 
 // ==================== Entity Interface Implementation ====================

@@ -25,6 +25,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      */
     Optional<User> findByGoogleId(String googleId);
 
+    Optional<User> findByEmail(String email);
+
     /**
      * 이메일로 활성화된 사용자 조회
      */

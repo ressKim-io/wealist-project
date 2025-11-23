@@ -48,6 +48,9 @@ public class User {
     @Column(name = "deletedAt")
     private LocalDateTime deletedAt;
 
+
+
+
     public void softDelete() {
         this.isActive = false;
         this.deletedAt = LocalDateTime.now();

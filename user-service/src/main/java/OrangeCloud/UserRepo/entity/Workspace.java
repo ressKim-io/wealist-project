@@ -33,7 +33,7 @@ public class Workspace {
 
     @Column(name = "isPublic", nullable = false)
     @Builder.Default
-    private Boolean isPublic = false; // 검색 > 초대 가능성
+    private Boolean isPublic = true; // 검색 > 초대 가능성
 
     @Column(name = "needApproved", nullable = false)
     @Builder.Default

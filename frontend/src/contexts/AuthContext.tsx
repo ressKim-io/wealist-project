@@ -8,8 +8,7 @@ interface AuthContextType {
   token: string | null;
   nickName: string | null;
   userEmail: string | null;
-  // WorkspaceSettingsModal에서 사용하는 login, logout 대신 상태값만 노출
-  // login 함수는 OAuthRedirectPage에서 직접 처리하고, logout만 제공합니다.
+  userId: string | null; // ✅ 1. 타입 정의 추가
   logout: () => void;
   isLoading: boolean;
 }
@@ -31,20 +30,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [reToken, setReToken] = useState<string | null>(null);
   const [nickName, setNickName] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null); // ✅ 2. State 추가
   const [isLoading, setIsLoading] = useState(true);
 
   // 1. 초기 로딩 시 localStorage에서 토큰 및 ID 로드
   useEffect(() => {
-    console.log(localStorage);
     const storedToken = localStorage.getItem('accessToken');
     const storedReToken = localStorage.getItem('refreshToken');
     const storedNickName = localStorage.getItem('nickName');
     const storedUserEmail = localStorage.getItem('userEmail');
-
+    const storedUserId = localStorage.getItem('userId'); // ✅ 3. 로컬스토리지 읽기 추가
+    console.log(storedUserId);
     if (storedToken && storedReToken && storedUserEmail) {
       setToken(storedToken);
       setNickName(storedNickName);
       setUserEmail(storedUserEmail);
+      if (storedUserId) setUserId(storedUserId); // ✅ 4. State 복구
     }
     setIsLoading(false);
   }, []);
@@ -70,10 +71,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('nickName');
     localStorage.removeItem('userEmail');
+    localStorage.removeItem('userId'); // ✅ 5. 로그아웃 시 삭제
     setToken(null);
     setReToken(null);
     setNickName(null);
     setUserEmail(null);
+    setUserId(null); // ✅ 6. State 초기화
     // 로그아웃 후 로그인 페이지로 이동
     navigate('/', { replace: true });
   }, [token, navigate]);
@@ -84,6 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     reToken,
     nickName,
     userEmail,
+    userId, // ✅ 7. Context Value에 포함
     logout,
     isLoading,
   };

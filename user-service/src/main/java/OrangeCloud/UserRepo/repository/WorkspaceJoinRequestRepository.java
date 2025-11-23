@@ -55,4 +55,6 @@ public interface WorkspaceJoinRequestRepository extends JpaRepository<WorkspaceJ
             UUID userId, 
             WorkspaceJoinRequest.JoinRequestStatus status
     );
+    List<WorkspaceJoinRequest> findByUserIdAndStatusIn(UUID userId, List<WorkspaceJoinRequest.JoinRequestStatus> statuses);
+
 }
