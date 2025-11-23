@@ -2660,6 +2660,111 @@ const docTemplate = `{
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/views/{viewId}/boards": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Apply a saved view to get filtered/sorted/grouped boards",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Views"
+                ],
+                "summary": "Apply view",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "View ID",
+                        "name": "viewId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
                     }
                 }
             }
@@ -3175,8 +3280,32 @@ const docTemplate = `{
                 "value"
             ],
             "properties": {
-                "color": {
-                    "type": "string"
+                "config": {
+                    "description": "Type-specific configuration",
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                },
+                "fieldType": {
+                    "type": "string",
+                    "enum": [
+                        "text",
+                        "number",
+                        "single_select",
+                        "multi_select",
+                        "date",
+                        "datetime",
+                        "single_user",
+                        "multi_user",
+                        "checkbox",
+                        "url"
+                    ]
+                },
+                "isRequired": {
+                    "type": "boolean"
                 },
                 "displayOrder": {
                     "type": "integer"
@@ -3280,12 +3409,24 @@ const docTemplate = `{
         },
         "project-board-api_internal_dto.FieldOptionResponse": {
             "type": "object",
+            "required": [
+                "name",
+                "projectId"
+            ],
             "properties": {
-                "color": {
+                "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                },
+                "filters": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "groupByFieldId": {
                     "type": "string"
                 },
-                "createdAt": {
-                    "type": "string"
+                "isDefault": {
+                    "type": "boolean"
                 },
                 "displayOrder": {
                     "type": "integer"

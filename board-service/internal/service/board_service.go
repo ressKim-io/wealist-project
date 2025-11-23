@@ -2,11 +2,9 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"strings"
 
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -419,7 +417,7 @@ func (s *boardServiceImpl) DeleteBoard(ctx context.Context, boardID uuid.UUID) e
 		return response.NewAppError(response.ErrCodeInternal, "Failed to delete board", err.Error())
 	}
 
-	return nil
+	return err
 }
 
 // convertBoardCustomFieldsToValues converts a single board's customFields from IDs to values

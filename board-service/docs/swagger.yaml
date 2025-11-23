@@ -24,6 +24,12 @@ definitions:
         type: string
       uploadedBy:
         type: string
+      position:
+        description: Fractional index position
+        type: string
+    required:
+    - boardId
+    - position
     type: object
   internal_handler.PresignedURLRequest:
     properties:
@@ -369,7 +375,12 @@ definitions:
     type: object
   project-board-api_internal_dto.CreateFieldOptionRequest:
     properties:
-      color:
+      config:
+        additionalProperties: true
+        description: Type-specific configuration
+        type: object
+      description:
+        maxLength: 1000
         type: string
       displayOrder:
         type: integer
@@ -451,9 +462,13 @@ definitions:
     type: object
   project-board-api_internal_dto.FieldOptionResponse:
     properties:
-      color:
+      description:
+        maxLength: 1000
         type: string
-      createdAt:
+      filters:
+        additionalProperties: true
+        type: object
+      groupByFieldId:
         type: string
       displayOrder:
         type: integer
@@ -465,7 +480,7 @@ definitions:
         type: string
       optionId:
         type: string
-      updatedAt:
+      sortBy:
         type: string
       value:
         type: string

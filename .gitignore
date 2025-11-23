@@ -77,7 +77,7 @@ prometheus/data/
 prometheus/volume/
 
 
-
+node_modules
 
 # 모놀리식 프론트엔드
 frontend/dist/
