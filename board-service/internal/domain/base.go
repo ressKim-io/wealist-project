@@ -11,7 +11,8 @@ type BaseModel struct {
 	ID        uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	CreatedAt time.Time  `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time  `gorm:"not null" json:"updated_at"`
-	DeletedAt *time.Time `gorm:"index" json:"deleted_at,omitempty"` // Soft delete
+	DeletedAt *time.Time `gorm:"index" json:"deleted_at,omitempty"` // Soft delete (GORM standard)
+	IsDeleted bool       `gorm:"default:false;index:idx_is_deleted" json:"is_deleted"` // Soft delete flag for manual queries
 }
 
 // ==================== Entity Interface Implementation ====================
